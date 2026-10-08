@@ -449,7 +449,7 @@
           <button id="btnPauseHome" class="btn" type="button">หน้าแรก</button>
         </div>
         <button id="btnPauseMute" class="link" type="button"></button>
-        <p>กด P หรือ Esc เพื่อหยุดและเล่นต่อ · กดเล่นต่อแล้วจะนับถอยหลัง 3 วินาที</p>
+        <p>กด P หรือ Esc เพื่อหยุดและเล่นต่อ · กดเล่นต่อแล้วจะนับถอยหลัง 3 วินาที<br>กดเริ่มใหม่หรือหน้าแรก = จบรอบนี้ ขึ้นสรุปผล บันทึกคะแนนและรางวัลให้</p>
       </div>
     </div>
     <div id="countdown" aria-live="assertive" hidden></div>
@@ -1216,7 +1216,10 @@ const App = {
     $('pauseDlg').hidden = true;
     $('countdown').hidden = true;
     const g = this.scene('game');
+    g.resumeShift = true;
     g.scene.resume();
+    // มีแต้มแล้ว: จบรอบแบบปกติ ขึ้นสรุปผล + บันทึกคะแนน/รางวัล แล้วค่อยเลือกเล่นใหม่หรือกลับหน้าแรกจากหน้าสรุป
+    if (g.score > 0 && !g.over) return g.endGame();
     if (toTitle) g.scene.start('title'); else g.scene.restart();
   },
 
@@ -2410,7 +2413,8 @@ class Game extends Phaser.Scene {
   nearestEnemy(x, y) {
     let best = null, bestD = Infinity;
     for (const e of this.enemies.getChildren()) {
-      if (!e.active || !e.visible || e.y < 0 || e.y > H) continue;
+      // เล็งเฉพาะตัวที่อยู่ในจอ (ตรงกับเงื่อนไขยิงโดนใน hitEnemy) ไม่งั้นจรวดวนรอเป้านอกจอ
+      if (!e.active || !e.visible || e.y < 16 || e.y > H || e.x < 8 || e.x > W - 8) continue;
       const d = Phaser.Math.Distance.Squared(x, y, e.x, e.y);
       if (d < bestD) { bestD = d; best = e; }
     }
