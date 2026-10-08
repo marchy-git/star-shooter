@@ -122,6 +122,8 @@
   .head h2 { flex: 1; }
   .coins { color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums; }
 
+  /* ช่อง password เป็นช่องข้อความที่แสดงเป็นจุด เบราว์เซอร์จึงไม่ถามบันทึกรหัสผ่าน */
+  .secret { -webkit-text-security: disc; text-security: disc; }
   .card input {
     font: 700 calc(var(--u) * 22) var(--font);
     color: var(--ink);
@@ -286,15 +288,15 @@
     </div>
 
     <div id="authDlg" class="modal" hidden>
-      <form id="authForm" class="card" autocomplete="on">
+      <div id="authForm" class="card">
         <div class="head"><h2 id="authTitle">สมัครสมาชิก</h2><button class="btn" type="button" data-close>ปิด</button></div>
-        <label>username<input id="authUser" maxlength="20" autocomplete="username" enterkeyhint="next"></label>
-        <label>password<input id="authPass" type="password" maxlength="100" autocomplete="current-password" enterkeyhint="next"></label>
-        <label id="authNickRow">nickname<input id="authNick" maxlength="16" placeholder="ชื่อที่จะแสดงในตารางอันดับ" enterkeyhint="done"></label>
+        <label>username<input id="authUser" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"></label>
+        <label>password<input id="authPass" class="secret" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"></label>
+        <label id="authNickRow">nickname<input id="authNick" maxlength="16" autocomplete="off" placeholder="ชื่อที่จะแสดงในตารางอันดับ" enterkeyhint="done"></label>
         <p id="authErr" class="err"></p>
-        <button id="authSubmit" class="btn primary" type="submit">สมัคร</button>
+        <button id="authSubmit" class="btn primary" type="button">สมัคร</button>
         <button id="authSwitch" class="link" type="button">มีบัญชีแล้ว? ล็อกอิน</button>
-      </form>
+      </div>
     </div>
 
     <div id="boardDlg" class="modal" hidden>
@@ -979,13 +981,12 @@ const App = {
     $('authSubmit').textContent = signup ? 'สมัคร' : 'ล็อกอิน';
     $('authSwitch').textContent = signup ? 'มีบัญชีแล้ว? ล็อกอิน' : 'ยังไม่มีบัญชี? สมัคร';
     $('authNickRow').hidden = !signup;
-    $('authPass').autocomplete = signup ? 'new-password' : 'current-password';
     $('authErr').textContent = '';
     $('authDlg').hidden = false;
     setTimeout(() => $('authUser').focus(), 50);
   },
   async submitAuth(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const signup = this.authMode === 'signup';
     const username = $('authUser').value.trim();
     const password = $('authPass').value;
@@ -1331,7 +1332,13 @@ const App = {
     $('btnHome').onclick = () => this.home();
     $('btnCopy').onclick = () => this.copyCard();
     $('btnShare').onclick = () => this.shareCard();
-    $('authForm').addEventListener('submit', e => this.submitAuth(e));
+    // ไม่ใช้ <form> และไม่ใช้ช่อง type=password เพื่อไม่ให้เบราว์เซอร์ถามบันทึกรหัสผ่าน
+    $('authSubmit').onclick = () => this.submitAuth();
+    ['authUser', 'authPass', 'authNick'].forEach(id => $(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); this.submitAuth(); }
+    }));
+    // เบราว์เซอร์ที่ซ่อนตัวอักษรด้วย CSS ไม่ได้ ใช้ช่องรหัสผ่านปกติแทน
+    if (!(window.CSS && (CSS.supports('-webkit-text-security', 'disc') || CSS.supports('text-security', 'disc')))) $('authPass').type = 'password';
     $('btnResume').onclick = () => this.resume();
     $('btnPauseRestart').onclick = () => this.leavePause(false);
     $('btnPauseHome').onclick = () => this.leavePause(true);
