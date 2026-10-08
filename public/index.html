@@ -231,6 +231,11 @@
     animation: flicker 0.9s ease-in-out infinite alternate;
   }
   .ship.fx-epic img, .ship.fx-legendary img, .ship.fx-mythic img { animation: floaty 2.2s ease-in-out infinite; filter: drop-shadow(0 0 calc(var(--u) * 8) var(--tier)); }
+  .ship .evo { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 2); width: 100%; }
+  .ship .shards { color: var(--tier); font-size: calc(var(--u) * 11); font-weight: 700; }
+  .ship .evo .link { font-size: calc(var(--u) * 11); }
+  .ship .evo-go { animation: evoPulse 1s ease-in-out infinite alternate; }
+  @keyframes evoPulse { to { box-shadow: 0 0 calc(var(--u) * 14) var(--tier); } }
   .ship .awake { color: #ffffff; background: var(--tier); border-radius: calc(var(--u) * 6); padding: 0 calc(var(--u) * 6); font-size: calc(var(--u) * 10); font-weight: 700; }
   .slot.fx-epic, .slot.fx-legendary, .slot.fx-mythic { box-shadow: 0 0 calc(var(--u) * 12) var(--tier); }
   .slot.fx-legendary img, .slot.fx-mythic img { animation: floaty 2s ease-in-out infinite; }
@@ -588,6 +593,21 @@ const TIER_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 // การันตี: สุ่มครบ 10 ครั้งได้เอพิกขึ้นไปแน่นอน, ครบ 40 ครั้งได้ตำนานขึ้นไปแน่นอน
 const PITY_EPIC = 10, PITY_LEGEND = 40;
 const MAX_LV = 10;
+// แปลงร่างยาน (ร่าง 2): เศษยานได้ตอนล้มบอส (server สุ่ม 2% ระดับตามโอกาสตั๋วสุ่ม) · Lv10 + เศษครบ 5 → แปลงร่าง สกิลเท่า Lv13
+// ค่าเศษ/ราคา ต้องตรงกับ SHARD_* ใน functions/api
+const SHARD_NEED = 5, EVO_LV = 13;
+const SHARD_PRICE = { rare: 80, epic: 180, legendary: 400, mythic: 1000 };
+const EVO = {
+  magneto: { color: 0xff5a3c, alt: 0x36f1ff, look: 'ขดลวดแม่เหล็กสองข้าง ฐานทอง เพชรที่หัว' },
+  falcon:  { color: 0x7dff6a, alt: 0xd8ff6a, look: 'ปีกขนนกกวาดหลัง ขอบทอง' },
+  comet:   { color: 0x9ff3ff, alt: 0xffffff, look: 'หัวผลึกน้ำแข็ง หางดาวหางยาว' },
+  storm:   { color: 0xff4fd8, alt: 0xfff35a, look: 'ปีกใบมีดสายฟ้า ฟ้าผ่ากลางลำ' },
+  phantom: { color: 0xb46bff, alt: 0xffd23f, look: 'ผ้าคลุมพลิ้ว เขาจันทร์เสี้ยว ตาทอง' },
+  prism:   { color: 0xc8f6ff, alt: 0xff3df2, look: 'สามเหลี่ยมซ้อนเป็นดาว 6 แฉก ขอบสีรุ้ง' },
+  nova:    { color: 0xffd23f, alt: 0xfff3b0, look: 'ดาวซ้อน 2 ชั้น แสงทองเจิดจ้า' },
+  phoenix: { color: 0xff3b3b, alt: 0xffb84d, look: 'ปีกเพลิงซ้อน มงกุฎหงอนไฟ' },
+};
+const shipTex = (id, d) => (EVO[id] && d.evo && d.evo[id] ? 'ship2_' + id : SHIPS[id].key);
 
 // ตัวละคร (ยาน): ได้จากตั๋วสุ่มเท่านั้น อัปเลเวลด้วยคริสตัล สกิลแรงขึ้นตามเลเวล
 // lives = ชีวิตตอนเริ่ม, speed = ความเร็วเคลื่อนที่, fire = ตัวคูณเวลายิง (น้อย = ยิงเร็ว)
@@ -601,7 +621,7 @@ const SHIPS = {
     desc: k => `ชีวิต +1 · ได้เกราะใหม่ฟรีทุก ${Math.round(k.every / 1000)} วิ` },
   // ----- หายาก (ฟ้า): สกิลผูกกับไอเท็ม ค่าที่ Lv10 คือค่าเต็ม ไล่ลดตามเลเวล -----
   magneto: { name: 'แม็กเนโต', tier: 'rare', key: 'ship_magneto', lives: 3, speed: 1, fire: 1, drones: 0,
-    skill: lv => ({ hits: lv >= 5 ? 2 : 1, star: lv * 0.1, guard: 1000 + (lv - 1) * 1000 / 9 }),
+    skill: lv => ({ hits: lv >= 5 ? 2 : 1, star: Math.min(1, lv * 0.1), guard: 1000 + (lv - 1) * 1000 / 9 }),
     desc: k => `เก็บเกราะ → กันได้ ${k.hits} ครั้ง · เกราะแตกแล้วอมตะ ${(k.guard / 1000).toFixed(1)} วิ · โอกาส ${Math.round(k.star * 100)}% ได้อมตะแถม` },
   falcon:  { name: 'เหยี่ยว',  tier: 'rare', key: 'ship_falcon', lives: 3, speed: 1.05, fire: 1, drones: 0,
     skill: lv => ({ inv: 200 * lv }),
@@ -631,7 +651,8 @@ const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIPS[
 // ข้อความ error จาก server เป็นภาษาคน
 const errText = e => ({
   not_enough: 'คริสตัลไม่พอ', no_ticket: 'ตั๋วหมดแล้ว', not_owned: 'ยังไม่มียานลำนี้', max_level: 'เลเวลเต็มแล้ว',
-  busy: 'กดถี่เกินไป ลองใหม่อีกครั้ง', unauthorized: 'การล็อกอินหมดอายุ ล็อกอินใหม่ที่หน้าแรก',
+  busy: 'กดถี่เกินไป ลองใหม่อีกครั้ง', need_shards: 'เศษยานยังไม่ครบ', need_max_level: 'ต้องอัปยานถึง Lv10 ก่อน',
+  already: 'ยานลำนี้แปลงร่างแล้ว', not_evolvable: 'ยานลำนี้แปลงร่างไม่ได้', not_enough_shards: 'เศษยานไม่พอ', unauthorized: 'การล็อกอินหมดอายุ ล็อกอินใหม่ที่หน้าแรก',
 }[e && e.message] || 'เชื่อมต่อไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่');
 // ระดับที่ใช้แสดงเอฟเฟกต์: Lv10 ตื่นพลัง ได้เอฟเฟกต์สูงกว่าระดับจริง 1 ขั้น
 const visualTier = (id, lv) => TIER_ORDER[Math.min(TIER_ORDER.length - 1, TIER_ORDER.indexOf(SHIPS[id].tier) + (lv >= 10 ? 1 : 0))];
@@ -817,7 +838,7 @@ const music = {
 //  3. ข้อมูลในเครื่อง + ตารางอันดับออนไลน์
 // =====================================================================
 const SESSION_KEY = 'star-shooter-session-v1';
-const DEFAULT_DATA = () => ({ coins: 0, tickets: 1, chars: { bolt: 1 }, ship: 'bolt', best: 0, pity: { e: 0, l: 0 } });
+const DEFAULT_DATA = () => ({ coins: 0, tickets: 1, chars: { bolt: 1 }, ship: 'bolt', best: 0, pity: { e: 0, l: 0 }, shards: {}, evo: {} });
 
 // เรียก API ของเกม (แนบ token ถ้าล็อกอินอยู่) เกิด error จะโยน Error ที่มี .status
 async function api(path, body) {
@@ -846,6 +867,8 @@ const Save = {
     const x = Object.assign(DEFAULT_DATA(), d || {});
     x.chars = Object.assign({}, x.chars);
     x.pity = Object.assign({ e: 0, l: 0 }, x.pity);
+    x.shards = Object.assign({}, x.shards);
+    x.evo = Object.assign({}, x.evo);
     if (!x.chars.bolt) x.chars.bolt = 1;
     for (const k of Object.keys(x.chars)) if (!SHIPS[k]) delete x.chars[k];
     if (!x.chars[x.ship]) x.ship = 'bolt';
@@ -1081,6 +1104,7 @@ const App = {
   scene(key) { return this.game.scene.getScene(key); },
 
   start() {
+    if (this.evolving) return;
     if (!Save.loggedIn) return this.openAuth('signup');   // ต้องสมัคร/ล็อกอินก่อนถึงเล่นได้
     sfx.unlock();
     music.start();
@@ -1343,11 +1367,11 @@ const App = {
       el.style.setProperty('--tier', TIERS[vt].color);
       const img = document.createElement('img');
       img.alt = s.name;
-      img.src = this.game.textures.getBase64(s.key);
+      img.src = this.game.textures.getBase64(shipTex(id, d));
       const b = document.createElement('b'); b.textContent = s.name;
       const tier = document.createElement('span'); tier.className = 'tier'; tier.textContent = t.name;
       const lvEl = document.createElement('span'); lvEl.className = 'lv'; lvEl.textContent = owned ? `Lv ${lv}/${MAX_LV}` : 'ยังไม่มี';
-      const sp = document.createElement('span'); sp.textContent = `${s.desc(s.skill(Math.max(1, lv)))} · ชีวิต ${s.lives}`;
+      const sp = document.createElement('span'); sp.textContent = `${s.desc(s.skill(EVO[id] && d.evo[id] ? EVO_LV : Math.max(1, lv)))} · ชีวิต ${s.lives}`;
       const perk = document.createElement('span'); perk.className = 'perk'; perk.textContent = 'Lv5 เริ่มพร้อมเกราะ + ขอบเรืองแสง · Lv10 เริ่มพลังยิง 2 + ตื่นพลัง (เอฟเฟกต์ขึ้น 1 ระดับ)';
       if (lv >= 10) { const aw = document.createElement('span'); aw.className = 'awake'; aw.textContent = 'ตื่นพลัง'; tier.append(' ', aw); }
       const use = document.createElement('button');
@@ -1366,6 +1390,7 @@ const App = {
         use.disabled = true;
       }
       el.append(img, b, tier, lvEl, sp, perk, use);
+      if (EVO[id]) el.append(this.evoBlock(id, s, lv, owned));
       if (owned && lv < MAX_LV) {
         const cost = lvCost(id, lv);
         const upBtn = document.createElement('button');
@@ -1385,6 +1410,50 @@ const App = {
       }
       grid.append(el);
     }
+  },
+  // เศษยาน / แปลงร่าง ในการ์ดร้านยาน
+  evoBlock(id, s, lv, owned) {
+    const d = Save.data, n = d.shards[id] || 0, evo = !!d.evo[id];
+    const box = document.createElement('div'); box.className = 'evo';
+    const info = document.createElement('span'); info.className = 'shards';
+    info.textContent = evo ? `ร่าง 2 · สกิลเท่า Lv${EVO_LV} · เศษ ${n}` : `เศษยาน ${n}/${SHARD_NEED}` + (lv >= MAX_LV ? '' : ' · ต้อง Lv10');
+    box.append(info);
+    const btn = (label, cls, fn) => {
+      const el = document.createElement('button'); el.type = 'button'; el.className = cls; el.textContent = label;
+      el.onclick = async () => { el.disabled = true; await fn(); };
+      box.append(el);
+      return el;
+    };
+    if (!evo && owned && lv >= MAX_LV && n >= SHARD_NEED) {
+      btn('แปลงร่าง!', 'btn primary evo-go', async () => {
+        try { await Save.act('/api/evolve', { ship: id }); this.showEvolve(id, false); }
+        catch (e) { UI.toast(errText(e)); this.renderHangar(); }
+      });
+    }
+    btn(evo ? 'ดูร่าง 2' : 'ดูตัวอย่างร่าง 2', 'link', async () => this.showEvolve(id, true));
+    if (n > 0 && Save.loggedIn) {
+      btn(`ขายเศษ 1 ชิ้น +${fmt(SHARD_PRICE[s.tier])}`, 'link', async () => {
+        try { const r = await Save.act('/api/shard/sell', { ship: id, n: 1 }); UI.toast(`ขายเศษ ${s.name} ได้คริสตัล +${fmt(r.coins)}`); sfx.power(); }
+        catch (e) { UI.toast(errText(e)); }
+        this.renderHangar();
+        this.refreshMenu();
+      });
+    }
+    return box;
+  },
+  // ฉากแปลงร่าง / ดูตัวอย่าง (scene 'evolve' ทับหน้าแรก)
+  showEvolve(id, preview) {
+    $('hangarDlg').hidden = true;
+    $('menu').hidden = true;
+    this.evolving = true;
+    this.game.scene.start('evolve', { id, preview });
+  },
+  endEvolve() {
+    this.evolving = false;
+    const t = this.scene('title');
+    if (t && t.sys.isActive()) $('menu').hidden = false;
+    this.refreshMenu();
+    this.openHangar();
   },
   // สุ่ม: server สุ่มและให้รางวัลทันที (กันรีเฟรชหนี/แก้ผล) แล้วค่อยเล่นแอนิเมชันไฟวิ่งไปหยุดที่ผล
   async spin() {
@@ -1654,6 +1723,100 @@ function makeTextures(scene) {
     ring(g, 32, 32, 8, 0xfff3b0, 0.4);
     core(g, 32, 32, 3);
   });
+  // ----- ร่าง 2 (แปลงร่าง) 96x96 -----
+  const S = (arr, k = 1.25) => P(arr.map(([x, y]) => [48 + (x - 32) * k, 48 + (y - 32) * k]));   // ขยายร่างเดิมไว้กลางผืน 96
+  const M = arr => arr.map(([x, y]) => [96 - x, y]);
+  draw('ship2_magneto', 96, 96, g => {
+    // ขดลวดสองข้าง
+    for (const s of [-1, 1]) {
+      const x = 48 + s * 34;
+      neon(g, P([[x - 6, 30], [x + 6, 30], [x + 6, 78], [x - 6, 78]]), 0x36f1ff, 0.12);
+      for (let y = 36; y <= 72; y += 8) line(g, x - 6, y, x + 6, y + 3, 0x9ff3ff, 1.2);
+    }
+    neon(g, S([[32, 6], [52, 22], [52, 54], [40, 54], [40, 28], [32, 20], [24, 28], [24, 54], [12, 54], [12, 22]]), 0xff5a3c, 0.2);
+    g.fillStyle(0xffd23f, 1); g.fillRect(23, 75, 15, 6); g.fillRect(58, 75, 15, 6);
+    neon(g, P([[48, 8], [54, 16], [48, 22], [42, 16]]), 0xffd23f, 0.35);
+    core(g, 48, 15, 3);
+  });
+  draw('ship2_falcon', 96, 96, g => {
+    // ปีกขนนกกวาดไปข้างหลัง ข้างละผืนเดียว ปลายหยักเป็นขนนก 3 เส้น
+    for (const s of [-1, 1]) {
+      const X = x => 48 + s * (48 - x);
+      neon(g, P([[X(42), 40], [X(4), 18], [X(14), 32], [X(2), 40], [X(14), 48], [X(6), 60], [X(40), 58]]), 0x7dff6a, 0.1);
+      line(g, X(40), 42, X(8), 22, 0xffd23f, 1.5);
+    }
+    neon(g, S([[22, 6], [28, 38], [36, 38], [42, 6], [54, 54], [32, 46], [10, 54]], 1.0), 0x7dff6a, 0.22);
+    neon(g, P([[48, 14], [52, 24], [48, 30], [44, 24]]), 0xffd23f, 0.4);
+    core(g, 48, 50, 3);
+  });
+  draw('ship2_comet', 96, 96, g => {
+    for (const [x2, w] of [[48, 3], [32, 2], [64, 2], [22, 1.2], [74, 1.2]]) line(g, 48 + (x2 - 48) * 0.4, 70, x2, 95, 0x9ff3ff, w);
+    neon(g, S([[32, 4], [44, 38], [56, 58], [32, 48], [8, 58], [20, 38]], 1.3), 0x9ff3ff, 0.18);
+    neon(g, P([[48, 2], [58, 22], [48, 34], [38, 22]]), 0xffffff, 0.45);
+    ring(g, 48, 46, 9, 0x6fe3ff, 0.3);
+    core(g, 48, 46, 3.5);
+  });
+  draw('ship2_storm', 96, 96, g => {
+    // ปีกเป็นใบมีดรูปสายฟ้า ข้างละผืน + ฟ้าผ่าเส้นใหญ่กลางลำ
+    for (const s of [-1, 1]) {
+      const X = x => 48 + s * (48 - x);
+      neon(g, P([[X(42), 34], [X(8), 22], [X(24), 40], [X(4), 54], [X(28), 54], [X(18), 72], [X(42), 58]]), 0xff4fd8, 0.12);
+    }
+    neon(g, S([[32, 4], [58, 50], [40, 44], [32, 58], [24, 44], [6, 50]], 1.1), 0xff4fd8, 0.22);
+    const bolt = [[54, 16], [42, 40], [53, 40], [41, 66]];
+    g.lineStyle(9, 0xfff35a, 0.2); g.strokePoints(P(bolt), false);
+    g.lineStyle(4, 0xfff35a, 1); g.strokePoints(P(bolt), false);
+    g.lineStyle(1.5, 0xffffff, 0.9); g.strokePoints(P(bolt), false);
+  });
+  draw('ship2_phantom', 96, 96, g => {
+    neon(g, P([[30, 56], [20, 94], [34, 80], [41, 96], [48, 82], [55, 96], [62, 80], [76, 94], [66, 56]]), 0x7a3bd6, 0.14);
+    neon(g, S([[32, 6], [50, 28], [48, 58], [40, 50], [32, 58], [24, 50], [16, 58], [14, 28]], 1.2), 0xb46bff, 0.14);
+    g.lineStyle(6, 0xffd23f, 0.25); g.beginPath(); g.arc(48, 22, 20, Math.PI * 1.15, Math.PI * 1.85); g.strokePath();
+    g.lineStyle(2.5, 0xffd23f, 1); g.beginPath(); g.arc(48, 22, 20, Math.PI * 1.15, Math.PI * 1.85); g.strokePath();
+    for (const x of [40, 56]) { g.fillStyle(0xffd23f, 0.35); g.fillCircle(x, 42, 6); g.fillStyle(0xfff3b0, 1); g.fillCircle(x, 42, 3.5); }
+  });
+  draw('ship2_prism', 96, 96, g => {
+    neon(g, P([[48, 92], [90, 22], [6, 22]]), 0xffffff, 0.04);
+    neon(g, P([[48, 4], [90, 74], [6, 74]]), 0xffffff, 0.06);
+    const rb = [0xff3df2, 0xffb84d, 0xfff35a, 0x7dff6a, 0x36f1ff, 0xb46bff];
+    const hexPts = [[48, 4], [90, 74], [6, 74]];
+    hexPts.forEach((p, i) => line(g, p[0], p[1], hexPts[(i + 1) % 3][0], hexPts[(i + 1) % 3][1], rb[i * 2], 1.5));
+    line(g, 48, 16, 30, 66, 0xff3df2, 2); line(g, 48, 16, 48, 66, 0xfff35a, 2); line(g, 48, 16, 66, 66, 0x36f1ff, 2);
+    ring(g, 48, 48, 8, 0xffffff, 0.3);
+    core(g, 48, 48, 3.5);
+  });
+  draw('ship2_nova', 96, 96, g => {
+    neon(g, star(48, 48, 46, 30, 10, -Math.PI / 2), 0xffb84d, 0.08);
+    neon(g, star(48, 48, 36, 15, 5), 0xffd23f, 0.22);
+    ring(g, 48, 48, 11, 0xfff3b0, 0.45);
+    core(g, 48, 48, 4);
+  });
+  draw('ship2_phoenix', 96, 96, g => {
+    for (const s of [-1, 1]) {
+      neon(g, P([[48, 40], [48 + s * 46, 8], [48 + s * 36, 32], [48 + s * 48, 40], [48 + s * 34, 52], [48 + s * 42, 70], [48 + s * 14, 58]]), 0xffb84d, 0.12);
+    }
+    neon(g, S([[32, 4], [40, 22], [62, 16], [48, 38], [56, 58], [32, 46], [8, 58], [16, 38], [2, 16], [24, 22]], 1.15), 0xff3b3b, 0.24);
+    neon(g, P([[48, 18], [55, 38], [48, 52], [41, 38]]), 0xfff35a, 0.45);
+    neon(g, P([[40, 10], [44, 2], [48, 9], [52, 2], [56, 10], [48, 16]]), 0xffd23f, 0.4);
+    core(g, 48, 36, 3.5);
+  });
+
+  draw('evoHalo', 160, 160, g => {   // วงแหวนขีดๆ หมุนหลังยานร่าง 2
+    for (let i = 0; i < 24; i++) {
+      const a0 = i / 24 * Math.PI * 2;
+      g.lineStyle(i % 3 === 0 ? 4 : 2, 0xffffff, i % 3 === 0 ? 0.9 : 0.5);
+      g.beginPath(); g.arc(80, 80, 72, a0, a0 + Math.PI / 24); g.strokePath();
+    }
+    g.lineStyle(1.5, 0xffffff, 0.35); g.strokeCircle(80, 80, 60);
+  });
+  draw('evoGlow', 64, 64, g => { for (let i = 10; i > 0; i--) { g.fillStyle(0xffffff, 0.05); g.fillCircle(32, 32, i * 3.2); } });
+  draw('bullet2', 16, 34, g => {   // กระสุนร่าง 2: หัวเพชรเรืองแสง
+    g.fillStyle(0xffffff, 0.12); g.fillRoundedRect(0, 4, 16, 30, 8);
+    g.fillStyle(0xffffff, 0.35); g.fillRoundedRect(3, 6, 10, 26, 5);
+    g.fillStyle(0xffffff, 1); g.fillPoints(P([[8, 0], [12, 8], [8, 14], [4, 8]]), true);
+    g.fillRoundedRect(7, 10, 2, 22, 1);
+  });
+  draw('shard', 28, 36, g => { neon(g, P([[14, 2], [24, 14], [18, 34], [8, 30], [4, 12]]), 0xffffff, 0.3); g.lineStyle(1.5, 0xffffff, 0.8); g.lineBetween(14, 6, 13, 30); });
   draw('drone', 22, 22, g => { ring(g, 11, 11, 6, 0x36f1ff, 0.3); core(g, 11, 11, 2); });
 
   // ----- ศัตรู -----
@@ -1961,6 +2124,87 @@ class Boot extends Phaser.Scene {
   }
 }
 
+// ฉากแปลงร่าง: เศษบินเข้า 5 ชิ้น → แฟลช → ร่าง 2 ยิงกระสุนแบบใหม่ให้ดู (preview = ดูตัวอย่าง ไม่มีเศษบิน)
+class Evolve extends Phaser.Scene {
+  constructor() { super('evolve'); }
+  init(data) { this.id = data.id; this.preview = !!data.preview; }
+  create() {
+    const id = this.id, s = SHIPS[id], e = EVO[id], tcs = TIERS[s.tier].color, tc = parseInt(tcs.slice(1), 16);
+    const cx = W / 2, cy = H * 0.42;
+    this.ready = false;
+    this.add.rectangle(cx, H / 2, W, H, 0x05030f, 1);
+    const head = txt(this, cx, cy - 220, this.preview ? 'ตัวอย่างร่าง 2' : 'แปลงร่างยาน', 34, '#ffffff', { stroke: '#000000', strokeThickness: 6 })
+      .setOrigin(0.5).setShadow(0, 0, tcs, 16, true, true);
+    txt(this, cx, cy + 120, s.name, 30, tcs, { stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5);
+    const count = txt(this, cx, cy + 78, '', 22, '#ffd23f').setOrigin(0.5);
+    const info = txt(this, cx, cy + 160, '', 15, '#c3d3ee', { align: 'center', wordWrap: { width: W - 60 }, lineSpacing: 5 }).setOrigin(0.5, 0);
+    const tap = txt(this, cx, H - 50, 'แตะเพื่อกลับ', 14, '#7f8db0').setOrigin(0.5).setAlpha(0);
+    const glow = this.add.image(cx, cy, 'evoGlow').setTint(tc).setBlendMode('ADD').setScale(3.2).setAlpha(0);
+    const halo = this.add.image(cx, cy, 'evoHalo').setTint(tc).setBlendMode('ADD').setScale(1).setAlpha(0);
+    const ship = this.add.image(cx, cy, s.key).setScale(2);
+    this.tweens.add({ targets: halo, angle: 360, duration: 6000, repeat: -1 });
+
+    const morph = () => {
+      this.cameras.main.flash(350, 255, 255, 255);
+      this.cameras.main.shake(300, 0.01);
+      for (let i = 0; i < 10; i++) {
+        const r = this.add.image(cx, cy, 'ring').setTint(i % 2 ? tc : 0xffffff).setBlendMode('ADD').setScale(0.2);
+        this.tweens.add({ targets: r, scale: 9, alpha: 0, duration: 900, delay: i * 60, onComplete: () => r.destroy() });
+      }
+      sfx.fanfare();
+      ship.setTexture('ship2_' + id).setScale(0.5);
+      this.tweens.add({ targets: ship, scale: 1.7, duration: 550, ease: 'Back.easeOut', onComplete: () => {
+        this.tweens.add({ targets: ship, y: cy - 6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      } });
+      this.tweens.add({ targets: [halo], alpha: 0.75, duration: 500 });
+      this.tweens.add({ targets: [glow], alpha: 0.55, duration: 500, onComplete: () => this.tweens.add({ targets: glow, alpha: 0.25, duration: 700, yoyo: true, repeat: -1 }) });
+      const trail = this.add.particles(0, 0, 'spark', {
+        speedY: { min: 140, max: 240 }, speedX: { min: -26, max: 26 }, lifespan: 480, scale: { start: 1.2, end: 0 },
+        alpha: { start: 0.9, end: 0 }, tint: [tc, e.color, 0xffffff], blendMode: 'ADD', frequency: 26, quantity: 2,
+      });
+      trail.startFollow(ship, 0, 70);
+      head.setText(this.preview ? 'ตัวอย่างร่าง 2' : 'แปลงร่างสำเร็จ!');
+      count.setText('ร่าง 2');
+      info.setText(`${e.look}\nสกิลเท่า Lv${EVO_LV}: ${s.desc(s.skill(EVO_LV))}\nกระสุนหัวเพชรเรืองแสงสีประจำยาน + กระสุนปีกทุกชุดที่ 4`);
+      let n = 0;
+      this.time.addEvent({ delay: 170, loop: true, callback: () => {
+        n++;
+        for (const ox of [-14, 14]) this.shot(ship.x + ox, ship.y - 70, e.color, 0);
+        if (n % 4 === 0) for (const sd of [-1, 1]) this.shot(ship.x + sd * 50, ship.y - 30, e.alt, sd * 160);
+      } });
+      this.time.delayedCall(700, () => { this.ready = true; tap.setAlpha(1); });
+    };
+
+    if (this.preview) this.time.delayedCall(350, morph);
+    else {
+      count.setText(`0/${SHARD_NEED}`);
+      for (let k = 0; k < SHARD_NEED; k++) {
+        this.time.delayedCall(250 + k * 380, () => {
+          const sh = this.add.image(cx + Phaser.Math.Between(-W / 2, W / 2), cy - 260, 'shard').setTint(tc).setBlendMode('ADD').setScale(1.4);
+          this.tweens.add({ targets: sh, x: cx, y: cy, angle: 360, scale: 0.4, duration: 420, ease: 'Cubic.easeIn', onComplete: () => {
+            sh.destroy();
+            count.setText(`${k + 1}/${SHARD_NEED}`);
+            sfx.letter(k);
+            const r = this.add.image(cx, cy, 'ring').setTint(tc).setBlendMode('ADD').setScale(0.6);
+            this.tweens.add({ targets: r, scale: 4, alpha: 0, duration: 380, onComplete: () => r.destroy() });
+          } });
+        });
+      }
+      this.time.delayedCall(250 + SHARD_NEED * 380 + 450, morph);
+    }
+    const close = () => { if (!this.ready) return; this.scene.stop(); App.endEvolve(); };
+    this.input.on('pointerdown', close);
+    this.input.keyboard.on('keydown-ESC', close);
+  }
+
+  shot(x, y, tint, vx) {
+    const o = this.add.image(x, y, 'bullet2').setTint(tint).setBlendMode('ADD').setScale(1.2);
+    if (vx) o.rotation = Math.atan2(-700, vx) + Math.PI / 2;
+    const dur = (y + 40) / 0.75;
+    this.tweens.add({ targets: o, y: -40, x: x + vx * dur / 1000, duration: dur, onComplete: () => o.destroy() });
+  }
+}
+
 class Title extends Phaser.Scene {
   constructor() { super('title'); }
   create() {
@@ -2019,9 +2263,10 @@ class Game extends Phaser.Scene {
   create() {
     const d = Save.data;
     const shipId = SHIPS[d.ship] && d.chars[d.ship] ? d.ship : 'bolt';
-    const ship = SHIPS[shipId], lv = d.chars[shipId] || 1, sk = ship.skill(lv);
+    const evolved = !!(EVO[shipId] && d.evo && d.evo[shipId]);
+    const ship = SHIPS[shipId], lv = d.chars[shipId] || 1, sk = ship.skill(evolved ? EVO_LV : lv);
     Object.assign(this, {
-      ship, shipId, lv, sk,
+      ship, shipId, lv, sk, evolved, evo: EVO[shipId] || null, shipKey: evolved ? 'ship2_' + shipId : ship.key, bossKills: 0,
       score: 0, lives: Math.min(MAX_LIVES, ship.lives), starHeld: false, starUntil: 0,
       comboWindow: COMBO_WINDOW + (shipId === 'nova' ? sk.combo : 0),
       campRef: { x: W / 2, y: H - 110, t: 0 }, lockActive: false, campWarned: -1e9, waveStart: 0, enraged: false,
@@ -2060,8 +2305,9 @@ class Game extends Phaser.Scene {
     this.letters = this.physics.add.group();
     this.cameras.main.setRotation(0);
 
-    this.player = this.physics.add.image(W / 2, H - 110, ship.key).setDepth(4);
-    this.player.body.setSize(24, 32);   // hitbox เล็กกว่าภาพ ทำให้หลบกระสุนได้ง่ายขึ้น
+    this.player = this.physics.add.image(W / 2, H - 110, this.shipKey).setDepth(4);
+    if (evolved) { this.player.setScale(0.8); this.player.body.setSize(30, 40); }   // ร่าง 2 ภาพใหญ่กว่า แต่ hitbox เท่าเดิม
+    else this.player.body.setSize(24, 32);   // hitbox เล็กกว่าภาพ ทำให้หลบกระสุนได้ง่ายขึ้น
     this.bubble = this.add.image(0, 0, 'bubble').setDepth(5).setVisible(false);
     this.iceBlock = this.add.image(0, 0, 'iceBlock').setDepth(5).setVisible(false);
     this.bossShade = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(-6);   // จอมืดลงตอนสู้บอส
@@ -2367,7 +2613,9 @@ class Game extends Phaser.Scene {
     b.target = null;
     b.born = this.time.now;
     b.setScale(s.scale || 1);
+    b.setBlendMode(this.evolved ? 'ADD' : 'NORMAL');
     if (this.fever) b.setTint(hueColor(this.time.now * 0.4 + i * 50));
+    else if (this.evolved) b.setTint(s.wing ? this.evo.alt : this.evo.color);
     else if (s.hot) b.setTint(0xffe3a0);   // โอเวอร์ชาร์จ: สีทองร้อน
     else if (this.fx && this.fx.rank >= 4) b.setTint(0xff7a5a);   // มิธิค: กระสุนพลาสมาแดง
     else b.clearTint();
@@ -2382,14 +2630,15 @@ class Game extends Phaser.Scene {
     const scale = 1 + (P - 1) * 0.06 + over * 0.1;           // กระสุนใหญ่ขึ้นทุกระดับ
     const hot = over > 0;
     const shots = [];
+    const bk = this.evolved ? 'bullet2' : 'bullet', bs = this.evolved ? 0.7 : 1;   // ร่าง 2: กระสุนหัวเพชร
     if (this.weapon === 'spread') {
       // แนวกลางยิงตรงเสมอ ระดับ 4-5 ได้กระสุนกางพัดเพิ่มสองข้างเป็นของแถม
       const straight = [[0], [-9, 9], [-16, 0, 16], [-16, 0, 16], [-24, -8, 8, 24]][P - 1];
-      for (const ox of straight) shots.push({ key: 'bullet', x: px + ox, y: py - 30, vx: 0, vy: -760, dmg: mul, scale, hot });
+      for (const ox of straight) shots.push({ key: bk, x: px + ox, y: py - 30, vx: 0, vy: -760, dmg: mul, scale: scale * bs, hot });
       if (P >= 4) {
         const fan = P === 4 ? [[-1, 150]] : [[-1, 150], [-1, 260]];
         for (const [, vx] of fan) for (const side of [-1, 1]) {
-          shots.push({ key: 'bullet', x: px + side * 30, y: py - 26, vx: side * vx, vy: -740, dmg: mul, scale, hot });
+          shots.push({ key: bk, x: px + side * 30, y: py - 26, vx: side * vx, vy: -740, dmg: mul, scale: scale * bs, hot });
         }
       }
     } else if (this.weapon === 'laser') {
@@ -2397,7 +2646,7 @@ class Game extends Phaser.Scene {
       for (let i = 0; i < n; i++) shots.push({ key: 'laser', x: px + (i - (n - 1) / 2) * gap, y: py - 40, vx: 0, vy: -1100, dmg: mul, pierce: true, scale, hot });
       if (P >= 4) for (const s of [-1, 1]) shots.push({ key: 'laser', x: px + s * 26, y: py - 20, vx: s * 130, vy: -1080, dmg: mul, pierce: true, scale, hot });
     } else {
-      for (const ox of (P >= 3 ? [-7, 7] : [0])) shots.push({ key: 'bulletG', x: px + ox, y: py - 28, vx: 0, vy: -800, dmg: mul, scale, hot });
+      for (const ox of (P >= 3 ? [-7, 7] : [0])) shots.push({ key: this.evolved ? bk : 'bulletG', x: px + ox, y: py - 28, vx: 0, vy: -800, dmg: mul, scale: scale * bs, hot });
       if (this.missileTick++ % 2 === 0) {
         const n = [1, 2, 2, 3, 4][P - 1];
         for (let i = 0; i < n; i++) {
@@ -2406,6 +2655,9 @@ class Game extends Phaser.Scene {
           shots.push({ key: 'missile', x: px + side * 20, y: py - 6, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: 2 * mul, homing: true, scale, hot });
         }
       }
+    }
+    if (this.evolved && this.shotCount % 4 === 0) {
+      for (const sd of [-1, 1]) shots.push({ key: 'bullet2', x: px + sd * 30, y: py - 10, vx: sd * 140, vy: -700, dmg: 0.5 * mul, scale: 0.7, wing: true });
     }
     shots.forEach((s, i) => this.spawnBullet(s, i));
     if (this.shotCount++ % (this.fever ? 3 : 2) === 0) sfx.shoot(this.weapon, L);
@@ -3237,6 +3489,7 @@ class Game extends Phaser.Scene {
 
     if (isBoss) {
       this.boss = null;
+      this.bossDown(x, y);
       this.waveActive = false;
       this.weakGlows.forEach(g => g.destroy());
       this.weakGlows = [];
@@ -3258,6 +3511,31 @@ class Game extends Phaser.Scene {
       this.time.delayedCall(2200, () => { if (!this.over) this.startBonus(); });
     }
     e.destroy();
+  }
+
+  // ล้มบอส: server สุ่มเศษยาน (2%) ได้แล้วโชว์เศษบินเข้าหายาน
+  bossDown(x, y) {
+    this.bossKills++;
+    if (!Save.loggedIn || !this.runReq) return;
+    Promise.resolve(this.runReq).then(runId => (runId ? api('/api/boss', { runId }) : null)).then(r => {
+      if (!r || !r.shard) return;
+      if (r.data) Save.data = Save.normalize(r.data);
+      if (this.sys.isActive() && !this.ended) this.showShard(r.shard, x, y);
+    }).catch(() => {});
+  }
+
+  showShard(id, x, y) {
+    const s = SHIPS[id], c = parseInt(TIERS[s.tier].color.slice(1), 16);
+    const n = Save.data.shards[id] || 0;
+    const sh = this.add.image(x, y, 'shard').setTint(c).setBlendMode('ADD').setDepth(8).setScale(1.6);
+    this.tweens.add({ targets: sh, angle: 720, y: y - 40, duration: 500, ease: 'Sine.easeOut', onComplete: () => {
+      this.tweens.add({ targets: sh, x: this.player.x, y: this.player.y, scale: 0.4, duration: 600, ease: 'Cubic.easeIn', onComplete: () => {
+        sh.destroy();
+        this.sparks.explode(20, this.player.x, this.player.y);
+      } });
+    } });
+    this.banner(`ได้เศษยาน ${s.name}!`, `เศษ ${n}/${SHARD_NEED}` + (n >= SHARD_NEED ? ' · ครบแล้ว! แปลงร่างได้ที่ร้านยาน' : ''), { size: 32, y: H * 0.28 });
+    sfx.fanfare();
   }
 
   explode(x, y, size = 1, type = 'normal') {
@@ -3413,7 +3691,7 @@ class Game extends Phaser.Scene {
     this.fx = { rank, col, prevX: this.player.x, prevY: this.player.y, speed: 0, lastGhost: 0 };
     this.thrust = this.add.image(0, 0, 'thrust').setOrigin(0.5, 0).setBlendMode('ADD').setDepth(3).setTint(col);
     this.coreGlow = this.add.image(0, 0, 'spark').setBlendMode('ADD').setDepth(5).setTint(col);
-    if (this.lv >= 5) this.outline = this.add.image(0, 0, this.ship.key).setBlendMode('ADD').setDepth(3).setTint(col).setScale(1.18).setAlpha(0.35);
+    if (this.lv >= 5) this.outline = this.add.image(0, 0, this.shipKey).setBlendMode('ADD').setDepth(3).setTint(col).setScale(1.18).setAlpha(0.35);
     if (rank >= 2) {
       this.orbs = [0, 1].map(() => this.add.image(0, 0, 'spark').setBlendMode('ADD').setDepth(5).setTint(col).setScale(1.3));
       this.tierTrail = this.add.particles(0, 0, 'spark', {
@@ -3424,7 +3702,7 @@ class Game extends Phaser.Scene {
     }
     if (rank >= 3) {
       this.halo = this.add.image(0, 0, 'ring').setBlendMode('ADD').setDepth(3).setTint(col).setScale(1.3).setAlpha(0.55);
-      this.wingGlow = this.add.image(0, 0, this.ship.key).setBlendMode('ADD').setDepth(5).setTint(col);
+      this.wingGlow = this.add.image(0, 0, this.shipKey).setBlendMode('ADD').setDepth(5).setTint(col);
       this.goldBurst = this.add.particles(0, 0, 'spark', {
         speed: { min: 80, max: 260 }, lifespan: 500, scale: { start: 1, end: 0 }, tint: [col, 0xffffff],
         blendMode: 'ADD', emitting: false,
@@ -3438,6 +3716,18 @@ class Game extends Phaser.Scene {
       }).setDepth(3);
       this.fireAura.startFollow(this.player);
       this.edgeFx = this.add.graphics().setDepth(9);
+    }
+    // ร่าง 2: แสงรอบตัว + วงแหวนหมุน + ไอพ่นคู่สีประจำยาน
+    this.evoHalo = this.evoGlow = this.evoTrail = null;
+    if (this.evolved) {
+      const tc = parseInt(TIERS[this.ship.tier].color.slice(1), 16);
+      this.evoGlow = this.add.image(0, 0, 'evoGlow').setBlendMode('ADD').setDepth(3).setTint(tc).setScale(2.2);
+      this.evoHalo = this.add.image(0, 0, 'evoHalo').setBlendMode('ADD').setDepth(3).setTint(tc).setScale(0.6).setAlpha(0.6);
+      this.evoTrail = this.add.particles(0, 0, 'spark', {
+        speedY: { min: 120, max: 220 }, speedX: { min: -24, max: 24 }, lifespan: 380, scale: { start: 0.9, end: 0 },
+        alpha: { start: 0.9, end: 0 }, tint: [tc, this.evo.color, 0xffffff], blendMode: 'ADD', frequency: 28, quantity: 2,
+      }).setDepth(3);
+      this.evoTrail.startFollow(this.player, 0, 34);
     }
   }
 
@@ -3459,6 +3749,12 @@ class Game extends Phaser.Scene {
     const pulse = 0.5 + 0.5 * Math.sin(time / 160);
     this.thrust.setVisible(pv).setPosition(p.x, p.y + 24).setScale(0.9, 0.6 + Math.min(1.6, fx.speed / 320)).setAlpha(0.55 + Math.random() * 0.3);
     this.coreGlow.setVisible(pv).setPosition(p.x, p.y - 2).setScale(0.7 + pulse * 0.4).setAlpha(0.5 + pulse * 0.4);
+    if (this.evoHalo) {
+      this.evoHalo.setVisible(pv).setPosition(p.x, p.y);
+      this.evoHalo.rotation += dt * 0.0012;
+      this.evoGlow.setVisible(pv).setPosition(p.x, p.y).setAlpha(0.25 + pulse * 0.25);
+      this.evoTrail.emitting = pv;
+    }
     if (this.outline) this.outline.setVisible(pv).setPosition(p.x, p.y).setAlpha(0.2 + pulse * 0.25);
     if (this.orbs) this.orbs.forEach((o, i) => {
       const a = time / 380 + i * Math.PI;
@@ -4333,7 +4629,7 @@ const config = {
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   audio: { noAudio: true },
   render: { powerPreference: 'high-performance' },
-  scene: [Boot, Title, Game],
+  scene: [Boot, Title, Game, Evolve],
 };
 
 let booted = false;

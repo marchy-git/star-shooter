@@ -7,6 +7,9 @@
 //   POST /api/upgrade                 อัปเลเวลยานด้วยคริสตัล { ship }
 //   POST /api/spin                    ใช้ตั๋วสุ่มยาน 1 ใบ
 //   POST /api/run                     เริ่มรอบเล่น ได้ runId กลับไป
+//   POST /api/boss                    ล้มบอสในรอบนี้ { runId } → server สุ่มเศษยาน 2%
+//   POST /api/evolve                  แปลงร่างยาน (Lv10 + เศษครบ 5) { ship }
+//   POST /api/shard/sell              ขายเศษยานเป็นคริสตัล { ship, n }
 //   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
 //   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
@@ -86,6 +89,11 @@ const TIERS = {
 };
 const TIER_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 const PITY_EPIC = 10, PITY_LEGEND = 40;
+// เศษยาน / แปลงร่าง (ต้องตรงกับ SHARD_* ในเกม)
+const SHARD_CHANCE = 0.02;          // ล้มบอส 1 ตัว มีโอกาสได้เศษ
+const SHARD_NEED = 5;               // เศษที่ใช้แปลงร่าง
+const SHARD_TIERS = ['rare', 'epic', 'legendary', 'mythic'];   // ยานธรรมดาไม่มีเศษ
+const SHARD_PRICE = { rare: 80, epic: 180, legendary: 400, mythic: 1000 };
 const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIP_TIER[id]].cost / 10) * 10;
 
 const randFloat = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
@@ -106,7 +114,19 @@ function normalizeData(raw) {
     ship: chars[d.ship] ? d.ship : 'bolt',
     best: nat(d.best),
     pity: { e: nat(d.pity && d.pity.e), l: nat(d.pity && d.pity.l) },
+    shards: Object.fromEntries(Object.entries(d.shards || {})
+      .filter(([k]) => SHARD_TIERS.includes(SHIP_TIER[k])).map(([k, v]) => [k, nat(v)]).filter(([, v]) => v > 0)),
+    evo: Object.fromEntries(Object.keys(d.evo || {}).filter(k => SHARD_TIERS.includes(SHIP_TIER[k]) && d.evo[k]).map(k => [k, true])),
   };
+}
+
+// สุ่มเศษยาน: เลือกระดับตามโอกาสแบบเดียวกับตั๋วสุ่ม (ไม่รวมระดับธรรมดา) แล้วสุ่มยานในระดับนั้น
+function rollShard() {
+  let r = randFloat() * SHARD_TIERS.reduce((sum, k) => sum + TIERS[k].weight, 0);
+  let tier = SHARD_TIERS[0];
+  for (const k of SHARD_TIERS) { r -= TIERS[k].weight; if (r <= 0) { tier = k; break; } }
+  const pool = Object.keys(SHIP_TIER).filter(id => SHIP_TIER[id] === tier);
+  return pool[Math.floor(randFloat() * pool.length)];
 }
 const dataOf = u => { try { return normalizeData(JSON.parse(u.data || '{}')); } catch { return normalizeData({}); } };
 
@@ -255,6 +275,62 @@ async function spin(env, request) {
   return json({ ship: id, isNew, refund, data: d });
 }
 
+// ----- เศษยาน / แปลงร่าง -----
+async function evolve(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const d = dataOf(u);
+  const id = body && body.ship;
+  if (!SHARD_TIERS.includes(SHIP_TIER[id])) return json({ error: 'not_evolvable' }, 400);
+  if ((d.chars[id] || 0) < MAX_LV) return json({ error: 'need_max_level' }, 400);
+  if (d.evo[id]) return json({ error: 'already' }, 400);
+  if ((d.shards[id] || 0) < SHARD_NEED) return json({ error: 'need_shards' }, 400);
+  d.shards[id] -= SHARD_NEED;
+  if (!d.shards[id]) delete d.shards[id];
+  d.evo[id] = true;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ data: d });
+}
+
+async function sellShard(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const d = dataOf(u);
+  const id = body && body.ship, n = int(body && body.n, 1, 999) ?? 1;
+  if ((d.shards[id] || 0) < n) return json({ error: 'not_enough_shards' }, 400);
+  const coins = SHARD_PRICE[SHIP_TIER[id]] * n;
+  d.shards[id] -= n;
+  if (!d.shards[id]) delete d.shards[id];
+  d.coins += coins;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ coins, data: d });
+}
+
+// ล้มบอส: นับต่อรอบ จำกัดตามเวลาที่เล่นจริง (บอสมาได้ไม่เกิน 1 ตัวต่อ LOOP_MIN_SEC) แล้วสุ่มเศษ
+async function bossDown(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const runId = body && typeof body.runId === 'string' ? body.runId : '';
+  const run = await env.DB.prepare(`SELECT started_at FROM runs WHERE user_id = ?1 AND run_id = ?2`).bind(u.id, runId).first();
+  if (!run) return json({ error: 'no_run' }, 400);
+  const prev = await env.DB.prepare(`SELECT run_id, count FROM run_bosses WHERE user_id = ?1`).bind(u.id).first();
+  const count = (prev && prev.run_id === runId ? prev.count : 0) + 1;
+  if ((Date.now() - run.started_at) / 1000 < count * LOOP_MIN_SEC) return json({ error: 'too_fast' }, 429);
+  await env.DB.prepare(
+    `INSERT INTO run_bosses (user_id, run_id, count) VALUES (?1, ?2, ?3)
+     ON CONFLICT(user_id) DO UPDATE SET run_id = excluded.run_id, count = excluded.count`
+  ).bind(u.id, runId, count).run();
+  if (randFloat() >= SHARD_CHANCE) return json({ shard: null });
+  const id = rollShard();
+  const d = dataOf(u);
+  d.shards[id] = (d.shards[id] || 0) + 1;
+  await writeData(env, u.id, d);
+  return json({ shard: id, data: d });
+}
+
 // ----- รอบเล่น -----
 async function startRun(env, request) {
   const u = await currentUser(env, request);
@@ -375,6 +451,9 @@ export async function onRequest({ request, env }) {
     if (route === 'upgrade' && m === 'POST') return await upgrade(env, request);
     if (route === 'spin' && m === 'POST') return await spin(env, request);
     if (route === 'run' && m === 'POST') return await startRun(env, request);
+    if (route === 'boss' && m === 'POST') return await bossDown(env, request);
+    if (route === 'evolve' && m === 'POST') return await evolve(env, request);
+    if (route === 'shard/sell' && m === 'POST') return await sellShard(env, request);
     if (route === 'logout' && m === 'POST') return await logout(env, request);
     return json({ error: 'not_found' }, 404);
   } catch (err) {

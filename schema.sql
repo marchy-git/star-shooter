@@ -49,3 +49,10 @@ CREATE TABLE IF NOT EXISTS notice (
   deploy_at  INTEGER NOT NULL,
   expires_at INTEGER NOT NULL
 );
+
+-- นับบอสที่ล้มในรอบเล่นปัจจุบัน (ใช้จำกัดการสุ่มเศษยานตามเวลาที่เล่นจริง)
+CREATE TABLE IF NOT EXISTS run_bosses (
+  user_id TEXT PRIMARY KEY,
+  run_id  TEXT    NOT NULL,
+  count   INTEGER NOT NULL DEFAULT 0
+);
