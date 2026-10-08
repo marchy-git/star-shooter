@@ -485,6 +485,7 @@ const OY = Math.round((H - 800) / 2);   // เลื่อนหน้าแร�
 const FONT = '"Chakra Petch", system-ui, sans-serif';
 const API_BASE = '';               // API อยู่โดเมนเดียวกัน ถ้าแยกไปไว้ที่อื่นให้ใส่ URL เต็ม
 const BONUS_GRACE_MS = 400;        // ด่าน CHALLENGE: มอนโผล่มาแล้วยิงไม่เข้ากี่ ms
+const BONUS_GROUP_GAP = 1500;      // ด่าน CHALLENGE: มอนแต่ละกลุ่ม (8 ตัว) ห่างกันกี่ ms (เดิม 3000 อาวุธแรงแล้วจอว่างนาน)
 const WAVES_PER_LOOP = 5;          // ทุกๆ 5 wave เจอบอส แล้วต่อด้วยด่านโบนัส
 // ระดับพลังยิง 1-5 = จำนวนกระสุนเพิ่ม, 6-10 = โอเวอร์ชาร์จ (จำนวนเท่าระดับ 5 แต่แรงขึ้นทีละ 20% กระสุนใหญ่และสีทอง)
 const MAX_POWER = 10, SPREAD_MAX = 5, MAX_LIVES = 5;
@@ -2646,7 +2647,7 @@ class Game extends Phaser.Scene {
     paths.forEach((path, g) => {
       for (let i = 0; i < 8; i++) {
         const e = this.makeEnemy(i === 0 && g % 2 ? 'shooter' : 'normal', { state: 'bonus', inBonus: true, hp: 1, maxHp: 1 });
-        this.followPath(e, path, dur, 1800 + g * 3000 + i * 170, 0, () => {
+        this.followPath(e, path, dur, 1800 + g * BONUS_GROUP_GAP + i * 170, 0, () => {
           if (e.active) { e.destroy(); this.bonusTick(false); }
         });
       }
