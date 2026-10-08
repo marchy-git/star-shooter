@@ -349,8 +349,7 @@
     z-index: 50;
     text-shadow: 0 0 8px rgba(255, 210, 63, 0.6);
   }
-  #notice span { display: inline-block; padding-left: 100%; animation: notice-scroll 14s linear infinite; }
-  #notice.done { color: #7dffb0; border-color: rgba(125, 255, 176, 0.6); text-shadow: 0 0 8px rgba(125, 255, 176, 0.6); }
+  #notice span { display: inline-block; padding-left: 100%; animation: notice-scroll 12s linear 1; }
   @keyframes notice-scroll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
   @media (prefers-reduced-motion: reduce) {
     #notice span { animation: none; padding-left: 0; display: block; text-align: center; white-space: normal; }
@@ -4356,19 +4355,26 @@ const Updater = {
     Promise.race([Promise.resolve(App.submitting).catch(() => {}), new Promise(r => setTimeout(r, 8000))])
       .then(() => location.reload());
   },
-  text() {
-    if (this.ready) return 'อัปเดตเสร็จแล้ว! เล่นรอบนี้ต่อได้เลย จบรอบแล้วเกมจะโหลดเวอร์ชันใหม่ให้เอง';
-    if (!this.deployAt) return '';
-    const left = Math.ceil((this.deployAt - (Date.now() + this.skew)) / 1000);
-    if (left <= 0) return 'กำลัง update patch... เล่นต่อได้ตามปกติ ไม่ต้องตกใจ ความคืบหน้าไม่หาย';
-    const when = left >= 60 ? `${Math.ceil(left / 60)} นาที` : `${left} วินาที`;
-    return `ระบบจะทำการ update patch ในอีก ${when} · เล่นต่อได้ตามปกติ ไม่ต้องตกใจ`;
-  },
+  // ประกาศแค่ 2 ครั้ง (เหลือ 1 นาที กับ 30 วินาที) ครั้งละวิ่งผ่านจอรอบเดียว ไม่ให้รกตา
+  shown: {},
   render() {
-    const el = $('notice'), t = this.text();
-    el.hidden = !t;
-    el.classList.toggle('done', this.ready);
-    if (t && el.firstChild.textContent !== t) el.firstChild.textContent = t;
+    if (!this.deployAt) return;
+    const left = (this.deployAt - (Date.now() + this.skew)) / 1000;
+    const stage = left > 30 ? '1 นาที' : left > 0 ? '30 วินาที' : null;
+    const key = this.deployAt + stage;
+    if (!stage || this.shown[key]) return;
+    this.shown[key] = true;
+    this.show(`ระบบจะทำการ update patch ในอีก ${stage} · เล่นต่อได้ตามปกติ ไม่ต้องตกใจ`);
+  },
+  show(text) {
+    const el = $('notice'), span = el.firstChild;
+    span.textContent = text;
+    el.hidden = false;
+    span.style.animation = 'none';
+    void span.offsetWidth;   // เริ่มแอนิเมชันใหม่
+    span.style.animation = '';
+    span.onanimationend = () => { el.hidden = true; };
+    if (REDUCED) setTimeout(() => { el.hidden = true; }, 6000);
   },
   async start() {
     this.build = await this.version();
