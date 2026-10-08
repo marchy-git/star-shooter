@@ -94,7 +94,9 @@
   .meta { font-size: calc(var(--u) * 14); color: var(--muted); text-align: center; line-height: 1.5; }
   .meta b { color: var(--gold); font-weight: 700; }
 
-  #menu { top: calc(var(--u) * 580); }
+  #menu { top: calc(var(--u) * 540); }
+  .group { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 10); }
+  .meta .link { margin-left: calc(var(--u) * 8); }
   #overBar { top: calc(var(--u) * 470); }
 
   .modal {
@@ -120,7 +122,7 @@
   .head h2 { flex: 1; }
   .coins { color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums; }
 
-  input#nameInput {
+  .card input {
     font: 700 calc(var(--u) * 22) var(--font);
     color: var(--ink);
     background: #050816;
@@ -130,6 +132,40 @@
     width: 100%;
   }
   .err { color: var(--danger) !important; min-height: 1.2em; }
+  .card label { display: flex; flex-direction: column; gap: calc(var(--u) * 4); font-size: calc(var(--u) * 13); color: var(--muted); }
+
+  /* ร้านยาน: วงล้อสุ่ม */
+  .gacha { position: relative; width: calc(var(--u) * 380); height: calc(var(--u) * 380); margin: 0 auto; flex-shrink: 0; }
+  .slot {
+    --tier: #8a9bbd; --tierbg: #1a2036;
+    position: absolute; width: calc(var(--u) * 70); height: calc(var(--u) * 70);
+    margin: calc(var(--u) * -35) 0 0 calc(var(--u) * -35);
+    border-radius: calc(var(--u) * 14); border: 2px solid var(--tier); background: var(--tierbg);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .slot img { width: 72%; height: 72%; }
+  .slot:not(.owned) img { opacity: .55; }
+  .slot.lit { transform: scale(1.18); border-color: #ffffff; box-shadow: 0 0 calc(var(--u) * 22) #ffffff, 0 0 calc(var(--u) * 10) var(--tier); z-index: 2; }
+  .slot.win { z-index: 3; animation: winPulse .55s ease-in-out infinite alternate; }
+  @keyframes winPulse { from { transform: scale(1.1); box-shadow: 0 0 calc(var(--u) * 10) var(--tier); } to { transform: scale(1.28); box-shadow: 0 0 calc(var(--u) * 40) var(--tier), 0 0 calc(var(--u) * 12) #ffffff; } }
+  .gacha-center {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: calc(var(--u) * 190); display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 6); text-align: center;
+  }
+  .tickets { font-weight: 700; color: var(--gold); font-size: calc(var(--u) * 18); }
+  .odds { font-size: calc(var(--u) * 10); color: var(--muted); line-height: 1.5; }
+  .odds b { font-weight: 700; }
+  .spin-result { --tier: #8a9bbd; display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 2); }
+  .spin-result .tier { color: var(--tier); font-weight: 700; font-size: calc(var(--u) * 13); letter-spacing: .08em; }
+  .spin-result b { color: #ffffff; font-size: calc(var(--u) * 22); text-shadow: 0 0 calc(var(--u) * 12) var(--tier); }
+  .spin-result span { color: var(--muted); font-size: calc(var(--u) * 12); }
+  .ship { --tier: #8a9bbd; border-color: var(--tier); }
+  .ship.locked { opacity: .5; filter: grayscale(.5); }
+  .ship .tier { color: var(--tier); font-size: calc(var(--u) * 11); font-weight: 700; letter-spacing: .06em; }
+  .ship .lv { color: var(--ink); font-size: calc(var(--u) * 12); font-weight: 700; }
+  .ship .perk { font-size: calc(var(--u) * 10); color: #7f8db0; }
+  @media (prefers-reduced-motion: reduce) { .slot.win { animation: none; transform: scale(1.2); } }
 
   /* ตารางอันดับ */
   .board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: calc(var(--u) * 4); }
@@ -218,14 +254,21 @@
 <div id="game">
   <div id="ui">
     <div id="menu" class="layer" hidden>
-      <button id="btnStart" class="btn primary big" type="button">เริ่มเกม</button>
-      <div class="row">
-        <button id="btnHangar" class="btn" type="button">โรงเก็บยาน</button>
-        <button id="btnBoard" class="btn" type="button">ตารางอันดับ</button>
+      <div id="menuGuest" class="group">
+        <button id="btnSignup" class="btn primary big" type="button">สมัครเพื่อเริ่มเล่น</button>
+        <button id="btnLogin" class="btn" type="button">มีบัญชีแล้ว · ล็อกอิน</button>
+        <button id="btnBoardGuest" class="link" type="button">ดูตารางอันดับ</button>
+      </div>
+      <div id="menuUser" class="group" hidden>
+        <button id="btnStart" class="btn primary big" type="button">เริ่มเกม</button>
+        <div class="row">
+          <button id="btnHangar" class="btn" type="button">ร้านยาน</button>
+          <button id="btnBoard" class="btn" type="button">ตารางอันดับ</button>
+        </div>
       </div>
       <div class="meta">
-        <span id="menuName"></span> · <button id="btnRename" class="link" type="button">เปลี่ยนชื่อ</button><br>
-        <span id="menuCoins"></span> · <button id="btnMute" class="link" type="button"></button>
+        <span id="menuName"></span><button id="btnLogout" class="link" type="button" hidden>ออกจากระบบ</button><br>
+        <span id="menuCoins"></span><button id="btnMute" class="link" type="button"></button>
       </div>
       <div class="meta" id="menuInfo"></div>
     </div>
@@ -242,13 +285,15 @@
       </div>
     </div>
 
-    <div id="nameDlg" class="modal" hidden>
-      <form id="nameForm" class="card" autocomplete="off">
-        <h2>ตั้งชื่อนักบิน</h2>
-        <p>ชื่อนี้จะขึ้นในตารางอันดับให้ทุกคนเห็น ไม่ต้องสมัครสมาชิก (ไม่เกิน 16 ตัวอักษร)</p>
-        <input id="nameInput" maxlength="16" placeholder="เช่น ช้างน้อย" enterkeyhint="done">
-        <p id="nameErr" class="err"></p>
-        <button class="btn primary" type="submit">ตกลง</button>
+    <div id="authDlg" class="modal" hidden>
+      <form id="authForm" class="card" autocomplete="on">
+        <div class="head"><h2 id="authTitle">สมัครสมาชิก</h2><button class="btn" type="button" data-close>ปิด</button></div>
+        <label>username<input id="authUser" maxlength="20" autocomplete="username" enterkeyhint="next"></label>
+        <label>password<input id="authPass" type="password" maxlength="100" autocomplete="current-password" enterkeyhint="next"></label>
+        <label id="authNickRow">nickname<input id="authNick" maxlength="16" placeholder="ชื่อที่จะแสดงในตารางอันดับ" enterkeyhint="done"></label>
+        <p id="authErr" class="err"></p>
+        <button id="authSubmit" class="btn primary" type="submit">สมัคร</button>
+        <button id="authSwitch" class="link" type="button">มีบัญชีแล้ว? ล็อกอิน</button>
       </form>
     </div>
 
@@ -261,11 +306,18 @@
 
     <div id="hangarDlg" class="modal" hidden>
       <div class="card">
-        <div class="head"><h2>โรงเก็บยาน</h2><span id="hangarCoins" class="coins"></span><button class="btn" type="button" data-close>ปิด</button></div>
-        <h3>ยาน</h3>
+        <div class="head"><h2>ร้านยาน</h2><span id="hangarCoins" class="coins"></span><button class="btn" type="button" data-close>ปิด</button></div>
+        <div id="wheel" class="gacha">
+          <div class="gacha-center">
+            <div id="ticketCount" class="tickets"></div>
+            <div id="spinResult" class="spin-result" hidden></div>
+            <button id="btnSpin" class="btn primary" type="button">สุ่ม (ใช้ตั๋ว 1 ใบ)</button>
+            <div class="odds" id="odds"></div>
+          </div>
+        </div>
+        <p id="hangarGuest" hidden>ล็อกอินก่อน เพื่อสุ่มยาน เก็บตั๋ว และอัปเลเวลยาน</p>
+        <h3>ยานของฉัน</h3>
         <div id="shipGrid" class="ships"></div>
-        <h3>อัปเกรดถาวร</h3>
-        <div id="upList" class="ups"></div>
       </div>
     </div>
 
@@ -372,18 +424,22 @@ const ENEMIES = {
   kamikaze: { key: 'enemyKami',    hp: 1,  score: 120,  body: [24, 24], coin: [0.3, 1] },
   meteor:   { key: 'rock',         hp: 3,  score: 80,   body: [34, 34], coin: [0.2, 1] },
   cargo:    { key: 'cargo',        hp: 14, score: 1000, body: [80, 30], coin: [1, 10] },
+  pillarS:  { key: 'pillarSpawn',  hp: 14, score: 300,  body: [28, 66], coin: [1, 3] },   // เสาฐานทัพ ปล่อยลูกน้อง
+  pillarH:  { key: 'pillarHeal',   hp: 10, score: 400,  body: [28, 66], coin: [1, 3] },   // เสาฮีล ฟื้นเลือดบอส
 };
 // ตัวที่ไม่นับว่าต้องฆ่าให้หมดก่อนไป wave ถัดไป
-const OPTIONAL = new Set(['kamikaze', 'meteor', 'cargo']);
+const OPTIONAL = new Set(['kamikaze', 'meteor', 'cargo', 'pillarS', 'pillarH']);
 
 const BOSSES = [
-  { key: 'boss',  name: 'ยานแม่ซาร์ก้า',     hp: 90,  body: [120, 70], y: 170, move: 'sway',  spin: 0,
+  { key: 'boss',  name: 'ยานแม่ซาร์ก้า',     hp: 150, body: [120, 70], y: 170, move: 'sway',  spin: 0, mech: 'spawner',
     weak: [{ x: 0, y: 6, r: 22 }], attacks: ['ring', 'fan', 'aimed', 'spiral'] },
-  { key: 'boss2', name: 'ป้อมปราการเหล็ก',  hp: 130, body: [180, 60], y: 150, move: 'slow',  spin: 0,
+  { key: 'boss2', name: 'ป้อมปราการเหล็ก',  hp: 210, body: [180, 60], y: 150, move: 'slow',  spin: 0, mech: 'healer',
     weak: [{ x: -62, y: -8, r: 18 }, { x: 62, y: -8, r: 18 }], attacks: ['twin', 'wall', 'rain', 'aimed'] },
-  { key: 'boss3', name: 'ดาวพิฆาต',          hp: 110, body: [100, 100], y: 200, move: 'eight', spin: 0.0015,
+  { key: 'boss3', name: 'ดาวพิฆาต',          hp: 180, body: [100, 100], y: 200, move: 'eight', spin: 0.0015, mech: 'freeze',
     weak: [{ x: 0, y: 0, r: 24 }], attacks: ['double', 'burst', 'minions', 'ring'] },
 ];
+// ทุกกี่ ms บอสใช้กลไกประจำตัว (เฟสสูงขึ้นจะถี่ขึ้น)
+const MECH_EVERY = { spawner: 8000, healer: 10000, freeze: 6500 };
 
 const ITEMS = {
   spread: { key: 'item_spread', weight: 17 },
@@ -393,23 +449,60 @@ const ITEMS = {
   star:   { key: 'item_star',   weight: 2 },    // อมตะ: หายากมาก ถือได้ทีละอัน
   life:   { key: 'item_life',   weight: 6 },
   magnet: { key: 'item_magnet', weight: 9 },    // ดูดของดีจากระยะไกลชั่วคราว
+  ticket: { key: 'item_ticket', weight: 0 },    // ตั๋วสุ่มยาน: หล่นตอนเคลียร์ wave / ชนะบอส เท่านั้น
 };
 
-// ยาน: lives = ชีวิตตอนเริ่ม, speed = ความเร็วเคลื่อนที่, fire = ตัวคูณเวลายิง (น้อย = ยิงเร็ว)
+// ระดับความหายาก: weight = โอกาสสุ่มได้ (%), dupe = คริสตัลที่ได้คืนเมื่อสุ่มซ้ำ, cost = ตัวคูณราคาอัปเลเวล
+const TIERS = {
+  common:    { name: 'ธรรมดา', color: '#9fb0d4', bg: 'linear-gradient(160deg, #2a3350, #141a2c)', weight: 50, dupe: 150,  cost: 1 },
+  rare:      { name: 'หายาก',  color: '#36f1ff', bg: 'linear-gradient(160deg, #0d4a5c, #0a1c2e)', weight: 32, dupe: 400,  cost: 1.3 },
+  epic:      { name: 'เอพิก',  color: '#c18bff', bg: 'linear-gradient(160deg, #4a1f7a, #1c0d33)', weight: 14, dupe: 900,  cost: 1.6 },
+  legendary: { name: 'ตำนาน', color: '#ffd23f', bg: 'linear-gradient(160deg, #7a5a00, #2e1d00)', weight: 4,  dupe: 2000, cost: 2 },
+};
+const MAX_LV = 10;
+
+// ตัวละคร (ยาน): ได้จากตั๋วสุ่มเท่านั้น อัปเลเวลด้วยคริสตัล สกิลแรงขึ้นตามเลเวล
+// lives = ชีวิตตอนเริ่ม, speed = ความเร็วเคลื่อนที่, fire = ตัวคูณเวลายิง (น้อย = ยิงเร็ว)
+// skill(lv) คืนค่าตัวเลขของสกิลที่เลเวลนั้น, desc(ค่าสกิล) คืนคำอธิบาย
 const SHIPS = {
-  bolt:   { name: 'สายฟ้า',  desc: 'สมดุลทุกด้าน',                    price: 0,    key: 'ship_bolt',   lives: 3, speed: 1,    fire: 1,   drones: 0 },
-  iron:   { name: 'ดาวเหล็ก', desc: 'ชีวิต +1 แต่เคลื่อนที่ช้าลง',      price: 1200, key: 'ship_iron',   lives: 4, speed: 0.8,  fire: 1,   drones: 0 },
-  falcon: { name: 'เหยี่ยว',  desc: 'มียานลูก 2 ลำช่วยยิง',            price: 2500, key: 'ship_falcon', lives: 3, speed: 1.05, fire: 1,   drones: 2 },
-  storm:  { name: 'พายุ',    desc: 'ยิงเร็วขึ้น 30% แต่เริ่มแค่ 2 ชีวิต', price: 3500, key: 'ship_storm',  lives: 2, speed: 1.15, fire: 0.7, drones: 0 },
+  bolt:    { name: 'สายฟ้า',   tier: 'common', key: 'ship_bolt', lives: 3, speed: 1, fire: 1, drones: 0,
+    skill: lv => ({ need: 15, dur: 3000 + lv * 200 }),
+    desc: k => `ทำลายครบ ${k.need} ตัว → ยิงเร็วขึ้น 50% นาน ${(k.dur / 1000).toFixed(1)} วิ` },
+  iron:    { name: 'ดาวเหล็ก', tier: 'common', key: 'ship_iron', lives: 4, speed: 0.85, fire: 1, drones: 0,
+    skill: lv => ({ every: 40000 - lv * 2000 }),
+    desc: k => `ชีวิต +1 · ได้เกราะใหม่ฟรีทุก ${Math.round(k.every / 1000)} วิ` },
+  magneto: { name: 'แม็กเนโต', tier: 'rare', key: 'ship_magneto', lives: 3, speed: 1, fire: 1, drones: 0,
+    skill: lv => ({ r: 140 + (lv - 1) * 24, need: 30, dur: 4000 + lv * 200 }),
+    desc: k => `แม่เหล็กกว้าง ${k.r} · เก็บคริสตัลครบ ${k.need} → ดูดทั้งจอ ${(k.dur / 1000).toFixed(1)} วิ` },
+  comet:   { name: 'ดาวหาง',  tier: 'rare', key: 'ship_comet', lives: 3, speed: 1.1, fire: 1, drones: 0,
+    skill: lv => ({ dur: 3000 + (lv - 1) * 330 }),
+    desc: k => `เก็บไอเท็มอาวุธ → พุ่งเร็ว ชนศัตรูแตก ${(k.dur / 1000).toFixed(1)} วิ` },
+  storm:   { name: 'พายุ',    tier: 'rare', key: 'ship_storm', lives: 3, speed: 1.05, fire: 0.8, drones: 0,
+    skill: lv => ({ every: 20000 - (lv - 1) * 900, n: 12 + (lv - 1) * 2 }),
+    desc: k => `ยิงเร็ว +20% · ทุก ${fmt(k.every)} แต้ม → ยิงรอบทิศ ${k.n} นัด` },
+  falcon:  { name: 'เหยี่ยว',  tier: 'rare', key: 'ship_falcon', lives: 3, speed: 1.05, fire: 1, drones: 2,
+    skill: lv => ({ rate: 280 - lv * 10 }),
+    desc: k => `ยานลูก 2 ลำ ยิงทุก ${k.rate} ms · เข้า FEVER → ยานลูก 4 ลำ` },
+  phantom: { name: 'แฟนทอม', tier: 'epic', key: 'ship_phantom', lives: 3, speed: 1.05, fire: 1, drones: 0,
+    skill: lv => ({ r: 46 + lv, need: 25 - Math.floor(lv / 2), dur: 2000 + lv * 150 }),
+    desc: k => `เฉียดกระสุนได้แต้ม x2 ระยะกว้างขึ้น · เฉียดครบ ${k.need} → ล่องหน ${(k.dur / 1000).toFixed(1)} วิ` },
+  prism:   { name: 'ปริซึม',  tier: 'epic', key: 'ship_prism', lives: 3, speed: 1, fire: 1, drones: 0,
+    skill: lv => ({ letter: 1.3 + lv * 0.05, onair: 1000 + lv * 300, bonus: 1 + lv * 0.05 }),
+    desc: k => `ตัวอักษร ON AIR หล่นบ่อยขึ้น · ON AIR นานขึ้น ${(k.onair / 1000).toFixed(1)} วิ · แต้มในโหมด x${k.bonus.toFixed(2)}` },
+  nova:    { name: 'โนวา',    tier: 'legendary', key: 'ship_nova', lives: 3, speed: 1.05, fire: 0.9, drones: 0,
+    skill: lv => ({ combo: 200 + lv * 20, every: 60000 - (lv - 1) * 2500 }),
+    desc: k => `คอมโบหลุดช้าลง · ทุก ${Math.round(k.every / 1000)} วิ เข้า FEVER ทันที พร้อมคลื่นล้างกระสุน` },
 };
+const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIPS[id].tier].cost / 10) * 10;
 
-const UPGRADES = {
-  power:  { name: 'พลังยิงเริ่มต้น', desc: 'เริ่มเกมด้วยพลังยิงสูงขึ้น',   costs: [300, 800, 1800] },
-  combo:  { name: 'คอมโบนานขึ้น',  desc: 'คอมโบหลุดช้าลง 0.15 วินาทีต่อระดับ', costs: [400, 1100] },
-  shield: { name: 'เกราะเริ่มต้น',  desc: 'เริ่มเกมพร้อมเกราะ 1 ชั้น',    costs: [900] },
-  magnet: { name: 'แม่เหล็กคริสตัล', desc: 'ดูดคริสตัลได้จากระยะไกลขึ้น',  costs: [150, 450, 1000] },
-  life:   { name: 'ชีวิตเสริม',     desc: 'ชีวิต +1 ตอนเริ่มเกม',        costs: [2000] },
-};
+// สุ่มยาน: เลือกระดับตามโอกาสก่อน แล้วสุ่มตัวในระดับนั้น
+function rollGacha() {
+  const tiers = Object.entries(TIERS);
+  let r = Math.random() * tiers.reduce((sum, [, t]) => sum + t.weight, 0);
+  let tier = 'common';
+  for (const [k, t] of tiers) { r -= t.weight; if (r <= 0) { tier = k; break; } }
+  return Phaser.Utils.Array.GetRandom(Object.keys(SHIPS).filter(id => SHIPS[id].tier === tier));
+}
 
 const DEBRIS = {
   normal: [0xff4f8b, 0xffffff], shooter: [0xffe14d, 0xffffff], tank: [0x9d6bff, 0xc9a8ff],
@@ -501,6 +594,7 @@ const sfx = {
     this.tone(f, 0.12, 'square', 0.06);
     this.later(70, () => this.tone(f * 2, 0.16, 'triangle', 0.06));
   },
+  tick() { this.tone(1800, 0.03, 'square', 0.03); },
   letterAppear() { this.tone(1200, 0.1, 'triangle', 0.04, 1800); },
   onair() {
     this.voice({ type: 'sawtooth', f: 120, f2: 2400, dur: 1.1, vol: 0.06, filter: 'lowpass', fq: 600, fq2: 8000 });
@@ -515,6 +609,9 @@ const sfx = {
   },
   lock() { [0, 160, 320].forEach(t => this.later(t, () => this.tone(1500, 0.07, 'square', 0.04))); },
   beam() { this.noise(0.5, 0.25, 4000); this.tone(220, 0.45, 'sawtooth', 0.08, 60); },
+  roar() { this.voice({ type: 'sawtooth', f: 90, f2: 38, dur: 1.3, vol: 0.12, filter: 'lowpass', fq: 900, fq2: 200 }); this.noise(1.1, 0.18, 900); },
+  shatter() { this.voice({ type: 'noise', dur: 0.45, vol: 0.2, filter: 'highpass', fq: 2500 }); this.tone(1800, 0.2, 'triangle', 0.05, 600); },
+  heal() { this.tone(660, 0.18, 'triangle', 0.04, 990); },
   alarm() { for (let i = 0; i < 3; i++) this.later(i * 700, () => this.tone(500, 0.6, 'sawtooth', 0.05, 950)); },
   pass() { [660, 880, 1320].forEach((f, i) => this.later(i * 70, () => this.tone(f, 0.14, 'square', 0.05))); },
   fever() { [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => this.later(i * 65, () => this.tone(f, 0.18, 'square', 0.045))); },
@@ -585,46 +682,77 @@ const music = {
 // =====================================================================
 //  3. ข้อมูลในเครื่อง + ตารางอันดับออนไลน์
 // =====================================================================
-const SAVE_KEY = 'star-shooter-save-v2';
+const SESSION_KEY = 'star-shooter-session-v1';
+const DEFAULT_DATA = () => ({ coins: 0, tickets: 1, chars: { bolt: 1 }, ship: 'bolt', best: 0 });
 
-function uuid() {
-  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
-    const r = Math.random() * 16 | 0;
-    return (ch === 'x' ? r : (r & 3 | 8)).toString(16);
-  });
+// เรียก API ของเกม (แนบ token ถ้าล็อกอินอยู่) เกิด error จะโยน Error ที่มี .status
+async function api(path, body) {
+  const opt = { method: body ? 'POST' : 'GET', headers: {}, cache: 'no-store' };
+  if (body) { opt.headers['content-type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  if (Save.token) opt.headers.authorization = 'Bearer ' + Save.token;
+  const r = await fetch(API_BASE + path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(j.error || 'HTTP ' + r.status); e.status = r.status; throw e; }
+  return j;
 }
 
-async function sha256hex(s) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
+// ข้อมูลผู้เล่น: ล็อกอินแล้วเก็บบน server, ไม่ล็อกอินเล่นได้แต่ไม่บันทึกอะไร
 const Save = {
-  data: null,
-  load() {
-    let d = null;
-    try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
-    this.data = Object.assign({ key: null, name: '', coins: 0, best: 0, ships: ['bolt'], ship: 'bolt', muted: false }, d || {});
-    this.data.up = Object.assign({ power: 0, combo: 0, shield: 0, magnet: 0, life: 0 }, (d && d.up) || {});
-    if (!this.data.key) this.data.key = uuid();   // รหัสลับประจำเครื่อง ใช้แทนการล็อกอิน
-    if (!SHIPS[this.data.ship]) this.data.ship = 'bolt';
-    this.save();
+  data: DEFAULT_DATA(), user: null, token: null, muted: false,
+  get loggedIn() { return !!this.user; },
+  loadLocal() {
+    try {
+      const v = JSON.parse(localStorage.getItem(SESSION_KEY)) || {};
+      this.token = v.token || null;
+      this.muted = !!v.muted;
+    } catch (e) {}
   },
-  save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) {} },
+  persistLocal() { try { localStorage.setItem(SESSION_KEY, JSON.stringify({ token: this.token, muted: this.muted })); } catch (e) {} },
+  normalize(d) {
+    const x = Object.assign(DEFAULT_DATA(), d || {});
+    x.chars = Object.assign({}, x.chars);
+    if (!x.chars.bolt) x.chars.bolt = 1;
+    for (const k of Object.keys(x.chars)) if (!SHIPS[k]) delete x.chars[k];
+    if (!x.chars[x.ship]) x.ship = 'bolt';
+    return x;
+  },
+  setSession(token, profile) {
+    this.token = token;
+    this.user = { id: profile.id, username: profile.username, nickname: profile.nickname };
+    this.data = this.normalize(profile.data);
+    this.persistLocal();
+  },
+  logout() {
+    if (this.token) api('/api/logout', {}).catch(() => {});
+    this.token = null;
+    this.user = null;
+    this.data = DEFAULT_DATA();
+    this.persistLocal();
+  },
+  async restore() {
+    if (!this.token) return;
+    try { this.setSession(this.token, await api('/api/me')); }
+    catch (e) { if (e.status === 401) { this.token = null; this.persistLocal(); } }
+  },
+  // บันทึกขึ้น server (รวบหลายครั้งที่กดติดกันเป็นครั้งเดียว)
+  save() {
+    if (!this.loggedIn) return;
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.flush(), 600);
+  },
+  async flush() {
+    clearTimeout(this._t);
+    if (!this.loggedIn) return;
+    try { await api('/api/save', { data: this.data }); } catch (e) {}
+  },
 };
 
 const Board = {
-  online: false, entries: [], total: 0, pid: null,
-  async init() {
-    try { this.pid = (await sha256hex(Save.data.key)).slice(0, 16); } catch (e) { this.pid = null; }
-  },
+  online: false, entries: [], total: 0,
+  get pid() { return Save.user ? Save.user.id : null; },
   async refresh() {
-    if (!this.pid) return;
     try {
-      const r = await fetch(API_BASE + '/api/leaderboard?limit=200', { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
+      const j = await api('/api/leaderboard?limit=200');
       this.entries = Array.isArray(j.entries) ? j.entries : [];
       this.total = j.total || this.entries.length;
       this.online = true;
@@ -632,14 +760,7 @@ const Board = {
       this.online = false;
     }
   },
-  async submit(payload) {
-    const r = await fetch(API_BASE + '/api/score', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-    return j;
-  },
+  submit(payload) { return api('/api/score', payload); },
   others() { return this.entries.filter(e => e.pid !== this.pid); },
   // อันดับของคะแนนนี้เมื่อเทียบกับคะแนนสูงสุดของคนอื่น
   standing(score) {
@@ -816,7 +937,7 @@ const App = {
   scene(key) { return this.game.scene.getScene(key); },
 
   start() {
-    if (!Save.data.name) return this.openName();   // ไม่มีชื่อ เริ่มเกมไม่ได้
+    if (!Save.loggedIn) return this.openAuth('signup');   // ต้องสมัคร/ล็อกอินก่อนถึงเล่นได้
     sfx.unlock();
     music.start();
     $('menu').hidden = true;
@@ -832,12 +953,12 @@ const App = {
   },
 
   refreshMenu() {
-    const named = !!Save.data.name;
-    $('menuName').textContent = named ? 'นักบิน: ' + Save.data.name : 'ยังไม่ได้ตั้งชื่อนักบิน';
-    $('btnRename').textContent = named ? 'เปลี่ยนชื่อ' : 'ตั้งชื่อ';
-    $('btnStart').disabled = !named;
-    $('btnStart').textContent = named ? 'เริ่มเกม' : 'ตั้งชื่อก่อนเริ่มเกม';
-    $('menuCoins').textContent = 'คริสตัล ' + fmt(Save.data.coins);
+    const u = Save.user, d = Save.data;
+    $('menuGuest').hidden = !!u;
+    $('menuUser').hidden = !u;
+    $('btnLogout').hidden = !u;
+    $('menuName').textContent = u ? `นักบิน: ${u.nickname}` : 'สมัครฟรี ใช้แค่ username กับ password';
+    $('menuCoins').textContent = u ? `คริสตัล ${fmt(d.coins)} · ตั๋วสุ่ม ${fmt(d.tickets)} ·` : '';
     $('btnMute').textContent = sfx.muted ? 'เสียง: ปิด' : 'เสียง: เปิด';
     const info = $('menuInfo');
     if (Board.online) {
@@ -846,27 +967,59 @@ const App = {
         ? `ออนไลน์ · นักบิน ${fmt(Board.total)} คน · อันดับ 1: ${top.name} ${fmt(top.score)}`
         : 'ออนไลน์ · ยังไม่มีใครในตารางอันดับ เป็นคนแรกเลย!';
     } else {
-      info.textContent = 'ออฟไลน์ · เล่นได้ปกติ แต่คะแนนไม่ขึ้นตารางอันดับ';
+      info.textContent = 'ออฟไลน์ · เล่นได้ปกติ แต่สมัคร/ล็อกอินและตารางอันดับใช้ไม่ได้';
     }
   },
 
-  openName() {
-    $('nameInput').value = Save.data.name || '';
-    $('nameErr').textContent = '';
-    $('nameDlg').hidden = false;
-    setTimeout(() => $('nameInput').focus(), 50);
+  // ----- สมัคร / ล็อกอิน -----
+  openAuth(mode) {
+    this.authMode = mode;
+    const signup = mode === 'signup';
+    $('authTitle').textContent = signup ? 'สมัครสมาชิก' : 'ล็อกอิน';
+    $('authSubmit').textContent = signup ? 'สมัคร' : 'ล็อกอิน';
+    $('authSwitch').textContent = signup ? 'มีบัญชีแล้ว? ล็อกอิน' : 'ยังไม่มีบัญชี? สมัคร';
+    $('authNickRow').hidden = !signup;
+    $('authPass').autocomplete = signup ? 'new-password' : 'current-password';
+    $('authErr').textContent = '';
+    $('authDlg').hidden = false;
+    setTimeout(() => $('authUser').focus(), 50);
   },
-  submitName(e) {
+  async submitAuth(e) {
     e.preventDefault();
-    const name = $('nameInput').value.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
-    if (!name) { $('nameErr').textContent = 'กรุณาใส่ชื่ออย่างน้อย 1 ตัวอักษร'; return; }
-    if (badName(name)) { $('nameErr').textContent = 'ชื่อนี้ใช้ไม่ได้ ลองตั้งชื่ออื่นนะ'; return; }
-    Save.data.name = name;
-    Save.save();
-    $('nameDlg').hidden = true;
-    sfx.unlock();
-    music.start();
+    const signup = this.authMode === 'signup';
+    const username = $('authUser').value.trim();
+    const password = $('authPass').value;
+    const nickname = $('authNick').value.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
+    const err = $('authErr');
+    if (!username || !password || (signup && !nickname)) { err.textContent = 'กรอกให้ครบทุกช่อง'; return; }
+    if (signup && badName(nickname)) { err.textContent = 'ชื่อเล่นนี้ใช้ไม่ได้ ลองตั้งชื่ออื่นนะ'; return; }
+    const btn = $('authSubmit');
+    btn.disabled = true;
+    err.textContent = '';
+    try {
+      const r = await api(signup ? '/api/signup' : '/api/login', signup ? { username, password, nickname } : { username, password });
+      Save.setSession(r.token, r.profile);
+      $('authDlg').hidden = true;
+      $('authPass').value = '';
+      sfx.unlock();
+      music.start();
+      this.refreshMenu();
+      Board.refresh().then(() => this.refreshMenu());
+      UI.toast(signup ? `สมัครเรียบร้อย ยินดีต้อนรับ ${r.profile.nickname}! ได้ตั๋วสุ่มฟรี 1 ใบ` : `ยินดีต้อนรับกลับ ${r.profile.nickname}`);
+    } catch (ex) {
+      const m = ex.message;
+      err.textContent = m === 'username_taken' ? 'ชื่อผู้ใช้นี้มีคนใช้แล้ว ลองชื่ออื่น'
+        : m === 'bad_login' ? 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+        : m === 'bad_name' ? 'ชื่อเล่นนี้ใช้ไม่ได้ ลองตั้งชื่ออื่นนะ'
+        : 'เชื่อมต่อ server ไม่ได้ ลองใหม่อีกครั้ง';
+    } finally {
+      btn.disabled = false;
+    }
+  },
+  doLogout() {
+    Save.logout();
     this.refreshMenu();
+    UI.toast('ออกจากระบบแล้ว');
   },
 
   // ----- หยุดเกม / เล่นต่อ (นับถอยหลัง 3 วินาที) -----
@@ -928,8 +1081,8 @@ const App = {
 
   toggleMute() {
     sfx.setMuted(!sfx.muted);
-    Save.data.muted = sfx.muted;
-    Save.save();
+    Save.muted = sfx.muted;
+    Save.persistLocal();
     this.refreshMenu();
     const g = this.scene('game');
     if (g && g.sys.isActive()) g.updateHud();
@@ -980,69 +1133,152 @@ const App = {
 
   openHangar() {
     $('hangarDlg').hidden = false;
-    this.renderHangar();
+    $('spinResult').hidden = true;
+    this.renderHangar(true);
   },
-  renderHangar() {
-    const d = Save.data;
-    $('hangarCoins').textContent = 'คริสตัล ' + fmt(d.coins);
+  // วงล้อ: ยานทุกลำเรียงเป็นวงกลม พื้นหลังสีบอกระดับความหายาก
+  buildWheel() {
+    const wheel = $('wheel');
+    wheel.querySelectorAll('.slot').forEach(el => el.remove());
+    const ids = Object.keys(SHIPS);
+    ids.forEach((id, i) => {
+      const a = -Math.PI / 2 + i / ids.length * Math.PI * 2;
+      const t = TIERS[SHIPS[id].tier];
+      const el = document.createElement('div');
+      el.className = 'slot' + (Save.data.chars[id] ? ' owned' : '');
+      el.style.setProperty('--tier', t.color);
+      el.style.setProperty('--tierbg', t.bg);
+      el.style.left = (50 + Math.cos(a) * 40) + '%';
+      el.style.top = (50 + Math.sin(a) * 40) + '%';
+      el.title = `${SHIPS[id].name} (${t.name})`;
+      const img = document.createElement('img');
+      img.alt = SHIPS[id].name;
+      img.src = this.game.textures.getBase64(SHIPS[id].key);
+      el.append(img);
+      wheel.append(el);
+    });
+    const odds = $('odds');
+    odds.textContent = '';
+    Object.values(TIERS).forEach((t, i) => {
+      if (i) odds.append(' · ');
+      const b = document.createElement('b');
+      b.style.color = t.color;
+      b.textContent = t.name;
+      odds.append(b, ` ${t.weight}%`);
+    });
+  },
+  renderHangar(rebuildWheel) {
+    const d = Save.data, logged = Save.loggedIn;
+    $('hangarCoins').textContent = logged ? 'คริสตัล ' + fmt(d.coins) : '';
+    $('hangarGuest').hidden = logged;
+    $('ticketCount').textContent = `ตั๋วสุ่ม ${logged ? fmt(d.tickets) : 0} ใบ`;
+    $('btnSpin').disabled = !logged || d.tickets < 1 || this.spinning;
+    if (rebuildWheel && !this.spinning) this.buildWheel();
+
     const grid = $('shipGrid');
     grid.textContent = '';
     for (const [id, s] of Object.entries(SHIPS)) {
-      const owned = d.ships.includes(id), using = d.ship === id;
+      const lv = d.chars[id] || 0, owned = lv > 0, using = d.ship === id, t = TIERS[s.tier];
       const el = document.createElement('div');
-      el.className = 'ship' + (using ? ' using' : '');
+      el.className = 'ship' + (using ? ' using' : '') + (owned ? '' : ' locked');
+      el.style.setProperty('--tier', t.color);
       const img = document.createElement('img');
       img.alt = s.name;
       img.src = this.game.textures.getBase64(s.key);
       const b = document.createElement('b'); b.textContent = s.name;
-      const sp = document.createElement('span'); sp.textContent = `${s.desc} · ชีวิต ${s.lives}`;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn' + (!owned ? ' primary' : '');
-      btn.textContent = using ? 'กำลังใช้' : owned ? 'ใช้ลำนี้' : `ซื้อ ${fmt(s.price)}`;
-      btn.disabled = using;
-      btn.onclick = () => {
-        if (!owned) {
-          if (d.coins < s.price) return UI.toast(`คริสตัลไม่พอ ขาดอีก ${fmt(s.price - d.coins)}`);
-          d.coins -= s.price;
-          d.ships.push(id);
+      const tier = document.createElement('span'); tier.className = 'tier'; tier.textContent = t.name;
+      const lvEl = document.createElement('span'); lvEl.className = 'lv'; lvEl.textContent = owned ? `Lv ${lv}/${MAX_LV}` : 'ยังไม่มี';
+      const sp = document.createElement('span'); sp.textContent = `${s.desc(s.skill(Math.max(1, lv)))} · ชีวิต ${s.lives}`;
+      const perk = document.createElement('span'); perk.className = 'perk'; perk.textContent = 'Lv5 เริ่มพร้อมเกราะ · Lv10 เริ่มพลังยิง 2';
+      const use = document.createElement('button');
+      use.type = 'button';
+      use.className = 'btn';
+      if (owned) {
+        use.textContent = using ? 'กำลังใช้' : 'ใช้ลำนี้';
+        use.disabled = using;
+        use.onclick = () => { d.ship = id; Save.save(); this.renderHangar(); };
+      } else {
+        use.textContent = 'สุ่มเพื่อปลดล็อก';
+        use.disabled = true;
+      }
+      el.append(img, b, tier, lvEl, sp, perk, use);
+      if (owned && lv < MAX_LV) {
+        const cost = lvCost(id, lv);
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'btn primary';
+        upBtn.textContent = `อัปเลเวล ${fmt(cost)}`;
+        upBtn.disabled = !logged;
+        upBtn.onclick = () => {
+          if (d.coins < cost) return UI.toast(`คริสตัลไม่พอ ขาดอีก ${fmt(cost - d.coins)}`);
+          d.coins -= cost;
+          d.chars[id] = lv + 1;
+          Save.save();
           sfx.power();
-        }
-        d.ship = id;
-        Save.save();
-        this.renderHangar();
-        this.refreshMenu();
-      };
-      el.append(img, b, sp, btn);
+          this.renderHangar();
+          this.refreshMenu();
+        };
+        el.append(upBtn);
+      }
       grid.append(el);
     }
-    const list = $('upList');
-    list.textContent = '';
-    for (const [id, u] of Object.entries(UPGRADES)) {
-      const lv = d.up[id] || 0, max = u.costs.length, cost = u.costs[lv];
-      const el = document.createElement('div');
-      el.className = 'up';
-      const b = document.createElement('b'); b.textContent = u.name;
-      const sp = document.createElement('span'); sp.textContent = u.desc;
-      const pips = document.createElement('div'); pips.className = 'pips';
-      for (let i = 0; i < max; i++) { const p = document.createElement('i'); if (i < lv) p.className = 'on'; pips.append(p); }
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn' + (lv < max ? ' primary' : '');
-      btn.textContent = lv >= max ? 'สูงสุดแล้ว' : `ซื้อ ${fmt(cost)}`;
-      btn.disabled = lv >= max;
-      btn.onclick = () => {
-        if (d.coins < cost) return UI.toast(`คริสตัลไม่พอ ขาดอีก ${fmt(cost - d.coins)}`);
-        d.coins -= cost;
-        d.up[id] = lv + 1;
-        Save.save();
-        sfx.power();
-        this.renderHangar();
-        this.refreshMenu();
-      };
-      el.append(b, btn, sp, pips);
-      list.append(el);
-    }
+  },
+  // สุ่ม: ตัดตั๋วและให้รางวัลทันที (กันรีเฟรชหนี) แล้วค่อยเล่นแอนิเมชันไฟวิ่ง
+  spin() {
+    const d = Save.data;
+    if (!Save.loggedIn) return UI.toast('ล็อกอินก่อนนะ ถึงจะสุ่มได้');
+    if (this.spinning) return;
+    if (d.tickets < 1) return UI.toast('ตั๋วหมดแล้ว เล่นเกมเพื่อเก็บตั๋วเพิ่ม');
+    const id = rollGacha();
+    const isNew = !d.chars[id];
+    const refund = TIERS[SHIPS[id].tier].dupe;
+    d.tickets -= 1;
+    if (isNew) d.chars[id] = 1; else d.coins += refund;
+    Save.flush();
+
+    this.spinning = true;
+    $('spinResult').hidden = true;
+    $('btnSpin').disabled = true;
+    $('ticketCount').textContent = `ตั๋วสุ่ม ${fmt(d.tickets)} ใบ`;
+    const ids = Object.keys(SHIPS), n = ids.length;
+    const slots = [...$('wheel').querySelectorAll('.slot')];
+    slots.forEach(el => el.classList.remove('win', 'lit'));
+    let cur = this.litIdx || 0;
+    const target = ids.indexOf(id);
+    const steps = n * 3 + ((target - cur + n) % n || n);
+    let i = 0;
+    const step = () => {
+      slots[cur].classList.remove('lit');
+      cur = (cur + 1) % n;
+      slots[cur].classList.add('lit');
+      sfx.tick();
+      i++;
+      if (i < steps) {
+        const t = i / steps;
+        setTimeout(step, 35 + Math.pow(t, 3) * 420);   // ไฟวิ่งเร็วแล้วค่อยๆ ช้าลง
+        return;
+      }
+      this.litIdx = cur;
+      slots[cur].classList.remove('lit');
+      slots[cur].classList.add('win');
+      this.spinning = false;
+      this.showSpinResult(id, isNew, refund);
+    };
+    step();
+  },
+  showSpinResult(id, isNew, refund) {
+    const s = SHIPS[id], t = TIERS[s.tier];
+    const box = $('spinResult');
+    box.textContent = '';
+    box.style.setProperty('--tier', t.color);
+    const tier = document.createElement('div'); tier.className = 'tier'; tier.textContent = t.name;
+    const b = document.createElement('b'); b.textContent = s.name;
+    const sp = document.createElement('span'); sp.textContent = isNew ? 'ได้ยานใหม่!' : `ซ้ำ! ได้คริสตัลคืน +${fmt(refund)}`;
+    box.append(tier, b, sp);
+    box.hidden = false;
+    if (s.tier === 'legendary' || s.tier === 'epic') sfx.fanfare(); else sfx.power();
+    this.renderHangar();
+    this.refreshMenu();
   },
 
   // ----- แชร์การ์ดคะแนน -----
@@ -1084,13 +1320,18 @@ const App = {
     $('btnHangar').onclick = () => this.openHangar();
     $('btnBoard').onclick = () => this.openBoard();
     $('btnOverBoard').onclick = () => this.openBoard();
-    $('btnRename').onclick = () => this.openName();
+    $('btnBoardGuest').onclick = () => this.openBoard();
+    $('btnSignup').onclick = () => this.openAuth('signup');
+    $('btnLogin').onclick = () => this.openAuth('login');
+    $('btnLogout').onclick = () => this.doLogout();
+    $('authSwitch').onclick = () => this.openAuth(this.authMode === 'signup' ? 'login' : 'signup');
+    $('btnSpin').onclick = () => this.spin();
     $('btnMute').onclick = () => this.toggleMute();
     $('btnAgain').onclick = () => this.again();
     $('btnHome').onclick = () => this.home();
     $('btnCopy').onclick = () => this.copyCard();
     $('btnShare').onclick = () => this.shareCard();
-    $('nameForm').addEventListener('submit', e => this.submitName(e));
+    $('authForm').addEventListener('submit', e => this.submitAuth(e));
     $('btnResume').onclick = () => this.resume();
     $('btnPauseRestart').onclick = () => this.leavePause(false);
     $('btnPauseHome').onclick = () => this.leavePause(true);
@@ -1105,7 +1346,7 @@ const App = {
         if (g && g.sys.isActive() && !g.over && !UI.modalOpen()) { e.preventDefault(); this.pause(); return; }
       }
       if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => {
-        if (m.id !== 'pauseDlg' && (m.id !== 'nameDlg' || Save.data.name)) m.hidden = true;
+        if (m.id !== 'pauseDlg' && !(m.id === 'hangarDlg' && this.spinning)) m.hidden = true;
       });
     });
   },
@@ -1168,6 +1409,30 @@ function makeTextures(scene) {
     neon(g, P([[32, 4], [58, 50], [40, 44], [32, 58], [24, 44], [6, 50]]), 0xff4fd8);
     g.lineStyle(2.5, 0xfff35a, 1);
     g.beginPath(); g.moveTo(35, 16); g.lineTo(27, 30); g.lineTo(36, 30); g.lineTo(28, 44); g.strokePath();
+  });
+  draw('ship_magneto', 64, 64, g => {
+    neon(g, P([[32, 6], [52, 22], [52, 54], [40, 54], [40, 28], [32, 20], [24, 28], [24, 54], [12, 54], [12, 22]]), 0xff5a3c, 0.18);
+    g.fillStyle(0xffffff, 1); g.fillRect(12, 48, 12, 6); g.fillRect(40, 48, 12, 6);
+    core(g, 32, 12, 3);
+  });
+  draw('ship_comet', 64, 64, g => {
+    neon(g, P([[32, 4], [44, 38], [56, 58], [32, 48], [8, 58], [20, 38]]), 0x9ff3ff, 0.16);
+    line(g, 32, 48, 32, 62, 0x9ff3ff, 2); line(g, 22, 50, 18, 62, 0x9ff3ff, 1.5); line(g, 42, 50, 46, 62, 0x9ff3ff, 1.5);
+    core(g, 32, 24, 3);
+  });
+  draw('ship_phantom', 64, 64, g => {
+    neon(g, P([[32, 6], [50, 28], [48, 58], [40, 50], [32, 58], [24, 50], [16, 58], [14, 28]]), 0xb46bff, 0.1);
+    g.fillStyle(0xffffff, 1); g.fillCircle(26, 28, 3); g.fillCircle(38, 28, 3);
+  });
+  draw('ship_prism', 64, 64, g => {
+    neon(g, P([[32, 6], [58, 54], [6, 54]]), 0xffffff, 0.06);
+    line(g, 32, 14, 20, 48, 0xff3df2, 2); line(g, 32, 14, 32, 48, 0xfff35a, 2); line(g, 32, 14, 44, 48, 0x36f1ff, 2);
+    core(g, 32, 34, 3);
+  });
+  draw('ship_nova', 64, 64, g => {
+    neon(g, star(32, 32, 28, 12, 5), 0xffd23f, 0.2);
+    ring(g, 32, 32, 8, 0xfff3b0, 0.4);
+    core(g, 32, 32, 3);
   });
   draw('drone', 22, 22, g => { ring(g, 11, 11, 6, 0x36f1ff, 0.3); core(g, 11, 11, 2); });
 
@@ -1232,6 +1497,23 @@ function makeTextures(scene) {
     ring(g, 70, 70, 22, 0xfff35a, 0.3);
     core(g, 70, 70, 6);
   });
+  draw('pillarSpawn', 36, 76, g => {
+    neon(g, P([[18, 3], [32, 14], [32, 70], [4, 70], [4, 14]]), 0xff5a3c, 0.22);
+    neon(g, P([[18, 18], [26, 26], [18, 34], [10, 26]]), 0xffb84d, 0.3);
+    line(g, 8, 46, 28, 46, 0xff5a3c, 2); line(g, 8, 56, 28, 56, 0xff5a3c, 2);
+    core(g, 18, 26, 3);
+  });
+  draw('pillarHeal', 36, 76, g => {
+    neon(g, P([[18, 3], [32, 14], [32, 70], [4, 70], [4, 14]]), 0x7dff6a, 0.2);
+    g.fillStyle(0xeaffef, 1); g.fillRect(15, 18, 6, 18); g.fillRect(9, 24, 18, 6);
+    line(g, 8, 50, 28, 50, 0x7dff6a, 2); line(g, 8, 60, 28, 60, 0x7dff6a, 2);
+  });
+  draw('iceBlock', 64, 64, g => {
+    g.fillStyle(0x9fe8ff, 0.35); g.fillRoundedRect(4, 4, 56, 56, 10);
+    g.lineStyle(3, 0xe8fbff, 0.95); g.strokeRoundedRect(4, 4, 56, 56, 10);
+    g.lineStyle(2, 0xffffff, 0.8); g.lineBetween(14, 16, 26, 10); g.lineBetween(12, 26, 18, 22);
+    g.lineStyle(1.5, 0xbfefff, 0.7); g.lineBetween(40, 50, 52, 38); g.lineBetween(30, 54, 36, 48);
+  });
   draw('weakGlow', 48, 48, g => {
     g.fillStyle(0xfff35a, 0.2); g.fillCircle(24, 24, 24);
     g.fillStyle(0xfff35a, 0.35); g.fillCircle(24, 24, 13);
@@ -1293,6 +1575,15 @@ function makeTextures(scene) {
     g.fillStyle(c, 0.55); g.fillPoints(pts, true);
     g.lineStyle(2, c, 1); g.strokePoints(pts, true, true);
     core(g, 20, 20, 2);
+  });
+  // ตั๋วสุ่มยาน: ทองเด่น มีรอยหยักสองข้าง
+  draw('item_ticket', 44, 32, g => {
+    g.fillStyle(0xffd23f, 0.25); g.fillRoundedRect(0, 0, 44, 32, 8);
+    g.fillStyle(0xffb000, 1); g.fillRoundedRect(4, 5, 36, 22, 4);
+    g.fillStyle(0x07041a, 1); g.fillCircle(4, 16, 4); g.fillCircle(40, 16, 4);
+    g.lineStyle(1.5, 0xfff3b0, 1); g.strokeRoundedRect(4, 5, 36, 22, 4);
+    g.lineStyle(1, 0x7a4a00, 0.8); for (let y = 8; y < 26; y += 4) g.lineBetween(30, y, 30, y + 2);
+    g.fillStyle(0xffffff, 1); g.fillPoints(star(17, 16, 7, 3, 5), true);
   });
   chip('item_magnet', 0xff5a3c, (g, c) => {
     g.lineStyle(5, c, 1);
@@ -1483,14 +1774,10 @@ class Title extends Phaser.Scene {
       txt(this, x, 494, label, 12, '#a9b9d6').setOrigin(0.5, 0);
     });
 
-    const ship = this.add.image(W / 2, 548, SHIPS[Save.data.ship].key).setScale(0.8);
-    this.tweens.add({ targets: ship, y: 540, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    this.ship = ship;
 
     App.refreshMenu();
     $('menu').hidden = false;
     music.setMode('normal');
-    if (!Save.data.name) App.openName();
     Board.refresh().then(() => { if (this.sys.isActive()) App.refreshMenu(); });
 
     this.input.keyboard.on('keydown-ENTER', () => { if (!UI.modalOpen()) App.start(); });
@@ -1499,8 +1786,6 @@ class Title extends Phaser.Scene {
   }
   update(t, dt) {
     this.scroll(dt);
-    const key = SHIPS[Save.data.ship].key;
-    if (this.ship.texture.key !== key) this.ship.setTexture(key);
   }
 }
 
@@ -1508,15 +1793,23 @@ class Game extends Phaser.Scene {
   constructor() { super('game'); }
 
   create() {
-    const ship = SHIPS[Save.data.ship] || SHIPS.bolt;
-    const up = Save.data.up;
+    const d = Save.data;
+    const shipId = SHIPS[d.ship] && d.chars[d.ship] ? d.ship : 'bolt';
+    const ship = SHIPS[shipId], lv = d.chars[shipId] || 1, sk = ship.skill(lv);
     Object.assign(this, {
-      ship,
-      score: 0, lives: Math.min(MAX_LIVES, ship.lives + up.life), starHeld: false, starUntil: 0,
-      comboWindow: COMBO_WINDOW + (up.combo || 0) * 150,
+      ship, shipId, lv, sk,
+      score: 0, lives: Math.min(MAX_LIVES, ship.lives), starHeld: false, starUntil: 0,
+      comboWindow: COMBO_WINDOW + (shipId === 'nova' ? sk.combo : 0),
       campRef: { x: W / 2, y: H - 110, t: 0 }, lockActive: false, campWarned: -1e9, waveStart: 0, enraged: false,
-      shield: up.shield > 0, weapon: 'spread', power: Math.min(MAX_POWER, 1 + up.power),
-      magnetR: 70 + up.magnet * 45,
+      shield: lv >= 5, weapon: 'spread', power: lv >= 10 ? 2 : 1,
+      magnetR: shipId === 'magneto' ? sk.r : 70,
+      grazeR: shipId === 'phantom' ? sk.r : GRAZE_R,
+      letterMul: shipId === 'prism' ? sk.letter : 1,
+      onairMs: ONAIR_MS + (shipId === 'prism' ? sk.onair : 0),
+      runTickets: 0, scoreBonus: 0,
+      skKills: 0, skCoins: 0, skGrazes: 0, nextStormAt: shipId === 'storm' ? sk.every : Infinity,
+      overdriveUntil: 0, dashUntil: 0, phaseUntil: 0, superMagnetUntil: 0, shieldRegenAt: 0, novaAt: 0, lastGhost: 0,
+      iceUntil: 0, bossCD: 0, mechCD: 0, bossMechs: [], mechTurn: 0,
       loop: 1, wave: 0, kills: 0, lastPattern: null,
       over: false, ended: false, waveActive: false, invulnUntil: 0,
       swayX: 0, ringRot: 0, boss: null, bossPhase: 0, bossTurn: 0, weakGlows: [],
@@ -1545,9 +1838,11 @@ class Game extends Phaser.Scene {
     this.player = this.physics.add.image(W / 2, H - 110, ship.key).setDepth(4);
     this.player.body.setSize(24, 32);   // hitbox เล็กกว่าภาพ ทำให้หลบกระสุนได้ง่ายขึ้น
     this.bubble = this.add.image(0, 0, 'bubble').setDepth(5).setVisible(false);
+    this.iceBlock = this.add.image(0, 0, 'iceBlock').setDepth(5).setVisible(false);
+    this.bossShade = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(-6);   // จอมืดลงตอนสู้บอส
     this.aura = this.add.image(0, 0, 'ring').setDepth(3).setBlendMode('ADD').setVisible(false);
     this.drones = [];
-    for (let i = 0; i < ship.drones; i++) {
+    for (let i = 0; i < (shipId === 'falcon' ? 4 : ship.drones); i++) {
       this.drones.push(this.add.image(this.player.x, this.player.y, 'drone').setDepth(4));
     }
 
@@ -1599,6 +1894,7 @@ class Game extends Phaser.Scene {
     // การชนกัน
     this.physics.add.overlap(this.bullets, this.enemies, (b, e) => this.hitEnemy(b, e));
     this.physics.add.overlap(this.player, this.ebullets, (p, b) => {
+      if (this.time.now < this.phaseUntil) return;   // แฟนทอมล่องหน: กระสุนทะลุตัว
       if (this.time.now < this.starUntil) { this.sparks.explode(4, b.x, b.y); b.disableBody(true, true); return; }
       if (this.time.now < this.invulnUntil) return;
       b.disableBody(true, true);
@@ -1607,9 +1903,11 @@ class Game extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.enemies, (p, e) => {
       const st = e.getData('state');
       if (!e.visible || st === 'bonus' || st === 'cargo') return;
-      if (this.time.now < this.starUntil) { if (!e.getData('boss')) this.killEnemy(e, true); return; }   // อมตะ: ชนแล้วศัตรูแตก
+      const solid = e.getData('boss') || e.getData('pillar');
+      if (this.time.now < this.dashUntil && !solid) { this.killEnemy(e, true); return; }   // ดาวหางพุ่ง: ชนแล้วแตก
+      if (this.time.now < this.starUntil) { if (!solid) this.killEnemy(e, true); return; }   // อมตะ: ชนแล้วศัตรูแตก
       if (this.time.now < this.invulnUntil) return;
-      if (!e.getData('boss')) this.killEnemy(e, false);
+      if (!solid) this.killEnemy(e, false);
       this.playerHit();
     });
     this.physics.add.overlap(this.player, this.powerups, (p, u) => this.collect(u));
@@ -1640,8 +1938,8 @@ class Game extends Phaser.Scene {
       this.drag = { px: p.x, py: p.y, sx: this.player.x, sy: this.player.y };
     });
     this.input.on('pointermove', p => {
-      if (!p.isDown || !this.drag || this.over) return;
-      const k = 1.25 * this.ship.speed;
+      if (!p.isDown || !this.drag || this.over || this.time.now < this.iceUntil) return;
+      const k = 1.25 * this.ship.speed * (this.time.now < this.dashUntil ? 1.6 : 1);
       this.player.x = Phaser.Math.Clamp(this.drag.sx + (p.x - this.drag.px) * k, 24, W - 24);
       this.player.y = Phaser.Math.Clamp(this.drag.sy + (p.y - this.drag.py) * k, H * 0.3, H - 40);
     });
@@ -1705,6 +2003,7 @@ class Game extends Phaser.Scene {
     this.muteText = txt(this, 14, H - 56, '', 12, '#8fa3c8').setOrigin(0, 1).setDepth(10)
       .setInteractive({ useHandCursor: true });
     this.muteText.on('pointerdown', () => App.toggleMute());
+    this.skillText = txt(this, 14, H - 78, '', 12, TIERS[this.ship.tier].color).setOrigin(0, 1).setDepth(10);
     this.coinText = txt(this, 14, H - 34, '', 14, '#ffd23f').setOrigin(0, 1).setDepth(10);
     this.weaponText = txt(this, 14, H - 12, '', 15, '#6fe3ff').setOrigin(0, 1).setDepth(10);
     this.starBtn = this.add.image(W - 46, H - 52, 'starBtn').setDepth(10).setInteractive({ useHandCursor: true });
@@ -1729,12 +2028,12 @@ class Game extends Phaser.Scene {
     this.muteText.setText(sfx.muted ? 'เสียง: ปิด (M)' : 'เสียง: เปิด (M)');
     let w = '';
     if (this.inBonus) w = 'CHALLENGE STAGE';
-    else if (this.wave > 0) w = this.wave === WAVES_PER_LOOP ? 'BOSS' : `WAVE ${this.wave}/${WAVES_PER_LOOP}`;
+    else if (this.wave > 0) w = this.wave === WAVES_PER_LOOP ? (this.boss && this.boss.active ? 'BOSS · ' + this.boss.getData('def').name : 'BOSS') : `WAVE ${this.wave}/${WAVES_PER_LOOP}`;
     this.waveText.setText(this.loop > 1 && w ? `รอบ ${this.loop} · ${w}` : w);
     this.lifeIcons.forEach((ic, i) => ic.setVisible(i < this.lives));
     const wp = WEAPONS[this.weapon];
     this.weaponText.setText(wp.name + ' ' + '■'.repeat(this.power) + '□'.repeat(MAX_POWER - this.power)).setColor(wp.color);
-    this.coinText.setText('คริสตัล +' + fmt(this.runCoins));
+    this.coinText.setText('คริสตัล +' + fmt(this.runCoins) + (this.runTickets ? ` · ตั๋ว +${this.runTickets}` : ''));
     // ป้ายใต้ปุ่มอมตะ: บอกปุ่มที่ต้องกด (มือถือบอกให้แตะ) ยังไม่มีอมตะจะจางลง
     this.starText.setText(IS_TOUCH ? 'แตะปุ่มดาว' : this.starHeld ? 'กด Space bar' : 'Space bar')
       .setAlpha(this.starHeld ? 1 : 0.45);
@@ -1815,7 +2114,7 @@ class Game extends Phaser.Scene {
   //  อาวุธ
   // =========================================================
   fireDelay() {
-    const d = WEAPONS[this.weapon].delay * this.ship.fire;
+    const d = WEAPONS[this.weapon].delay * this.ship.fire * (this.time.now < this.overdriveUntil ? 0.67 : 1);
     return this.fever ? d * 0.5 : d;       // FEVER ยิงเร็วขึ้นเท่าตัว
   }
 
@@ -1865,7 +2164,7 @@ class Game extends Phaser.Scene {
   }
 
   fireDrones() {
-    this.drones.forEach((d, i) => this.spawnBullet({ key: 'droneShot', x: d.x, y: d.y - 10, vx: 0, vy: -720, dmg: 1 }, i));
+    this.drones.forEach((d, i) => { if (d.visible) this.spawnBullet({ key: 'droneShot', x: d.x, y: d.y - 10, vx: 0, vy: -720, dmg: 1 }, i); });
   }
 
   nearestEnemy(x, y) {
@@ -1912,6 +2211,11 @@ class Game extends Phaser.Scene {
       this.time.delayedCall(rand(2500, 9000), () => {
         if (!this.over && this.waveActive && this.wave === w) this.spawnLetter();
       });
+      if (Math.random() < this.letterMul - 1) {
+        this.time.delayedCall(rand(11000, 16000), () => {
+          if (!this.over && this.waveActive && this.wave === w) this.spawnLetter();
+        });
+      }
 
       if ((w >= 2 || this.loop >= 2) && Math.random() < 0.7) {
         this.time.delayedCall(rand(3000, 7000), () => {
@@ -1942,7 +2246,7 @@ class Game extends Phaser.Scene {
     e.body.setSize(def.body[0], def.body[1]);
     let hpBonus = Math.floor((this.loop - 1) / 2);
     if (type === 'tank') hpBonus = (this.loop - 1) * 2;
-    if (type === 'cargo') hpBonus = (this.loop - 1) * 4;
+    if (type === 'cargo' || type === 'pillarS' || type === 'pillarH') hpBonus = (this.loop - 1) * 4;
     const hp = def.hp + hpBonus;
     e.setData(Object.assign({ type, hp, maxHp: hp, score: def.score, tint: 0xffffff, state: 'entering' }, extra));
     return e;
@@ -2134,7 +2438,6 @@ class Game extends Phaser.Scene {
   enemyTurn() {
     if (this.onair) return;
     const b = this.boss;
-    if (b && b.active && b.getData('state') === 'fight') this.bossAttack();
 
     const ready = this.enemies.getChildren().filter(e =>
       e.active && e.visible && (e.getData('state') === 'formation' || e.getData('state') === 'snake') && e.y > 0 && e.y < H * 0.6);
@@ -2267,10 +2570,18 @@ class Game extends Phaser.Scene {
 
   spawnBoss(def) {
     const hp = Math.round(def.hp * (1 + (this.loop - 1) * 0.6));
+    // รอบ 4 ขึ้นไป บอสใช้ 2 กลไกผสมกัน
+    const idx = BOSSES.indexOf(def);
+    this.bossMechs = this.loop >= 4 ? [def.mech, BOSSES[(idx + 1) % BOSSES.length].mech] : [def.mech];
+    this.mechTurn = 0;
+    this.bossCD = 1200;
+    this.mechCD = 4000;
+    this.tweens.add({ targets: this.bossShade, fillAlpha: 0.32, duration: 1500 });
     const b = this.enemies.create(W / 2, -100, def.key).setDepth(2);
     b.body.setSize(def.body[0], def.body[1]);
     b.setData({ type: 'boss', boss: true, def, hp, maxHp: hp, score: 5000 * this.loop, tint: 0xffffff, state: 'entering', phase: 1 });
     this.boss = b;
+    this.updateHud();
     this.bossPhase = 0;
     this.bossTurn = 0;
     this.weakGlows = def.weak.map(() => this.add.image(0, -200, 'weakGlow').setDepth(3).setBlendMode('ADD'));
@@ -2278,15 +2589,149 @@ class Game extends Phaser.Scene {
     this.enraged = false;
     this.tweens.add({
       targets: b, y: def.y, duration: 2200, ease: 'Sine.easeOut',
-      onComplete: () => { if (b.active) b.setData('state', 'fight'); },
+      onComplete: () => {
+        if (!b.active) return;
+        b.setData('state', 'fight');
+        this.cameras.main.shake(450, 0.02);   // บอสลงจอ: สั่น + คำราม
+        sfx.roar();
+      },
     });
     this.waveActive = true;
+  }
+
+  // กลไกประจำตัวบอส
+  bossMech() {
+    const m = this.bossMechs[this.mechTurn++ % this.bossMechs.length];
+    const phase = this.boss.getData('phase');
+    if (m === 'spawner') this.raisePillar('pillarS');
+    else if (m === 'healer') this.raisePillar('pillarH');
+    else this.bossFreeze(phase);
+  }
+
+  // ปักเสา: วงเตือนบนพื้นก่อน แล้วเสาค่อยโผล่ขึ้นมา
+  raisePillar(type) {
+    const max = type === 'pillarS' ? (this.loop >= 3 ? 3 : 2) : 2;
+    if (this.enemies.getChildren().filter(e => e.active && e.getData('type') === type).length >= max) return;
+    const x = rand(60, W - 60), y = rand(270, 410);
+    const color = type === 'pillarS' ? 0xff5a3c : 0x7dff6a;
+    const mark = this.add.image(x, y + 30, 'ring').setDepth(1).setTint(color).setScale(0.9, 0.35).setAlpha(0);
+    this.tweens.add({ targets: mark, alpha: 0.9, duration: 120, yoyo: true, repeat: 2 });
+    this.time.delayedCall(750, () => {
+      mark.destroy();
+      if (this.over || !this.boss || !this.boss.active) return;
+      const e = this.makeEnemy(type, { state: 'pillar', pillar: true, next: this.time.now + 1200 });
+      e.setVisible(true).setPosition(x, y).setScale(1, 0.05);
+      this.tweens.add({ targets: e, scaleY: 1, duration: 320, ease: 'Back.easeOut' });
+      this.sparks.explode(10, x, y + 30);
+      this.cameras.main.shake(120, 0.006);
+      this.popText(x, y - 50, type === 'pillarS' ? 'เสาฐานทัพ! ยิงทิ้งเร็ว' : 'เสาฮีลบอส! ยิงทิ้งเร็ว', type === 'pillarS' ? '#ff8a6a' : '#7dff6a', 14);
+    });
+  }
+
+  updatePillars(time) {
+    const b = this.boss;
+    for (const e of this.enemies.getChildren()) {
+      if (!e.active || !e.getData('pillar') || time < e.getData('next')) continue;
+      if (e.getData('type') === 'pillarS') {
+        // ปล่อยลูกน้องพุ่งใส่ผู้เล่น
+        e.setData('next', time + Math.max(1400, 2400 - (this.loop - 1) * 150));
+        const m = this.makeEnemy('kamikaze', { state: 'kamikaze' }).setVisible(true).setPosition(e.x, e.y - 36);
+        const a = this.aimAt(e.x, e.y - 36);
+        this.physics.velocityFromRotation(a, 120, m.body.velocity);
+        m.body.setAcceleration(Math.cos(a) * 520, Math.sin(a) * 520);
+        m.body.setMaxVelocity(560);
+        this.sparks.explode(5, e.x, e.y - 36);
+      } else if (b && b.active) {
+        // ฟื้นเลือดบอส มีเส้นสีเขียวโยงให้เห็น
+        e.setData('next', time + 1000);
+        const max = b.getData('maxHp');
+        const amt = Math.max(1, Math.round(max * 0.015));
+        b.setData('hp', Math.min(max, b.getData('hp') + amt));
+        const g = this.add.graphics().setDepth(2);
+        g.lineStyle(5, 0x7dff6a, 0.35).lineBetween(e.x, e.y - 30, b.x, b.y);
+        g.lineStyle(2, 0xeaffef, 0.9).lineBetween(e.x, e.y - 30, b.x, b.y);
+        this.tweens.add({ targets: g, alpha: 0, duration: 450, onComplete: () => g.destroy() });
+        this.popText(b.x + rand(-30, 30), b.y - 50, '+' + amt, '#7dff6a', 13);
+        sfx.heal();
+      }
+    }
+  }
+
+  // วงน้ำแข็ง: กระพริบเตือน 2 วินาที แล้วระเบิด อยู่ในวง = โดนแช่
+  bossFreeze(phase) {
+    const n = 2 + phase;
+    for (let i = 0; i < n; i++) {
+      this.time.delayedCall(i * 550, () => {
+        if (this.over || !this.boss || !this.boss.active) return;
+        const x = i === 0 ? this.player.x : Phaser.Math.Clamp(this.player.x + rand(-150, 150), 60, W - 60);
+        const y = i === 0 ? this.player.y : Phaser.Math.Clamp(this.player.y + rand(-90, 50), H * 0.35, H - 60);
+        this.freezeMark(x, y);
+      });
+    }
+  }
+
+  freezeMark(x, y) {
+    const R = 64, g = this.add.graphics().setDepth(7);
+    sfx.tick();
+    this.tweens.addCounter({
+      from: 0, to: 1, duration: 2000,
+      onUpdate: tw => {
+        const t = tw.getValue(), blink = Math.floor(t * (6 + t * 12)) % 2;
+        g.clear();
+        g.fillStyle(0x9fe8ff, 0.08 + (blink ? 0.14 : 0)).fillCircle(x, y, R);
+        g.lineStyle(3, 0x9fe8ff, 0.95).strokeCircle(x, y, R);
+        g.lineStyle(2, 0xffffff, 0.85).strokeCircle(x, y, Math.max(2, R * (1 - t)));
+      },
+      onComplete: () => {
+        g.destroy();
+        if (this.over) return;
+        this.debris.meteor.explode(16, x, y);
+        this.grazeSparks.explode(14, x, y);
+        const r = this.add.image(x, y, 'ring').setDepth(7).setBlendMode('ADD').setTint(0x9fe8ff).setScale(0.6);
+        this.tweens.add({ targets: r, scale: 2.4, alpha: 0, duration: 380, onComplete: () => r.destroy() });
+        sfx.shatter();
+        const now = this.time.now;
+        const inside = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) < R;
+        if (inside && this.player.active && now >= this.starUntil && now >= this.invulnUntil && now >= this.phaseUntil) {
+          this.iceUntil = now + 1400;
+          this.popText(this.player.x, this.player.y - 56, 'โดนแช่แข็ง!', '#9fe8ff', 18);
+        }
+      },
+    });
+  }
+
+  // ท่าไม้ตายเฟส 3: เส้นเตือนสีแดงหลายแนว แล้วลำแสงยิงลงมา (เว้นช่องให้หลบเสมอ)
+  bossLasers(n) {
+    const xs = [Phaser.Math.Clamp(this.player.x + rand(-20, 20), 30, W - 30)];
+    for (let tries = 0; xs.length < n && tries < 40; tries++) {
+      const x = rand(30, W - 30);
+      if (xs.every(o => Math.abs(o - x) > 110)) xs.push(x);
+    }
+    xs.forEach(x => {
+      const warn = this.add.rectangle(x, H / 2, 46, H, 0xff3b3b, 0.12).setDepth(1);
+      const edge = this.add.rectangle(x, H / 2, 3, H, 0xff3b3b, 0.8).setDepth(1);
+      this.tweens.add({ targets: [warn, edge], alpha: 0.35, duration: 140, yoyo: true, repeat: 3 });
+      this.time.delayedCall(1150, () => {
+        warn.destroy();
+        edge.destroy();
+        if (this.over) return;
+        const beam = this.add.rectangle(x, H / 2, 46, H, 0xff3b3b, 0.85).setDepth(8).setBlendMode('ADD');
+        const coreB = this.add.rectangle(x, H / 2, 12, H, 0xffffff, 0.95).setDepth(8);
+        this.tweens.add({ targets: [beam, coreB], scaleX: 0, alpha: 0, duration: 420, ease: 'Cubic.easeIn', onComplete: () => { beam.destroy(); coreB.destroy(); } });
+        if (this.player.active && Math.abs(this.player.x - x) < 28 && this.time.now >= this.phaseUntil) this.playerHit();
+      });
+    });
+    this.cameras.main.shake(200, 0.006);
+    sfx.lock();
   }
 
   bossAttack() {
     const b = this.boss, def = b.getData('def'), phase = b.getData('phase');
     const avail = def.attacks.slice(0, phase + 1);
-    this.bossDo(avail[this.bossTurn++ % avail.length], b, phase);
+    const turn = this.bossTurn++;
+    this.bossDo(avail[turn % avail.length], b, phase);
+    if (phase >= 2 && turn % 2 === 0) this.time.delayedCall(260, () => { if (b.active && !this.over) this.bossDo('aimed', b, phase); });
+    if (phase >= 3 && turn % 4 === 3) this.bossLasers(2 + (this.loop >= 3 ? 1 : 0));
   }
 
   bossDo(kind, b, phase) {
@@ -2294,7 +2739,7 @@ class Game extends Phaser.Scene {
     const alive = () => b.active && !this.over;
     const later = (ms, fn) => this.time.delayedCall(ms, () => { if (alive()) fn(); });
     if (kind === 'ring') {
-      const n = 12 + phase * 3;
+      const n = 16 + phase * 4;
       for (let i = 0; i < n; i++) this.enemyShoot(b.x, b.y + 30, i / n * Math.PI * 2, spd);
     } else if (kind === 'fan') {
       const k = phase >= 3 ? 4 : 3;
@@ -2303,7 +2748,7 @@ class Game extends Phaser.Scene {
       for (let i = 0; i < [3, 5, 7][phase - 1]; i++) later(i * 140, () => this.enemyShoot(b.x, b.y + 40, this.aimAt(b.x, b.y), spd + 150));
     } else if (kind === 'spiral') {
       const base = Math.random() * Math.PI;
-      for (let i = 0; i < 14 + phase * 2; i++) later(i * 45, () => this.enemyShoot(b.x, b.y + 30, base + i * 0.45, spd));
+      for (let i = 0; i < 18 + phase * 4; i++) later(i * 40, () => this.enemyShoot(b.x, b.y + 30, base + i * 0.45, spd));
     } else if (kind === 'twin') {
       for (const wx of [-62, 62]) {
         for (let i = 0; i < 3 + phase; i++) later(i * 110, () => {
@@ -2315,7 +2760,7 @@ class Game extends Phaser.Scene {
       const gap = rand(70, W - 70);
       for (let x = 16; x < W; x += 26) if (Math.abs(x - gap) > 48) this.enemyShoot(x, b.y + 30, Math.PI / 2, 130 + this.loop * 15);
     } else if (kind === 'rain') {
-      for (let i = 0; i < 10 + phase * 3; i++) later(i * 70, () => this.enemyShoot(rand(10, W - 10), -10, Math.PI / 2 + frand(-0.2, 0.2), spd + 30));
+      for (let i = 0; i < 14 + phase * 4; i++) later(i * 60, () => this.enemyShoot(rand(10, W - 10), -10, Math.PI / 2 + frand(-0.2, 0.2), spd + 30));
     } else if (kind === 'double') {
       const base = Math.random() * Math.PI * 2;
       for (let i = 0; i < 12; i++) later(i * 60, () => {
@@ -2323,7 +2768,7 @@ class Game extends Phaser.Scene {
         this.enemyShoot(b.x, b.y, base + Math.PI - i * 0.5, spd);
       });
     } else if (kind === 'burst') {
-      const n = 24, gapAt = rand(0, n - 1);
+      const n = 30, gapAt = rand(0, n - 1);
       for (let i = 0; i < n; i++) {
         if (((i - gapAt + n) % n) < 4) continue;
         this.enemyShoot(b.x, b.y, i / n * Math.PI * 2, spd + 10);
@@ -2338,8 +2783,10 @@ class Game extends Phaser.Scene {
     this.hitStop(140);
     this.cameras.main.flash(220, 255, 80, 80);
     this.cameras.main.shake(300, 0.01);
-    this.banner(`PHASE ${p}`, p === 3 ? 'บอสโกรธจัด ยิงหนักสุด!' : 'บอสเร่งการโจมตี', { size: 40 });
+    this.banner(`PHASE ${p}`, p === 3 ? 'บอสโกรธจัด ระวังลำแสง!' : 'บอสเร่งการโจมตี', { size: 40 });
     sfx.alarm();
+    sfx.roar();
+    if (p === 3) { b.setData('tint', 0xff8a8a); b.setTint(0xff8a8a); }   // เฟส 3 ตัวแดง
   }
 
   // =========================================================
@@ -2369,7 +2816,7 @@ class Game extends Phaser.Scene {
       this.sparks.explode(crit ? 8 : 3, b.x, b.y);
     }
     const t = e.getData('type');
-    if (t === 'boss' || t === 'tank' || t === 'cargo') this.popDmg(e, b.x, b.y, dmg, crit);
+    if (t === 'boss' || t === 'tank' || t === 'cargo' || t === 'pillarS' || t === 'pillarH') this.popDmg(e, b.x, b.y, dmg, crit);
     this.damage(e, dmg);
   }
 
@@ -2455,6 +2902,7 @@ class Game extends Phaser.Scene {
     this.aura.setVisible(true);
     this.fireCD = 0;
     sfx.fever();
+    if (this.shipId === 'nova') this.novaBlast();
   }
 
   endFever() {
@@ -2471,7 +2919,14 @@ class Game extends Phaser.Scene {
   onGraze(b) {
     this.graze++;
     this.registerHit();
-    this.addScore(Math.round(20 * this.multiplier));
+    const phantom = this.shipId === 'phantom';
+    this.addScore(Math.round(20 * this.multiplier * (phantom ? 2 : 1)));
+    if (phantom && this.time.now >= this.phaseUntil && ++this.skGrazes >= this.sk.need) {
+      this.skGrazes = 0;
+      this.phaseUntil = this.time.now + this.sk.dur;
+      this.popText(this.player.x, this.player.y - 56, 'ล่องหน!', '#c18bff', 18);
+      sfx.star();
+    }
     this.grazeSparks.explode(5, b.x, b.y);
     const now = this.time.now;
     if (now - this.lastGrazeFx > 260) {
@@ -2491,6 +2946,12 @@ class Game extends Phaser.Scene {
 
     if (byPlayer) {
       this.kills++;
+      if (this.shipId === 'bolt' && this.time.now >= this.overdriveUntil && ++this.skKills >= this.sk.need) {
+        this.skKills = 0;
+        this.overdriveUntil = this.time.now + this.sk.dur;
+        this.popText(this.player.x, this.player.y - 56, 'OVERDRIVE!', '#36f1ff', 18);
+        sfx.power();
+      }
       const bonus = state === 'diving' ? 50 : 0;
       const pts = Math.round((e.getData('score') + bonus) * this.multiplier / 10) * 10;
       this.addScore(pts);
@@ -2503,7 +2964,7 @@ class Game extends Phaser.Scene {
         this.dropPowerup(x, y);
       }
       if (type === 'tank') this.hitStop(45);
-      if (!isBoss && state !== 'bonus' && Math.random() < 0.015) this.spawnLetter(x, y);
+      if (!isBoss && state !== 'bonus' && Math.random() < 0.015 * this.letterMul) this.spawnLetter(x, y);
     }
     if (state === 'bonus') this.bonusTick(byPlayer);
 
@@ -2512,6 +2973,11 @@ class Game extends Phaser.Scene {
       this.waveActive = false;
       this.weakGlows.forEach(g => g.destroy());
       this.weakGlows = [];
+      for (const pe of this.enemies.getChildren().slice()) {
+        if (pe.active && pe.getData('pillar')) { this.explode(pe.x, pe.y, 1, 'cargo'); pe.destroy(); }
+      }
+      this.iceUntil = 0;
+      this.tweens.add({ targets: this.bossShade, fillAlpha: 0, duration: 1200 });
       this.ebullets.getChildren().forEach(b => { if (b.active) b.disableBody(true, true); });
       this.hitStop(260);
       this.cameras.main.shake(600, 0.015);
@@ -2521,6 +2987,7 @@ class Game extends Phaser.Scene {
         this.dropPowerup(x + 40, y, this.weapon);
       });
       this.time.delayedCall(900, () => this.spawnLetter(x, y));
+      if (Math.random() < 0.6) this.time.delayedCall(1200, () => this.dropPowerup(x + 40, y + 20, 'ticket'));
       this.time.delayedCall(2200, () => { if (!this.over) this.startBonus(); });
     }
     e.destroy();
@@ -2546,7 +3013,7 @@ class Game extends Phaser.Scene {
     let type = forced;
     if (!type) {
       const starOnScreen = this.powerups.getChildren().some(o => o.getData('type') === 'star');
-      const pool = Object.entries(ITEMS).filter(([k]) =>
+      const pool = Object.entries(ITEMS).filter(([k, v]) => v.weight > 0 &&
         (k !== 'life' || this.lives < MAX_LIVES) && (k !== 'star' || (!this.starHeld && !starOnScreen)));
       let r = Math.random() * pool.reduce((s, [, v]) => s + v.weight, 0);
       for (const [k, v] of pool) { r -= v.weight; if (r <= 0) { type = k; break; } }
@@ -2575,12 +3042,20 @@ class Game extends Phaser.Scene {
         this.weapon = type;
         this.popText(x, y, WEAPONS[type].name + '!', WEAPONS[type].color);
       }
+      if (this.shipId === 'comet') {
+        this.dashUntil = this.time.now + this.sk.dur;
+        this.popText(this.player.x, this.player.y - 56, 'พุ่ง!', '#9ff3ff', 18);
+      }
     } else if (type === 'shield') {
       if (this.shield) { this.addScore(300); this.popText(x, y, '+300', '#9ff3ff'); }
       else { this.shield = true; this.popText(x, y, 'เกราะ!', '#9ff3ff'); }
     } else if (type === 'star') {
       this.starHeld = true;
       this.popText(x, y, IS_TOUCH ? 'ได้อมตะ! แตะปุ่มดาว' : 'ได้อมตะ! กด Space bar', '#fff35a');
+    } else if (type === 'ticket') {
+      this.runTickets++;
+      this.popText(x, y, 'ตั๋วสุ่ม +1!', '#ffd23f', 18);
+      sfx.letter(4);
     } else if (type === 'magnet') {
       this.magnetUntil = this.time.now + MAGNET_MS;
       this.popText(x, y, 'แม่เหล็ก! ดูดของไกลขึ้น', '#ff8a6a');
@@ -2603,6 +3078,11 @@ class Game extends Phaser.Scene {
   collectCoin(c) {
     c.destroy();
     this.runCoins++;
+    if (this.shipId === 'magneto' && this.time.now >= this.superMagnetUntil && ++this.skCoins >= this.sk.need) {
+      this.skCoins = 0;
+      this.superMagnetUntil = this.time.now + this.sk.dur;
+      this.popText(this.player.x, this.player.y - 56, 'ดูดทั้งจอ!', '#ff8a6a', 18);
+    }
     this.updateHud();
     const now = this.time.now;
     if (now - this.lastCoinSfx > 70) { this.lastCoinSfx = now; sfx.coin(); }
@@ -2614,6 +3094,79 @@ class Game extends Phaser.Scene {
     cam.zoomTo(to, inMs, 'Sine.easeOut', true);
     clearTimeout(this._zoomBack);
     this._zoomBack = setTimeout(() => { if (this.sys && this.sys.isActive()) cam.zoomTo(1, outMs, 'Sine.easeInOut', true); }, inMs + 30);
+  }
+
+  // =========================================================
+  //  สกิลตัวละคร
+  // =========================================================
+  updateSkill(time) {
+    const id = this.shipId, sk = this.sk;
+    const sec = until => ((until - time) / 1000).toFixed(1);
+    let label = '';
+    if (id === 'bolt') {
+      label = time < this.overdriveUntil ? `OVERDRIVE ${sec(this.overdriveUntil)}` : `สกิล ${this.skKills}/${sk.need} ตัว`;
+    } else if (id === 'iron') {
+      if (!this.shieldRegenAt) this.shieldRegenAt = time + sk.every;
+      if (time >= this.shieldRegenAt) {
+        this.shieldRegenAt = time + sk.every;
+        if (!this.shield) { this.shield = true; this.popText(this.player.x, this.player.y - 56, 'เกราะฟื้น!', '#9ff3ff', 16); }
+      }
+      label = this.shield ? 'เกราะพร้อม' : `เกราะฟื้นใน ${Math.ceil((this.shieldRegenAt - time) / 1000)} วิ`;
+    } else if (id === 'magneto') {
+      label = time < this.superMagnetUntil ? `ดูดทั้งจอ ${sec(this.superMagnetUntil)}` : `สกิล ${this.skCoins}/${sk.need} คริสตัล`;
+    } else if (id === 'comet') {
+      label = time < this.dashUntil ? `พุ่ง! ${sec(this.dashUntil)}` : 'เก็บอาวุธ = พุ่ง';
+      if (time < this.dashUntil && time - this.lastGhost > 45) {   // เงาตามตัวตอนพุ่ง
+        this.lastGhost = time;
+        const gh = this.add.image(this.player.x, this.player.y, this.ship.key).setDepth(3).setAlpha(0.5).setTint(0x9ff3ff).setBlendMode('ADD');
+        this.tweens.add({ targets: gh, alpha: 0, scale: 0.8, duration: 300, onComplete: () => gh.destroy() });
+      }
+    } else if (id === 'storm') {
+      label = `ยิงรอบทิศใน ${fmt(Math.max(0, this.nextStormAt - this.score))} แต้ม`;
+    } else if (id === 'falcon') {
+      label = this.fever ? 'ยานลูก 4 ลำ!' : 'ยานลูก 2 ลำ';
+    } else if (id === 'phantom') {
+      if (time < this.phaseUntil) { this.player.setAlpha(0.35 + Math.sin(time / 60) * 0.1).setTint(0xc18bff); label = `ล่องหน ${sec(this.phaseUntil)}`; }
+      else label = `สกิล ${this.skGrazes}/${sk.need} เฉียด`;
+    } else if (id === 'prism') {
+      label = `ON AIR นานขึ้น +${(sk.onair / 1000).toFixed(1)} วิ`;
+    } else if (id === 'nova') {
+      if (!this.novaAt) this.novaAt = time + sk.every;
+      if (time >= this.novaAt && this.waveActive && !this.fever && !this.onair) {
+        this.novaAt = time + sk.every;
+        this.combo = Math.max(this.combo, FEVER_AT);
+        this.registerHit();
+      }
+      label = this.fever ? 'FEVER!' : `FEVER อัตโนมัติใน ${Math.ceil(Math.max(0, this.novaAt - time) / 1000)} วิ`;
+    }
+    this.skillText.setText(`${this.ship.name} Lv${this.lv} · ${label}`);
+  }
+
+  // พายุ: ยิงกระสุนรอบทิศ 360°
+  stormRing() {
+    if (this.over || !this.player.active) return;
+    const n = this.sk.n;
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2;
+      this.spawnBullet({ key: 'bullet', x: this.player.x, y: this.player.y, vx: Math.cos(a) * 640, vy: Math.sin(a) * 640, dmg: 1 }, i);
+    }
+    const r = this.add.image(this.player.x, this.player.y, 'ring').setDepth(5).setBlendMode('ADD').setTint(0xff4fd8).setScale(0.3);
+    this.tweens.add({ targets: r, scale: 4, alpha: 0, duration: 450, onComplete: () => r.destroy() });
+    this.popText(this.player.x, this.player.y - 56, 'พายุหมุน!', '#ff4fd8', 18);
+    sfx.shoot('laser');
+  }
+
+  // โนวา: คลื่นล้างกระสุนศัตรูทั้งจอ
+  novaBlast() {
+    let n = 0;
+    for (const b of this.ebullets.getChildren()) {
+      if (!b.active) continue;
+      if (n++ < 40) this.grazeSparks.explode(3, b.x, b.y);
+      b.disableBody(true, true);
+    }
+    const r = this.add.image(this.player.x, this.player.y, 'ring').setDepth(6).setBlendMode('ADD').setTint(0xffd23f).setScale(0.3);
+    this.tweens.add({ targets: r, scale: 18, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => r.destroy() });
+    this.cameras.main.flash(250, 255, 230, 140);
   }
 
   // อมตะ 3 วินาที: กระสุนศัตรูแตกเมื่อโดน ชนศัตรูแล้วศัตรูแตก
@@ -2724,10 +3277,10 @@ class Game extends Phaser.Scene {
   startOnAir() {
     if (this.onair || this.over) return;
     const now = this.time.now;
-    Object.assign(this, { onair: true, onairUntil: now + ONAIR_MS, onairGain: 0, onairChain: 0, mobCD: 700, mobs: [], beamX: this.player.x });
+    Object.assign(this, { onair: true, onairUntil: now + this.onairMs, onairGain: 0, onairChain: 0, mobCD: 700, mobs: [], beamX: this.player.x });
     this.starUntil = Math.max(this.starUntil, this.onairUntil + 700);
     this.invulnUntil = Math.max(this.invulnUntil, this.starUntil);
-    if (this.waveStart) this.waveStart += ONAIR_MS;
+    if (this.waveStart) this.waveStart += this.onairMs;
     this.letters.getChildren().slice().forEach(l => this.removeLetter(l));
     for (const b of this.ebullets.getChildren()) if (b.active) { this.grazeSparks.explode(3, b.x, b.y); b.disableBody(true, true); }
 
@@ -2765,7 +3318,7 @@ class Game extends Phaser.Scene {
   // ศัตรูถูกดูดเข้าลำแสงแล้วแตก
   suck(e) {
     const st = e.getData('state');
-    if (!e.active || !e.visible || e.getData('boss') || st === 'sucked' || st === 'cargo') return;
+    if (!e.active || !e.visible || e.getData('boss') || e.getData('pillar') || st === 'sucked' || st === 'cargo') return;
     e.setData('state', 'sucked');
     if (e.body) { e.body.setVelocity(0, 0); e.body.setAcceleration(0, 0); }
     this.tweens.add({
@@ -2788,7 +3341,7 @@ class Game extends Phaser.Scene {
   popMob(m) {
     this.onairChain++;
     // แต้มต่อตัวโตตามจำนวนที่ทำลายต่อเนื่อง (เพดาน 50 ตัว) x2 คงที่ ไม่ซ้อนกับตัวคูณคอมโบ
-    const pts = Math.round((40 + Math.min(this.onairChain, 50) * 3) * 2 / 10) * 10;
+    const pts = Math.round((40 + Math.min(this.onairChain, 50) * 3) * 2 * (this.shipId === 'prism' ? this.sk.bonus : 1) / 10) * 10;
     this.onairGain += pts;
     this.addScore(pts);
     this.registerHit();
@@ -2917,6 +3470,7 @@ class Game extends Phaser.Scene {
 
   addScore(n) {
     this.score += n;
+    if (this.score >= this.nextStormAt) { this.nextStormAt += this.sk.every; this.stormRing(); }
     this.scoreText.setText('คะแนน ' + fmt(this.score));
     this.checkRank();
   }
@@ -2956,11 +3510,17 @@ class Game extends Phaser.Scene {
     this.over = true;
     if (this.fever) this.endFever();
 
+    // คะแนนแปลงเป็นคริสตัล 1 ต่อ 1,000 แต้ม · บันทึกเฉพาะตอนล็อกอิน
     const d = Save.data;
-    d.coins += this.runCoins;
-    const localBest = this.score > d.best;
-    if (localBest) d.best = this.score;
-    Save.save();
+    this.scoreBonus = Math.floor(this.score / 1000);
+    let localBest = false;
+    if (Save.loggedIn) {
+      d.coins += this.runCoins + this.scoreBonus;
+      d.tickets += this.runTickets;
+      localBest = this.score > d.best;
+      if (localBest) d.best = this.score;
+      Save.flush();
+    }
 
     // ถ่ายภาพหน้าจอตอนจบก่อนขึ้นหน้าสรุป เพื่อใช้ทำการ์ดแชร์
     this.game.renderer.snapshot(img => this.showResults(img, localBest));
@@ -2971,7 +3531,8 @@ class Game extends Phaser.Scene {
     txt(this, W / 2, 96, 'เกมจบ', 40, '#ff6b81', { stroke: '#000000', strokeThickness: 6 }).setOrigin(0.5).setDepth(21);
     // ชื่อนักบิน: ตัวใหญ่ เรืองแสง เด้งเข้ามา
     txt(this, W / 2, 140, 'นักบิน', 14, '#a9b9d6').setOrigin(0.5).setDepth(21);
-    const nameT = txt(this, W / 2, 178, Save.data.name, 40, '#ffffff', { stroke: '#2a0a4a', strokeThickness: 7 })
+    const nick = Save.user ? Save.user.nickname : 'ผู้เล่นทั่วไป';
+    const nameT = txt(this, W / 2, 178, nick, 40, '#ffffff', { stroke: '#2a0a4a', strokeThickness: 7 })
       .setOrigin(0.5).setDepth(21).setShadow(0, 0, '#ff3df2', 18, true, true)
       .setTint(0x7df9ff, 0xff7ae6, 0x7df9ff, 0xff7ae6);
     if (nameT.width > W - 40) nameT.setScale((W - 40) / nameT.width);
@@ -2981,12 +3542,14 @@ class Game extends Phaser.Scene {
     if (localBest && this.score > 0) txt(this, W / 2, 278, 'สถิติใหม่ของคุณ!', 16, '#6fe3ff').setOrigin(0.5).setDepth(21);
     const rankLine = txt(this, W / 2, 314, '', 20, '#e8f3ff').setOrigin(0.5).setDepth(21);
     const rankSub = txt(this, W / 2, 342, '', 14, '#a9b9d6').setOrigin(0.5).setDepth(21);
-    txt(this, W / 2, 388,
-      `ได้คริสตัล +${fmt(this.runCoins)} (รวม ${fmt(Save.data.coins)})`,
-      15, '#c3d3ee', { lineSpacing: 4 }).setOrigin(0.5).setDepth(21);
+    txt(this, W / 2, 392, Save.loggedIn
+      ? `ได้คริสตัล +${fmt(this.runCoins + this.scoreBonus)} (จากแต้ม ${fmt(this.scoreBonus)}) · ตั๋ว +${this.runTickets}\n` +
+        `รวม คริสตัล ${fmt(Save.data.coins)} · ตั๋วสุ่ม ${fmt(Save.data.tickets)} ใบ`
+      : 'ไม่ได้ล็อกอิน: คริสตัลและตั๋วจากรอบนี้ไม่ถูกบันทึก',
+      14, '#c3d3ee', { lineSpacing: 4 }).setOrigin(0.5).setDepth(21);
 
     const info = {
-      shot, name: Save.data.name, score: this.score, loop: this.loop, maxCombo: this.maxCombo, graze: this.graze,
+      shot, name: nick, score: this.score, loop: this.loop, maxCombo: this.maxCombo, graze: this.graze,
       shipKey: this.ship.key, isBest: localBest && this.score > 0, rank: null, total: null, rankOne: false,
     };
     const remake = () => {
@@ -3001,15 +3564,14 @@ class Game extends Phaser.Scene {
     $('overBar').hidden = false;
     this.input.keyboard.once('keydown-ENTER', () => { if (!UI.modalOpen()) App.again(); });
 
-    if (!Board.pid) {
-      rankLine.setText('ออฟไลน์');
-      rankSub.setText('คะแนนบันทึกไว้ในเครื่องนี้เท่านั้น');
+    if (!Save.loggedIn) {
+      rankLine.setText('ไม่ได้ล็อกอิน');
+      rankSub.setText('สมัครหรือล็อกอินที่หน้าแรก เพื่อบันทึกคะแนนขึ้นตาราง');
       return;
     }
     rankLine.setText('กำลังส่งคะแนน...');
     Board.submit({
-      key: Save.data.key, name: Save.data.name, score: this.score, loop: this.loop,
-      wave: this.wave, maxCombo: this.maxCombo, graze: this.graze, ship: Save.data.ship,
+      score: this.score, loop: this.loop, wave: this.wave, maxCombo: this.maxCombo, graze: this.graze, ship: this.shipId,
     }).then(res => {
       if (!this.sys.isActive()) return;
       const runRank = Board.standing(this.score).rank;
@@ -3030,8 +3592,8 @@ class Game extends Phaser.Scene {
     }).catch(err => {
       if (!this.sys.isActive()) return;
       const msg = String(err && err.message);
-      rankLine.setText(msg === 'too_fast' ? 'ส่งคะแนนถี่เกินไป' : msg === 'bad_name' ? 'ชื่อนี้ใช้ไม่ได้' : 'ส่งคะแนนไม่สำเร็จ');
-      rankSub.setText(msg === 'too_fast' ? 'รอสักครู่แล้วเล่นใหม่ได้เลย' : msg === 'bad_name' ? 'กดหน้าแรกแล้วเปลี่ยนชื่อ จะส่งคะแนนได้' : 'ตรวจอินเทอร์เน็ต คะแนนบันทึกในเครื่องแล้ว');
+      rankLine.setText(msg === 'too_fast' ? 'ส่งคะแนนถี่เกินไป' : msg === 'unauthorized' ? 'การล็อกอินหมดอายุ' : 'ส่งคะแนนไม่สำเร็จ');
+      rankSub.setText(msg === 'too_fast' ? 'รอสักครู่แล้วเล่นใหม่ได้เลย' : msg === 'unauthorized' ? 'ล็อกอินใหม่ที่หน้าแรก' : 'ตรวจอินเทอร์เน็ตแล้วลองเล่นใหม่');
     });
   }
 
@@ -3039,7 +3601,8 @@ class Game extends Phaser.Scene {
   //  ทุกเฟรม
   // =========================================================
   shiftTimers(ms) {
-    for (const k of ['onairUntil', 'starUntil', 'invulnUntil', 'magnetUntil', 'waveStart', 'lastBoardFetch', 'campWarned', 'lastGrazeFx', 'lastCoinSfx', 'lastStarMsg']) {
+    for (const k of ['onairUntil', 'starUntil', 'invulnUntil', 'magnetUntil', 'waveStart', 'lastBoardFetch', 'campWarned', 'lastGrazeFx', 'lastCoinSfx', 'lastStarMsg',
+      'overdriveUntil', 'dashUntil', 'phaseUntil', 'superMagnetUntil', 'shieldRegenAt', 'novaAt', 'iceUntil']) {
       if (this[k]) this[k] += ms;
     }
     this.campRef.t += ms;
@@ -3063,11 +3626,15 @@ class Game extends Phaser.Scene {
       : (this.boss && this.boss.active) ? 'boss' : 'normal');
 
     if (!this.over) {
-      const k = this.held, s = dt / 1000, sp = 380 * this.ship.speed;
+      const k = this.held, s = dt / 1000, sp = 380 * this.ship.speed * (time < this.dashUntil ? 1.6 : 1);
       const vx = (k.has('left') ? -1 : 0) + (k.has('right') ? 1 : 0);
       const vy = (k.has('up') ? -1 : 0) + (k.has('down') ? 1 : 0);
-      this.player.x = Phaser.Math.Clamp(this.player.x + vx * sp * s, 24, W - 24);
-      this.player.y = Phaser.Math.Clamp(this.player.y + vy * sp * s, H * 0.3, H - 40);
+      if (time >= this.iceUntil) {
+        this.player.x = Phaser.Math.Clamp(this.player.x + vx * sp * s, 24, W - 24);
+        this.player.y = Phaser.Math.Clamp(this.player.y + vy * sp * s, H * 0.3, H - 40);
+      } else {
+        this.drag = null;
+      }
       if (this.onair) this.updateOnAir(time, dt);
       if (time < this.starUntil) { this.player.alpha = 1; this.player.setTint(hueColor(time * 0.6)); }
       else { this.player.clearTint(); this.player.alpha = time < this.invulnUntil ? (Math.floor(time / 90) % 2 ? 0.25 : 1) : 1; }
@@ -3093,8 +3660,13 @@ class Game extends Phaser.Scene {
       if (this.fireCD <= 0) { this.fire(); this.fireCD = Math.max(0, this.fireCD + this.fireDelay()); }
       if (this.drones.length) {
         this.droneCD -= dt;
-        if (this.droneCD <= 0) { this.fireDrones(); this.droneCD = this.fever ? 130 : 260; }
+        if (this.droneCD <= 0) {
+          this.fireDrones();
+          const rate = this.shipId === 'falcon' ? this.sk.rate : 260;
+          this.droneCD = this.fever ? rate / 2 : rate;
+        }
       }
+      this.updateSkill(time);
 
       this.turnCD -= dt;
       if (this.turnCD <= 0) { this.enemyTurn(); this.turnCD = this.turnDelay(); }
@@ -3127,7 +3699,8 @@ class Game extends Phaser.Scene {
 
     // ยานลูก
     this.drones.forEach((d, i) => {
-      const tx = this.player.x + (i === 0 ? -42 : 42), ty = this.player.y + 12 + Math.sin(time / 300 + i * 2) * 4;
+      d.setVisible(i < 2 || (this.fever && !this.over));   // เหยี่ยว: FEVER ได้ยานลูกเพิ่มเป็น 4 ลำ
+      const tx = this.player.x + [-42, 42, -72, 72][i], ty = this.player.y + [12, 12, 32, 32][i] + Math.sin(time / 300 + i * 2) * 4;
       d.x += (tx - d.x) * Math.min(1, dt / 80);
       d.y += (ty - d.y) * Math.min(1, dt / 80);
     });
@@ -3142,6 +3715,11 @@ class Game extends Phaser.Scene {
       else if (st === 'meteor') e.rotation += dt * e.getData('spin');
     }
 
+    this.updatePillars(time);
+    // ก้อนน้ำแข็งตอนโดนแช่
+    if (time < this.iceUntil && pv) this.iceBlock.setVisible(true).setPosition(this.player.x + Math.sin(time / 30) * 1.5, this.player.y);
+    else this.iceBlock.setVisible(false);
+
     // บอส: เคลื่อนที่ + จุดอ่อน + หลอดเลือด (แถบบนสุดของจอ)
     this.bossBar.clear();
     const b = this.boss;
@@ -3155,13 +3733,25 @@ class Game extends Phaser.Scene {
         else { b.x = W / 2 + Math.sin(ph) * 140; b.y = def.y + Math.sin(ph * 2) * 50; }
       }
       if (def.spin) b.rotation += dt * def.spin * phase;
+      if (b.getData('state') === 'fight' && !this.over && !this.onair && !this.warning) {
+        this.bossCD -= dt;
+        if (this.bossCD <= 0) {
+          this.bossAttack();
+          this.bossCD = Math.max(380, [900, 700, 520][phase - 1] - (this.loop - 1) * 40);
+        }
+        this.mechCD -= dt;
+        if (this.mechCD <= 0 && this.boss) {
+          this.bossMech();
+          this.mechCD = MECH_EVERY[this.bossMechs[this.mechTurn % this.bossMechs.length]] * (1 - (phase - 1) * 0.2);
+        }
+      }
       def.weak.forEach((w, i) => {
         const g = this.weakGlows[i];
         if (g) g.setPosition(b.x + w.x, b.y + w.y).setScale(0.8 + Math.sin(time / 120) * 0.15).setAlpha(0.7 + Math.sin(time / 90) * 0.3);
       });
       const pct = Math.max(0, b.getData('hp') / b.getData('maxHp'));
-      this.bossBar.fillStyle(0x000000, 0.6).fillRect(0, 0, W, 5);
-      this.bossBar.fillStyle(pct < 1 / 3 ? 0xff4f6a : pct < 2 / 3 ? 0xff9f1c : 0xd23c8a, 1).fillRect(0, 0, W * pct, 5);
+      this.bossBar.fillStyle(0x000000, 0.6).fillRect(0, 0, W, 7);
+      this.bossBar.fillStyle(pct < 1 / 3 ? 0xff4f6a : pct < 2 / 3 ? 0xff9f1c : 0xd23c8a, 1).fillRect(0, 0, W * pct, 7);
     }
 
     // จรวดนำวิถี
@@ -3184,13 +3774,13 @@ class Game extends Phaser.Scene {
       for (const o of this.ebullets.getChildren()) {
         if (!o.active || o.grazed) continue;
         const d2 = (o.x - px) ** 2 + (o.y - py) ** 2;
-        if (d2 < GRAZE_R * GRAZE_R && d2 > 14 * 14) { o.grazed = true; this.onGraze(o); }
+        if (d2 < this.grazeR * this.grazeR && d2 > 14 * 14) { o.grazed = true; this.onGraze(o); }
       }
     }
 
     // ดูดของดีเข้าหายาน: คริสตัลมีแม่เหล็กพื้นฐาน, ไอเท็มแม่เหล็กดูดไกลขึ้นทุกอย่าง, FEVER ดูดคริสตัลทั้งจอ, ON AIR ดูดทุกอย่างทั้งจอ
     const magnetOn = time < this.magnetUntil;
-    const pullR = this.onair ? Infinity : magnetOn ? MAGNET_R : 0;
+    const pullR = this.onair || time < this.superMagnetUntil ? Infinity : magnetOn ? MAGNET_R : 0;
     const pullTo = (o, speed) => {
       if (o.body) o.body.setAllowGravity(false);
       this.physics.velocityFromRotation(Phaser.Math.Angle.Between(o.x, o.y, this.player.x, this.player.y), speed, o.body.velocity);
@@ -3297,6 +3887,7 @@ class Game extends Phaser.Scene {
       const left = this.enemies.getChildren().some(e => e.active && !OPTIONAL.has(e.getData('type')));
       if (!left) {
         this.waveActive = false;
+        if (Math.random() < 0.25) this.dropPowerup(rand(80, W - 80), -20, 'ticket');   // ตั๋วสุ่ม: เฉลี่ย 1-2 ใบต่อ 5 wave
         this.time.delayedCall(500, () => this.nextWave());
       }
     }
@@ -3306,8 +3897,8 @@ class Game extends Phaser.Scene {
 // =====================================================================
 //  เริ่มเกม (รอฟอนต์ไทยโหลดก่อน ไม่เกิน 1.5 วินาที)
 // =====================================================================
-Save.load();
-sfx.setMuted(!!Save.data.muted);
+Save.loadLocal();
+sfx.setMuted(Save.muted);
 
 const config = {
   type: Phaser.AUTO,
@@ -3338,7 +3929,10 @@ const fontsReady = document.fonts
       document.fonts.load('500 20px "Chakra Petch"', 'ศึกยานต่างดาว'),
     ])
   : Promise.resolve();
-Board.init().then(() => Board.refresh());
+// กู้การล็อกอินเดิม แล้วโหลดตารางอันดับ
+Save.restore().then(() => Board.refresh()).then(() => {
+  if (App.game && App.scene('title') && App.scene('title').sys.isActive()) App.refreshMenu();
+});
 Promise.race([fontsReady, new Promise(r => setTimeout(r, 1500))]).then(boot, boot);
 </script>
 </body>
