@@ -486,7 +486,12 @@ const FONT = '"Chakra Petch", system-ui, sans-serif';
 const API_BASE = '';               // API อยู่โดเมนเดียวกัน ถ้าแยกไปไว้ที่อื่นให้ใส่ URL เต็ม
 const BONUS_GRACE_MS = 400;        // ด่าน CHALLENGE: มอนโผล่มาแล้วยิงไม่เข้ากี่ ms
 const BONUS_GROUP_GAP = 1500;      // ด่าน CHALLENGE: มอนแต่ละกลุ่ม (8 ตัว) ห่างกันกี่ ms (เดิม 3000 อาวุธแรงแล้วจอว่างนาน)
-const WAVES_PER_LOOP = 5;          // ทุกๆ 5 wave เจอบอส แล้วต่อด้วยด่านโบนัส
+const WAVES_PER_LOOP = 5;
+// ปรับสมดุล
+const COMBO_MUL_MAX = 3;           // ตัวคูณจากคอมโบตันที่เท่านี้ (คอมโบ 100) แล้วค่อยคูณ FEVER/ON AIR → สูงสุด x12
+const BOSS_HP_GROW = 0.6, BOSS_HP_GROW_LATE = 0.6;   // เลือดบอสเพิ่มต่อรอบ และเพิ่มอีกต่อรอบตั้งแต่รอบ 3 (อาวุธตัน Lv10 แล้วบอสยังพอสู้)
+const MAXED_WEAPON_TO_COIN = 0.75; // อาวุธตันแล้ว: ไอเท็มอาวุธที่สุ่มได้ เปลี่ยนเป็นคริสตัลแทนกี่ %
+const WAVE_TICKET_CHANCE = 0.15;   // โอกาสตั๋วหล่นตอนเคลียร์ wave (เดิม 0.25)          // ทุกๆ 5 wave เจอบอส แล้วต่อด้วยด่านโบนัส
 // ระดับพลังยิง 1-5 = จำนวนกระสุนเพิ่ม, 6-10 = โอเวอร์ชาร์จ (จำนวนเท่าระดับ 5 แต่แรงขึ้นทีละ 20% กระสุนใหญ่และสีทอง)
 const MAX_POWER = 10, SPREAD_MAX = 5, MAX_LIVES = 5;
 const STAR_MS = 3000;             // อมตะนานกี่ ms
@@ -600,13 +605,13 @@ const SHIPS = {
     desc: k => `เก็บเกราะ → กันได้ ${k.hits} ครั้ง · เกราะแตกแล้วอมตะ ${(k.guard / 1000).toFixed(1)} วิ · โอกาส ${Math.round(k.star * 100)}% ได้อมตะแถม` },
   falcon:  { name: 'เหยี่ยว',  tier: 'rare', key: 'ship_falcon', lives: 3, speed: 1.05, fire: 1, drones: 0,
     skill: lv => ({ inv: 200 * lv }),
-    desc: k => `เก็บชีวิต → อมตะ ${(k.inv / 1000).toFixed(1)} วิ` },
+    desc: k => `เก็บชีวิตหรือเกราะ → อมตะ ${(k.inv / 1000).toFixed(1)} วิ` },
   comet:   { name: 'ดาวหาง',  tier: 'rare', key: 'ship_comet', lives: 3, speed: 1.1, fire: 1, drones: 0,
-    skill: lv => ({ chance: lv * 0.01 }),
-    desc: k => `เก็บอาวุธ → โอกาส ${Math.round(k.chance * 100)}% ได้พลังยิงเพิ่มอีก 1 ระดับ` },
+    skill: lv => ({ chance: lv * 0.03, dur: 3000 + lv * 200 }),
+    desc: k => `เก็บอาวุธ → โอกาส ${Math.round(k.chance * 100)}% ได้พลังยิงเพิ่มอีก 1 ระดับ (ตันแล้ว: ยิงเร็วขึ้น 50% นาน ${(k.dur / 1000).toFixed(1)} วิ)` },
   storm:   { name: 'พายุ',    tier: 'rare', key: 'ship_storm', lives: 3, speed: 1.05, fire: 0.8, drones: 0,
-    skill: lv => ({ boss: lv * 0.01 }),
-    desc: k => `ยิงเร็ว +20% · ใช้อมตะ → ระเบิดทั้งจอ ศัตรูแตกหมด บอสเสียเลือด ${Math.round(k.boss * 100)}%` },
+    skill: lv => ({ boss: lv * 0.01, need: 70 - lv * 4 }),
+    desc: k => `ยิงเร็ว +20% · ทำลายครบ ${k.need} ตัว ได้ดาวอมตะ · ใช้อมตะ → ระเบิดทั้งจอ บอสเสียเลือด ${Math.round(k.boss * 100)}%` },
   phantom: { name: 'แฟนทอม', tier: 'epic', key: 'ship_phantom', lives: 3, speed: 1.05, fire: 1, drones: 0,
     skill: lv => ({ r: 46 + lv, need: 25 - Math.floor(lv / 2), dur: 2000 + lv * 150 }),
     desc: k => `เฉียดกระสุนได้แต้ม x2 ระยะกว้างขึ้น · เฉียดครบ ${k.need} → ล่องหน ${(k.dur / 1000).toFixed(1)} วิ` },
@@ -2665,14 +2670,14 @@ class Game extends Phaser.Scene {
     const { hits, total } = this.bonus;
     this.bonus = null;
     this.inBonus = false;
-    let pts;
+    // ได้ต่อตัวตามรอบ + โบนัส PERFECT แยก (ยิงครบได้รวม 10,000 × รอบ เท่าเดิม)
+    let pts = hits * 100 * this.loop;
     if (hits === total) {
-      pts = 10000 * this.loop;
+      pts += 6000 * this.loop;
       this.banner('PERFECT!!', `ยิงครบ ${total} ตัว · +${fmt(pts)}`, { rainbow: true });
       this.dropCoins(W / 2, 220, 15);
       sfx.fanfare();
     } else {
-      pts = hits * 100;
       this.banner(`ยิงโดน ${hits}/${total}`, `โบนัส +${fmt(pts)}`);
     }
     this.addScore(pts);
@@ -2817,7 +2822,7 @@ class Game extends Phaser.Scene {
   }
 
   spawnBoss(def) {
-    const hp = Math.round(def.hp * (1 + (this.loop - 1) * 0.6) * (this.easy ? 0.75 : 1));
+    const hp = Math.round(def.hp * (1 + (this.loop - 1) * BOSS_HP_GROW + Math.max(0, this.loop - 2) * BOSS_HP_GROW_LATE) * (this.easy ? 0.75 : 1));
     // รอบ 4 ขึ้นไป บอสใช้ 2 กลไกผสมกัน
     const idx = BOSSES.indexOf(def);
     this.bossMechs = this.loop >= 4 ? [def.mech, BOSSES[(idx + 1) % BOSSES.length].mech] : [def.mech];
@@ -3115,7 +3120,7 @@ class Game extends Phaser.Scene {
   }
 
   get multiplier() {
-    return Math.min(8, (1 + Math.floor(this.combo / 10) * 0.2) * (this.fever ? 2 : 1) * (this.onair ? 2 : 1));
+    return Math.min(COMBO_MUL_MAX, 1 + Math.floor(this.combo / 10) * 0.2) * (this.fever ? 2 : 1) * (this.onair ? 2 : 1);
   }
 
   registerHit() {
@@ -3218,6 +3223,12 @@ class Game extends Phaser.Scene {
       } else if (!isBoss && state !== 'bonus' && (type === 'tank' || Math.random() < (this.easy ? 0.14 : 0.08) || this.kills % (this.easy ? 8 : 12) === 0)) {
         this.dropPowerup(x, y);
       }
+      if (this.shipId === 'storm' && !this.starHeld && ++this.skKills >= this.sk.need) {
+        this.skKills = 0;
+        this.starHeld = true;
+        this.popText(this.player.x, this.player.y - 56, IS_TOUCH ? 'พายุพร้อม! แตะปุ่มดาว' : 'พายุพร้อม! กด Space', '#ff4fd8', 18);
+        sfx.power();
+      }
       if (type === 'tank') this.hitStop(45);
       if (!isBoss && state !== 'bonus' && Math.random() < 0.015 * this.letterMul) this.spawnLetter(x, y);
     }
@@ -3276,11 +3287,20 @@ class Game extends Phaser.Scene {
       type = type || 'shield';
       // รอบแรก: ได้อาวุธแล้ว 60% เป็นสีที่ใช้อยู่ ระดับพลังยิงจะได้ขึ้นต่อเนื่อง
       if (this.easy && WEAPONS[type] && Math.random() < 0.6) type = this.weapon;
+      // อาวุธตันแล้ว ไอเท็มอาวุธส่วนใหญ่เปลี่ยนเป็นคริสตัล (ยังเหลือบางส่วนไว้เปลี่ยนชนิดอาวุธได้)
+      if (WEAPONS[type] && this.power >= MAX_POWER && Math.random() < MAXED_WEAPON_TO_COIN) { this.dropCoins(x, y, 5); return; }
     }
     const p = this.powerups.create(x, y, ITEMS[type].key).setDepth(3);
     p.setData('type', type);
     p.setVelocity(0, 110);
     this.tweens.add({ targets: p, scale: { from: 0.9, to: 1.15 }, duration: 400, yoyo: true, repeat: -1 });
+  }
+
+  // เหยี่ยว: เก็บชีวิต/เกราะ ได้อมตะสั้นๆ
+  falconGuard() {
+    this.starUntil = Math.max(this.starUntil, this.time.now + this.sk.inv);
+    this.invulnUntil = Math.max(this.invulnUntil, this.starUntil);
+    this.popText(this.player.x, this.player.y - 56, `อมตะ ${(this.sk.inv / 1000).toFixed(1)} วิ!`, '#fff35a', 17);
   }
 
   collect(p) {
@@ -3308,15 +3328,21 @@ class Game extends Phaser.Scene {
         this.weapon = type;
         this.popText(x, y, WEAPONS[type].name + '!', WEAPONS[type].color);
       }
-      if (this.shipId === 'comet' && this.power < MAX_POWER && Math.random() < this.sk.chance) {
-        this.power++;
-        this.popText(this.player.x, this.player.y - 56, `โบนัสอาวุธ! Lv${this.power}`, '#36f1ff', 18);
+      if (this.shipId === 'comet' && Math.random() < this.sk.chance) {
+        if (this.power < MAX_POWER) {
+          this.power++;
+          this.popText(this.player.x, this.player.y - 56, `โบนัสอาวุธ! Lv${this.power}`, '#36f1ff', 18);
+        } else {
+          this.overdriveUntil = Math.max(this.overdriveUntil, this.time.now) + this.sk.dur;
+          this.popText(this.player.x, this.player.y - 56, 'ยิงเร็ว OVERDRIVE!', '#36f1ff', 18);
+        }
         this.sparks.explode(18, this.player.x, this.player.y);
       }
     } else if (type === 'shield') {
       const hits = this.shipId === 'magneto' ? this.sk.hits : 1;
       if (this.shield >= hits) { this.addScore(300); this.popText(x, y, '+300', '#9ff3ff'); }
       else { this.shield = hits; this.popText(x, y, hits > 1 ? `เกราะ x${hits}!` : 'เกราะ!', '#9ff3ff'); }
+      if (this.shipId === 'falcon') this.falconGuard();
       if (this.shipId === 'magneto' && !this.starHeld && Math.random() < this.sk.star) {
         this.starHeld = true;
         this.popText(this.player.x, this.player.y - 56, 'ได้อมตะแถม!', '#fff35a', 17);
@@ -3334,11 +3360,7 @@ class Game extends Phaser.Scene {
     } else if (type === 'life') {
       if (this.lives < MAX_LIVES) { this.lives++; this.popText(x, y, 'ชีวิต +1', '#ff7ac8'); }
       else { this.addScore(1000); this.popText(x, y, '+1000', '#ff7ac8'); }
-      if (this.shipId === 'falcon') {
-        this.starUntil = Math.max(this.starUntil, this.time.now + this.sk.inv);
-        this.invulnUntil = Math.max(this.invulnUntil, this.starUntil);
-        this.popText(this.player.x, this.player.y - 56, `อมตะ ${(this.sk.inv / 1000).toFixed(1)} วิ!`, '#fff35a', 17);
-      }
+      if (this.shipId === 'falcon') this.falconGuard();
     }
     // ฟีนิกซ์: เก็บไอเท็มทุกชิ้นได้อมตะสั้นๆ (ใช้แบบล่องหน: กระสุนผ่านตัว ไม่กะพริบ)
     if (this.shipId === 'phoenix') this.phaseUntil = Math.max(this.phaseUntil, this.time.now + this.sk.inv);
@@ -3478,11 +3500,11 @@ class Game extends Phaser.Scene {
     } else if (id === 'magneto') {
       label = `เกราะ ${this.shield}/${sk.hits} · อมตะแถม ${Math.round(sk.star * 100)}%`;
     } else if (id === 'comet') {
-      label = `เก็บอาวุธ: โบนัส ${Math.round(sk.chance * 100)}%`;
+      label = time < this.overdriveUntil ? `OVERDRIVE ${sec(this.overdriveUntil)}` : `เก็บอาวุธ: โบนัส ${Math.round(sk.chance * 100)}%`;
     } else if (id === 'storm') {
-      label = this.starHeld ? 'อมตะพร้อม: ระเบิดทั้งจอ!' : 'เก็บดาวอมตะเพื่อระเบิดทั้งจอ';
+      label = this.starHeld ? 'อมตะพร้อม: ระเบิดทั้งจอ!' : `ชาร์จพายุ ${this.skKills}/${sk.need} ตัว`;
     } else if (id === 'falcon') {
-      label = `เก็บชีวิต = อมตะ ${(sk.inv / 1000).toFixed(1)} วิ`;
+      label = `เก็บชีวิต/เกราะ = อมตะ ${(sk.inv / 1000).toFixed(1)} วิ`;
     } else if (id === 'phoenix') {
       label = `หลอดเพลิง ${this.skCoins}/${sk.need}`;
       const w = 120, x0 = 14, y0 = H - 76;
@@ -4287,7 +4309,7 @@ class Game extends Phaser.Scene {
       const left = this.enemies.getChildren().some(e => e.active && !OPTIONAL.has(e.getData('type')));
       if (!left) {
         this.waveActive = false;
-        if (Math.random() < 0.25) this.dropPowerup(rand(80, W - 80), -20, 'ticket');   // ตั๋วสุ่ม: เฉลี่ย 1-2 ใบต่อ 5 wave
+        if (Math.random() < WAVE_TICKET_CHANCE) this.dropPowerup(rand(80, W - 80), -20, 'ticket');   // ตั๋วสุ่ม: เฉลี่ยราว 1.2 ใบต่อรอบ (รวมบอส)
         if (this.easy) this.dropPowerup(rand(120, W - 120), -40, this.weapon);           // รอบแรก: เคลียร์ wave ได้อาวุธฟรี
         this.time.delayedCall(500, () => this.nextWave());
       }
