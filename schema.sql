@@ -34,3 +34,18 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
+
+-- รอบเล่นที่กำลังเล่นอยู่ (1 คนมีได้ 1 รอบ) ใช้จับเวลาเล่นจริงเพื่อจำกัดรางวัล ส่งผลแล้วลบทิ้ง
+CREATE TABLE IF NOT EXISTS runs (
+  user_id    TEXT PRIMARY KEY,
+  run_id     TEXT    NOT NULL,
+  started_at INTEGER NOT NULL
+);
+
+-- ประกาศ update patch (มีได้แถวเดียว) deploy.sh ใส่ตอนเริ่มและลบตอนเสร็จ
+-- expires_at กันประกาศค้าง ถ้าสคริปต์พังกลางทาง ประกาศจะหายเอง
+CREATE TABLE IF NOT EXISTS notice (
+  id         INTEGER PRIMARY KEY CHECK (id = 1),
+  deploy_at  INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);

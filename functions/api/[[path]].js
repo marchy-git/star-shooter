@@ -3,16 +3,27 @@
 //   POST /api/signup                  สมัคร { username, password, nickname }
 //   POST /api/login                   ล็อกอิน { username, password }
 //   GET  /api/me                      ข้อมูลบัญชีที่ล็อกอินอยู่
-//   POST /api/save                    บันทึกความคืบหน้า { data }
-//   POST /api/score                   ส่งคะแนนจบเกม (ต้องล็อกอิน)
+//   POST /api/ship                    เลือกยานที่ใช้ { ship }
+//   POST /api/upgrade                 อัปเลเวลยานด้วยคริสตัล { ship }
+//   POST /api/spin                    ใช้ตั๋วสุ่มยาน 1 ใบ
+//   POST /api/run                     เริ่มรอบเล่น ได้ runId กลับไป
+//   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
+//   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
 // การยืนยันตัวตน: header  Authorization: Bearer <token>
+// กันโกง: คริสตัล ตั๋ว ยาน เลเวล คำนวณที่ server ทั้งหมด เครื่องผู้เล่นแก้ค่าเองไม่ได้
+// ของที่เก็บในรอบถูกจำกัดเพดานตามเวลาที่เล่นจริง (นับจาก /api/run)
 
 const MAX_NAME = 16;
 const MAX_USER = 20;
 const MAX_SCORE = 100_000_000;
-const MAX_DATA_BYTES = 20_000;
-const SUBMIT_COOLDOWN_MS = 8_000;   // ส่งคะแนนได้ไม่ถี่กว่านี้ต่อคน
+const MIN_RUN_MS = 3_000;           // รอบที่สั้นกว่านี้ไม่นับ
+const MAX_RUN_MS = 6 * 3600_000;    // รอบที่นานเกินนี้ถือว่าหมดอายุ
+const LOOP_MIN_SEC = 30;            // 1 รอบ (4 wave + บอส + โบนัส) เล่นเร็วสุดไม่ต่ำกว่านี้แน่นอน
+const COINS_PER_SEC = 6;            // เพดานคริสตัลที่เก็บได้ต่อวินาที (เผื่อไว้สูงกว่าจริงมาก)
+const TICKETS_PER_LOOP = 5;         // ตั๋วหล่นได้สูงสุด 4 wave + บอส 1
+const TICKET_MIN_SEC = 8;           // ตั๋วใบหนึ่งได้เร็วสุดทุกกี่วินาที (เคลียร์ wave เร็วสุด)
+const SCORE_PER_SEC = 20_000;       // เพดานคะแนนต่อวินาที (เผื่อ FEVER/ON AIR ไว้สูงมาก)
 const PBKDF2_ITER = 20_000;         // ไม่สูงมาก เพื่อไม่ให้เกินเวลา CPU ของแผนฟรี
 
 const CORS = {
@@ -60,15 +71,70 @@ const int = (v, min, max) => {
   return Number.isFinite(n) && n >= min && n <= max ? n : null;
 };
 
+// ----- ข้อมูลเกมฝั่ง server (ต้องตรงกับ SHIPS / TIERS / lvCost / PITY ในเกม) -----
+const MAX_LV = 10;
+const SHIP_TIER = {
+  bolt: 'common', iron: 'common', magneto: 'rare', falcon: 'rare', comet: 'rare', storm: 'rare',
+  phantom: 'epic', prism: 'epic', nova: 'legendary', phoenix: 'mythic',
+};
+const TIERS = {
+  common:    { weight: 49.5, dupe: 150,  cost: 1 },
+  rare:      { weight: 32,   dupe: 400,  cost: 1.3 },
+  epic:      { weight: 14,   dupe: 900,  cost: 1.6 },
+  legendary: { weight: 4,    dupe: 2000, cost: 2 },
+  mythic:    { weight: 0.5,  dupe: 5000, cost: 2.5 },
+};
+const TIER_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic'];
+const PITY_EPIC = 10, PITY_LEGEND = 40;
+const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIP_TIER[id]].cost / 10) * 10;
+
+const randFloat = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
+
+// ทำข้อมูลผู้เล่นให้อยู่ในรูปที่ถูกต้องเสมอ
+function normalizeData(raw) {
+  const d = raw && typeof raw === 'object' ? raw : {};
+  const nat = v => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const chars = {};
+  for (const [k, v] of Object.entries(d.chars || {})) {
+    if (SHIP_TIER[k]) { const lv = Math.min(MAX_LV, nat(v)); if (lv) chars[k] = lv; }
+  }
+  if (!chars.bolt) chars.bolt = 1;
+  return {
+    coins: nat(d.coins),
+    tickets: d.tickets === undefined ? 1 : nat(d.tickets),
+    chars,
+    ship: chars[d.ship] ? d.ship : 'bolt',
+    best: nat(d.best),
+    pity: { e: nat(d.pity && d.pity.e), l: nat(d.pity && d.pity.l) },
+  };
+}
+const dataOf = u => { try { return normalizeData(JSON.parse(u.data || '{}')); } catch { return normalizeData({}); } };
+
+async function writeData(env, userId, data) {
+  await env.DB.prepare(`UPDATE users SET data = ?1, updated_at = ?2 WHERE id = ?3`)
+    .bind(JSON.stringify(data), Date.now(), userId).run();
+}
+
+// สุ่มยาน: เลือกระดับตามโอกาสก่อน แล้วสุ่มตัวในระดับนั้น · มีระบบการันตี
+function rollGacha(d) {
+  let tiers = TIER_ORDER;
+  if (d.pity.l >= PITY_LEGEND - 1) tiers = tiers.slice(3);
+  else if (d.pity.e >= PITY_EPIC - 1) tiers = tiers.slice(2);
+  let r = randFloat() * tiers.reduce((sum, k) => sum + TIERS[k].weight, 0);
+  let tier = tiers[tiers.length - 1];
+  for (const k of tiers) { r -= TIERS[k].weight; if (r <= 0) { tier = k; break; } }
+  const rank = TIER_ORDER.indexOf(tier);
+  d.pity.e = rank >= 2 ? 0 : d.pity.e + 1;
+  d.pity.l = rank >= 3 ? 0 : d.pity.l + 1;
+  const pool = Object.keys(SHIP_TIER).filter(id => SHIP_TIER[id] === tier);
+  return pool[Math.floor(randFloat() * pool.length)];
+}
+
 async function readJson(request) {
   try { return await request.json(); } catch { return null; }
 }
 
-const profileOf = u => {
-  let data = {};
-  try { data = JSON.parse(u.data || '{}'); } catch {}
-  return { id: u.id, username: u.username, nickname: u.nickname, data };
-};
+const profileOf = u => ({ id: u.id, username: u.username, nickname: u.nickname, data: dataOf(u) });
 
 async function currentUser(env, request) {
   const m = (request.headers.get('authorization') || '').match(/^Bearer ([a-f0-9]{48})$/);
@@ -114,7 +180,7 @@ async function signup(env, request) {
     throw err;
   }
   const token = await newSession(env, id);
-  return json({ token, profile: { id, username, nickname, data: {} } });
+  return json({ token, profile: { id, username, nickname, data: normalizeData({}) } });
 }
 
 async function login(env, request) {
@@ -140,15 +206,72 @@ async function logout(env, request) {
   return json({ ok: true });
 }
 
-async function save(env, request) {
+// ----- ร้านยาน -----
+async function chooseShip(env, request) {
   const u = await currentUser(env, request);
   if (!u) return json({ error: 'unauthorized' }, 401);
   const body = await readJson(request);
-  if (!body || typeof body.data !== 'object' || body.data === null || Array.isArray(body.data)) return json({ error: 'bad_data' }, 400);
-  const text = JSON.stringify(body.data);
-  if (text.length > MAX_DATA_BYTES) return json({ error: 'too_large' }, 413);
-  await env.DB.prepare(`UPDATE users SET data = ?1, updated_at = ?2 WHERE id = ?3`).bind(text, Date.now(), u.id).run();
-  return json({ ok: true });
+  const d = dataOf(u);
+  if (!body || !d.chars[body.ship]) return json({ error: 'not_owned' }, 400);
+  d.ship = body.ship;
+  await writeData(env, u.id, d);
+  return json({ data: d });
+}
+
+// เขียนแบบมีเงื่อนไขว่าข้อมูลยังเป็นของเดิม กันกดรัวๆ หลายคำขอพร้อมกันแล้วใช้คริสตัล/ตั๋วซ้ำ
+async function writeDataIfSame(env, u, data) {
+  const res = await env.DB.prepare(`UPDATE users SET data = ?1, updated_at = ?2 WHERE id = ?3 AND data = ?4`)
+    .bind(JSON.stringify(data), Date.now(), u.id, u.data).run();
+  return !!res.meta && res.meta.changes === 1;
+}
+
+async function upgrade(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const d = dataOf(u);
+  const id = body && body.ship, lv = d.chars[id];
+  if (!lv) return json({ error: 'not_owned' }, 400);
+  if (lv >= MAX_LV) return json({ error: 'max_level' }, 400);
+  const cost = lvCost(id, lv);
+  if (d.coins < cost) return json({ error: 'not_enough', need: cost - d.coins }, 400);
+  d.coins -= cost;
+  d.chars[id] = lv + 1;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ data: d });
+}
+
+async function spin(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const d = dataOf(u);
+  if (d.tickets < 1) return json({ error: 'no_ticket' }, 400);
+  const id = rollGacha(d);
+  const isNew = !d.chars[id];
+  const refund = isNew ? 0 : TIERS[SHIP_TIER[id]].dupe;
+  d.tickets -= 1;
+  if (isNew) d.chars[id] = 1; else d.coins += refund;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ ship: id, isNew, refund, data: d });
+}
+
+// ----- รอบเล่น -----
+async function startRun(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const runId = randomHex(12);
+  await env.DB.prepare(
+    `INSERT INTO runs (user_id, run_id, started_at) VALUES (?1, ?2, ?3)
+     ON CONFLICT(user_id) DO UPDATE SET run_id = excluded.run_id, started_at = excluded.started_at`
+  ).bind(u.id, runId, Date.now()).run();
+  return json({ runId });
+}
+
+// ----- ประกาศ: deploy.sh ใส่เวลาที่จะ deploy ไว้ เกมดึงไปแสดงแถบเลื่อนนับถอยหลัง -----
+async function notice(env) {
+  const now = Date.now();
+  const n = await env.DB.prepare(`SELECT deploy_at FROM notice WHERE id = 1 AND expires_at > ?1`).bind(now).first();
+  return json({ now, deployAt: n ? n.deploy_at : null });
 }
 
 // ----- คะแนน -----
@@ -177,14 +300,34 @@ async function submit(env, request) {
   const loop = int(body.loop, 1, 999) ?? 1;
   const maxCombo = int(body.maxCombo, 0, 1_000_000) ?? 0;
   if (score === null) return json({ error: 'bad_score' }, 400);
-  // กันคะแนนเวอร์เกินจริงแบบหยาบๆ: คะแนนต้องสัมพันธ์กับรอบที่ไปถึง
-  if (score > 600_000 * loop + 400_000) return json({ error: 'implausible' }, 400);
   const ship = cleanName(body.ship).slice(0, 12) || null;
   const now = Date.now();
 
-  const prev = await env.DB.prepare(`SELECT best, last_submit FROM players WHERE id = ?1`).bind(u.id).first();
-  if (prev && now - prev.last_submit < SUBMIT_COOLDOWN_MS) return json({ error: 'too_fast' }, 429);
+  // ต้องมีรอบที่เริ่มจาก /api/run และใช้ได้ครั้งเดียว (ลบทิ้งทันที กันส่งซ้ำ)
+  const runId = typeof body.runId === 'string' ? body.runId : '';
+  const run = await env.DB.prepare(`DELETE FROM runs WHERE user_id = ?1 AND run_id = ?2 RETURNING started_at`)
+    .bind(u.id, runId).first();
+  if (!run) return json({ error: 'no_run' }, 400);
+  const ms = now - run.started_at;
+  if (ms < MIN_RUN_MS) return json({ error: 'too_fast' }, 429);
+  if (ms > MAX_RUN_MS) return json({ error: 'run_expired' }, 400);
+  const sec = ms / 1000;
 
+  // รอบที่ไปถึงต้องสัมพันธ์กับเวลาที่เล่นจริง และคะแนนต้องสัมพันธ์กับรอบ
+  if (loop > 1 + Math.floor(sec / LOOP_MIN_SEC)) return json({ error: 'implausible' }, 400);
+  if (score > 600_000 * loop + 400_000 || score > 50_000 + sec * SCORE_PER_SEC) return json({ error: 'implausible' }, 400);
+
+  // รางวัล: ของที่เก็บได้ถูกจำกัดเพดาน, โบนัสจากคะแนน 1 คริสตัลต่อ 1,000 แต้ม
+  const coins = Math.min(int(body.coins, 0, 1_000_000) ?? 0, Math.floor(sec * COINS_PER_SEC));
+  const tickets = Math.min(int(body.tickets, 0, 10_000) ?? 0, loop * TICKETS_PER_LOOP, 1 + Math.floor(sec / TICKET_MIN_SEC));
+  const scoreBonus = Math.floor(score / 1000);
+  const d = dataOf(u);
+  d.coins += coins + scoreBonus;
+  d.tickets += tickets;
+  if (score > d.best) d.best = score;
+  await writeData(env, u.id, d);
+
+  const prev = await env.DB.prepare(`SELECT best FROM players WHERE id = ?1`).bind(u.id).first();
   await env.DB.prepare(
     `INSERT INTO players (id, name, best, loop, max_combo, ship, games, updated_at, last_submit)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?7)
@@ -209,6 +352,8 @@ async function submit(env, request) {
     newBest: !prev || score > prev.best,
     rank: (above?.n ?? 0) + 1,
     total: total?.n ?? 1,
+    reward: { coins, tickets, scoreBonus },
+    data: d,
   });
 }
 
@@ -221,11 +366,15 @@ export async function onRequest({ request, env }) {
   const m = request.method;
   try {
     if (route === 'leaderboard' && m === 'GET') return await leaderboard(env, url);
+    if (route === 'notice' && m === 'GET') return await notice(env);
     if (route === 'score' && m === 'POST') return await submit(env, request);
     if (route === 'signup' && m === 'POST') return await signup(env, request);
     if (route === 'login' && m === 'POST') return await login(env, request);
     if (route === 'me' && m === 'GET') return await me(env, request);
-    if (route === 'save' && m === 'POST') return await save(env, request);
+    if (route === 'ship' && m === 'POST') return await chooseShip(env, request);
+    if (route === 'upgrade' && m === 'POST') return await upgrade(env, request);
+    if (route === 'spin' && m === 'POST') return await spin(env, request);
+    if (route === 'run' && m === 'POST') return await startRun(env, request);
     if (route === 'logout' && m === 'POST') return await logout(env, request);
     return json({ error: 'not_found' }, 404);
   } catch (err) {

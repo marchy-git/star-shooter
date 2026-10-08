@@ -332,6 +332,29 @@
     pointer-events: none;
   }
   @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+  /* ประกาศ update patch: แถบตัวหนังสือเลื่อนกลางจอ ไม่บังการกด */
+  #notice {
+    position: absolute;
+    left: 0; right: 0; top: 46%;
+    overflow: hidden;
+    white-space: nowrap;
+    background: linear-gradient(90deg, rgba(40, 8, 60, 0), rgba(40, 8, 60, 0.72) 12%, rgba(40, 8, 60, 0.72) 88%, rgba(40, 8, 60, 0));
+    border-top: 1px solid rgba(255, 210, 63, 0.6);
+    border-bottom: 1px solid rgba(255, 210, 63, 0.6);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: calc(var(--u) * 17);
+    padding: calc(var(--u) * 7) 0;
+    pointer-events: none;
+    z-index: 50;
+    text-shadow: 0 0 8px rgba(255, 210, 63, 0.6);
+  }
+  #notice span { display: inline-block; padding-left: 100%; animation: notice-scroll 14s linear infinite; }
+  #notice.done { color: #7dffb0; border-color: rgba(125, 255, 176, 0.6); text-shadow: 0 0 8px rgba(125, 255, 176, 0.6); }
+  @keyframes notice-scroll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    #notice span { animation: none; padding-left: 0; display: block; text-align: center; white-space: normal; }
+  }
 </style>
 </head>
 <body>
@@ -431,6 +454,7 @@
     </div>
     <div id="countdown" aria-live="assertive" hidden></div>
     <div id="toast" role="status" hidden></div>
+    <div id="notice" role="status" aria-live="polite" hidden><span></span></div>
   </div>
 </div>
 
@@ -461,6 +485,7 @@ const H = (() => {
 const OY = Math.round((H - 800) / 2);   // เลื่อนหน้าแรก/หน้าสรุปผลลงมาให้อยู่กลางจอที่สูงขึ้น
 const FONT = '"Chakra Petch", system-ui, sans-serif';
 const API_BASE = '';               // API อยู่โดเมนเดียวกัน ถ้าแยกไปไว้ที่อื่นให้ใส่ URL เต็ม
+const BONUS_GRACE_MS = 400;        // ด่าน CHALLENGE: มอนโผล่มาแล้วยิงไม่เข้ากี่ ms
 const WAVES_PER_LOOP = 5;          // ทุกๆ 5 wave เจอบอส แล้วต่อด้วยด่านโบนัส
 // ระดับพลังยิง 1-5 = จำนวนกระสุนเพิ่ม, 6-10 = โอเวอร์ชาร์จ (จำนวนเท่าระดับ 5 แต่แรงขึ้นทีละ 20% กระสุนใหญ่และสีทอง)
 const MAX_POWER = 10, SPREAD_MAX = 5, MAX_LIVES = 5;
@@ -571,8 +596,8 @@ const SHIPS = {
     desc: k => `ชีวิต +1 · ได้เกราะใหม่ฟรีทุก ${Math.round(k.every / 1000)} วิ` },
   // ----- หายาก (ฟ้า): สกิลผูกกับไอเท็ม ค่าที่ Lv10 คือค่าเต็ม ไล่ลดตามเลเวล -----
   magneto: { name: 'แม็กเนโต', tier: 'rare', key: 'ship_magneto', lives: 3, speed: 1, fire: 1, drones: 0,
-    skill: lv => ({ hits: lv >= 5 ? 2 : 1, star: lv * 0.1 }),
-    desc: k => `เก็บเกราะ → กันได้ ${k.hits} ครั้ง · โอกาส ${Math.round(k.star * 100)}% ได้อมตะแถม` },
+    skill: lv => ({ hits: lv >= 5 ? 2 : 1, star: lv * 0.1, guard: 1000 + (lv - 1) * 1000 / 9 }),
+    desc: k => `เก็บเกราะ → กันได้ ${k.hits} ครั้ง · เกราะแตกแล้วอมตะ ${(k.guard / 1000).toFixed(1)} วิ · โอกาส ${Math.round(k.star * 100)}% ได้อมตะแถม` },
   falcon:  { name: 'เหยี่ยว',  tier: 'rare', key: 'ship_falcon', lives: 3, speed: 1.05, fire: 1, drones: 0,
     skill: lv => ({ inv: 200 * lv }),
     desc: k => `เก็บชีวิต → อมตะ ${(k.inv / 1000).toFixed(1)} วิ` },
@@ -580,7 +605,7 @@ const SHIPS = {
     skill: lv => ({ chance: lv * 0.01 }),
     desc: k => `เก็บอาวุธ → โอกาส ${Math.round(k.chance * 100)}% ได้พลังยิงเพิ่มอีก 1 ระดับ` },
   storm:   { name: 'พายุ',    tier: 'rare', key: 'ship_storm', lives: 3, speed: 1.05, fire: 0.8, drones: 0,
-    skill: lv => ({ boss: lv * 0.02 }),
+    skill: lv => ({ boss: lv * 0.01 }),
     desc: k => `ยิงเร็ว +20% · ใช้อมตะ → ระเบิดทั้งจอ ศัตรูแตกหมด บอสเสียเลือด ${Math.round(k.boss * 100)}%` },
   phantom: { name: 'แฟนทอม', tier: 'epic', key: 'ship_phantom', lives: 3, speed: 1.05, fire: 1, drones: 0,
     skill: lv => ({ r: 46 + lv, need: 25 - Math.floor(lv / 2), dur: 2000 + lv * 150 }),
@@ -598,20 +623,11 @@ const SHIPS = {
 };
 const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIPS[id].tier].cost / 10) * 10;
 
-// สุ่มยาน: เลือกระดับตามโอกาสก่อน แล้วสุ่มตัวในระดับนั้น · มีระบบการันตี (pity)
-function rollGacha(d) {
-  const pity = d.pity;
-  let tiers = Object.entries(TIERS);
-  if (pity.l >= PITY_LEGEND - 1) tiers = tiers.filter(([k]) => TIER_ORDER.indexOf(k) >= 3);
-  else if (pity.e >= PITY_EPIC - 1) tiers = tiers.filter(([k]) => TIER_ORDER.indexOf(k) >= 2);
-  let r = Math.random() * tiers.reduce((sum, [, t]) => sum + t.weight, 0);
-  let tier = tiers[0][0];
-  for (const [k, t] of tiers) { r -= t.weight; if (r <= 0) { tier = k; break; } }
-  const rank = TIER_ORDER.indexOf(tier);
-  pity.e = rank >= 2 ? 0 : pity.e + 1;
-  pity.l = rank >= 3 ? 0 : pity.l + 1;
-  return Phaser.Utils.Array.GetRandom(Object.keys(SHIPS).filter(id => SHIPS[id].tier === tier));
-}
+// ข้อความ error จาก server เป็นภาษาคน
+const errText = e => ({
+  not_enough: 'คริสตัลไม่พอ', no_ticket: 'ตั๋วหมดแล้ว', not_owned: 'ยังไม่มียานลำนี้', max_level: 'เลเวลเต็มแล้ว',
+  busy: 'กดถี่เกินไป ลองใหม่อีกครั้ง', unauthorized: 'การล็อกอินหมดอายุ ล็อกอินใหม่ที่หน้าแรก',
+}[e && e.message] || 'เชื่อมต่อไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่');
 // ระดับที่ใช้แสดงเอฟเฟกต์: Lv10 ตื่นพลัง ได้เอฟเฟกต์สูงกว่าระดับจริง 1 ขั้น
 const visualTier = (id, lv) => TIER_ORDER[Math.min(TIER_ORDER.length - 1, TIER_ORDER.indexOf(SHIPS[id].tier) + (lv >= 10 ? 1 : 0))];
 
@@ -848,16 +864,11 @@ const Save = {
     try { this.setSession(this.token, await api('/api/me')); }
     catch (e) { if (e.status === 401) { this.token = null; this.persistLocal(); } }
   },
-  // บันทึกขึ้น server (รวบหลายครั้งที่กดติดกันเป็นครั้งเดียว)
-  save() {
-    if (!this.loggedIn) return;
-    clearTimeout(this._t);
-    this._t = setTimeout(() => this.flush(), 600);
-  },
-  async flush() {
-    clearTimeout(this._t);
-    if (!this.loggedIn) return;
-    try { await api('/api/save', { data: this.data }); } catch (e) {}
+  // คริสตัล ตั๋ว ยาน คำนวณที่ server ทั้งหมด: ส่งคำสั่งไป แล้วรับข้อมูลล่าสุดกลับมาแทนของในเครื่อง
+  async act(path, body) {
+    const r = await api(path, body || {});
+    if (r.data) this.data = this.normalize(r.data);
+    return r;
   },
 };
 
@@ -1072,10 +1083,12 @@ const App = {
     this.scene('title').scene.start('game');
   },
   again() {
+    if (Updater.ready) return Updater.reloadAfterSubmit();
     $('overBar').hidden = true;
     this.scene('game').scene.restart();
   },
   home() {
+    if (Updater.ready) return Updater.reloadAfterSubmit();
     $('overBar').hidden = true;
     this.scene('game').scene.start('title');
   },
@@ -1335,7 +1348,11 @@ const App = {
       if (owned) {
         use.textContent = using ? 'กำลังใช้' : 'ใช้ลำนี้';
         use.disabled = using;
-        use.onclick = () => { d.ship = id; Save.save(); this.renderHangar(); };
+        use.onclick = async () => {
+          use.disabled = true;
+          try { await Save.act('/api/ship', { ship: id }); } catch (e) { UI.toast(errText(e)); }
+          this.renderHangar();
+        };
       } else {
         use.textContent = 'สุ่มเพื่อปลดล็อก';
         use.disabled = true;
@@ -1348,12 +1365,11 @@ const App = {
         upBtn.className = 'btn primary';
         upBtn.textContent = `อัปเลเวล ${fmt(cost)}`;
         upBtn.disabled = !logged;
-        upBtn.onclick = () => {
+        upBtn.onclick = async () => {
           if (d.coins < cost) return UI.toast(`คริสตัลไม่พอ ขาดอีก ${fmt(cost - d.coins)}`);
-          d.coins -= cost;
-          d.chars[id] = lv + 1;
-          Save.save();
-          sfx.power();
+          upBtn.disabled = true;
+          try { await Save.act('/api/upgrade', { ship: id }); sfx.power(); }
+          catch (e) { UI.toast(errText(e)); }
           this.renderHangar();
           this.refreshMenu();
         };
@@ -1362,23 +1378,20 @@ const App = {
       grid.append(el);
     }
   },
-  // สุ่ม: ตัดตั๋วและให้รางวัลทันที (กันรีเฟรชหนี) แล้วค่อยเล่นแอนิเมชันไฟวิ่ง
-  spin() {
-    const d = Save.data;
+  // สุ่ม: server สุ่มและให้รางวัลทันที (กันรีเฟรชหนี/แก้ผล) แล้วค่อยเล่นแอนิเมชันไฟวิ่งไปหยุดที่ผล
+  async spin() {
     if (!Save.loggedIn) return UI.toast('ล็อกอินก่อนนะ ถึงจะสุ่มได้');
     if (this.spinning) return;
-    if (d.tickets < 1) return UI.toast('ตั๋วหมดแล้ว เล่นเกมเพื่อเก็บตั๋วเพิ่ม');
-    const id = rollGacha(d);
-    const isNew = !d.chars[id];
-    const refund = TIERS[SHIPS[id].tier].dupe;
-    d.tickets -= 1;
-    if (isNew) d.chars[id] = 1; else d.coins += refund;
-    Save.flush();
-
+    if (Save.data.tickets < 1) return UI.toast('ตั๋วหมดแล้ว เล่นเกมเพื่อเก็บตั๋วเพิ่ม');
     this.spinning = true;
-    $('spinResult').hidden = true;
     $('btnSpin').disabled = true;
-    $('ticketCount').textContent = `ตั๋วสุ่ม ${fmt(d.tickets)} ใบ`;
+    let res;
+    try { res = await Save.act('/api/spin'); }
+    catch (e) { this.spinning = false; UI.toast(errText(e)); this.renderHangar(); return; }
+    const id = res.ship, isNew = res.isNew, refund = res.refund;
+
+    $('spinResult').hidden = true;
+    $('ticketCount').textContent = `ตั๋วสุ่ม ${fmt(Save.data.tickets)} ใบ`;
     const ids = Object.keys(SHIPS), n = ids.length;
     const slots = [...$('wheel').querySelectorAll('.slot')];
     slots.forEach(el => el.classList.remove('win', 'lit'));
@@ -2010,6 +2023,7 @@ class Game extends Phaser.Scene {
       letterMul: shipId === 'prism' ? sk.letter : 1,
       onairMs: ONAIR_MS + (shipId === 'prism' ? sk.onair : 0),
       runTickets: 0, scoreBonus: 0,
+      runReq: Save.loggedIn ? api('/api/run', {}).then(r => r.runId).catch(() => null) : null,
       skKills: 0, skCoins: 0, skGrazes: 0, nextStormAt: Infinity,
       overdriveUntil: 0, dashUntil: 0, phaseUntil: 0, superMagnetUntil: 0, shieldRegenAt: 0, novaAt: 0, lastGhost: 0,
       iceUntil: 0, bossCD: 0, mechCD: 0, bossMechs: [], mechTurn: 0,
@@ -2573,7 +2587,7 @@ class Game extends Phaser.Scene {
     const pt = new V(), tan = new V();
     this.tweens.addCounter({
       from: 0, to: 1, duration, delay, repeat,
-      onStart: () => { if (e.active) e.setVisible(true); },
+      onStart: () => { if (e.active) e.setVisible(true).setData('shownAt', this.time.now); },
       onUpdate: tw => {
         if (!e.active || e.getData('state') === 'sucked') { tw.stop(); return; }
         const t = tw.getValue();
@@ -3026,6 +3040,10 @@ class Game extends Phaser.Scene {
   // =========================================================
   hitEnemy(b, e) {
     if (!b.active || !e.active || !e.visible) return;
+    // ศัตรูที่ยังไม่เข้าจอยิงไม่โดน: กันเลเซอร์ยาว (Lv สูง) ยิงแตกตั้งแต่ขอบ/นอกจอ จนด่าน CHALLENGE ดูเหมือนไม่มีมอน
+    if (!e.getData('boss') && (e.y < 16 || e.x < 8 || e.x > W - 8)) return;
+    // ด่าน CHALLENGE: โผล่มาแล้วยิงไม่เข้าช่วงสั้นๆ ให้เห็นขบวนก่อน
+    if (e.getData('state') === 'bonus' && this.time.now < (e.getData('shownAt') || 0) + BONUS_GRACE_MS) return;
     if (b.pierce) {
       if (b.hitSet.has(e)) return;
       b.hitSet.add(e);
@@ -3805,7 +3823,7 @@ class Game extends Phaser.Scene {
       this.sparks.explode(24, this.player.x, this.player.y);
       this.cameras.main.shake(150, 0.006);
       sfx.shield();
-      this.invulnUntil = this.time.now + 1000;
+      this.invulnUntil = this.time.now + (this.shipId === 'magneto' ? this.sk.guard : 1000);
       this.popText(this.player.x, this.player.y - 40, this.shield ? `เกราะเหลือ ${this.shield}` : 'เกราะแตก', '#9ff3ff');
       return;
     }
@@ -3872,17 +3890,9 @@ class Game extends Phaser.Scene {
     this.over = true;
     if (this.fever) this.endFever();
 
-    // คะแนนแปลงเป็นคริสตัล 1 ต่อ 1,000 แต้ม · บันทึกเฉพาะตอนล็อกอิน
-    const d = Save.data;
+    // คะแนนแปลงเป็นคริสตัล 1 ต่อ 1,000 แต้ม · server เป็นคนบวกรางวัลจริงตอนส่งคะแนน
     this.scoreBonus = Math.floor(this.score / 1000);
-    let localBest = false;
-    if (Save.loggedIn) {
-      d.coins += this.runCoins + this.scoreBonus;
-      d.tickets += this.runTickets;
-      localBest = this.score > d.best;
-      if (localBest) d.best = this.score;
-      Save.flush();
-    }
+    const localBest = Save.loggedIn && this.score > Save.data.best;
 
     // ถ่ายภาพหน้าจอตอนจบก่อนขึ้นหน้าสรุป เพื่อใช้ทำการ์ดแชร์
     this.game.renderer.snapshot(img => this.showResults(img, localBest));
@@ -3905,11 +3915,12 @@ class Game extends Phaser.Scene {
     if (localBest && this.score > 0) txt(this, W / 2, 278, 'สถิติใหม่ของคุณ!', 16, '#6fe3ff').setOrigin(0.5).setDepth(21);
     const rankLine = txt(this, W / 2, 314, '', 20, '#e8f3ff').setOrigin(0.5).setDepth(21);
     const rankSub = txt(this, W / 2, 342, '', 14, '#a9b9d6').setOrigin(0.5).setDepth(21);
-    txt(this, W / 2, 392, Save.loggedIn
-      ? `ได้คริสตัล +${fmt(this.runCoins + this.scoreBonus)} (จากแต้ม ${fmt(this.scoreBonus)}) · ตั๋ว +${this.runTickets}\n` +
-        `รวม คริสตัล ${fmt(Save.data.coins)} · ตั๋วสุ่ม ${fmt(Save.data.tickets)} ใบ`
+    const rewardLine = (coins, bonus, tickets, sub) =>
+      `ได้คริสตัล +${fmt(coins + bonus)} (จากแต้ม ${fmt(bonus)}) · ตั๋ว +${tickets}\n` + sub;
+    const rewardT = txt(this, W / 2, 392, Save.loggedIn
+      ? rewardLine(this.runCoins, this.scoreBonus, this.runTickets, 'กำลังบันทึก...')
       : 'ไม่ได้ล็อกอิน: คริสตัลและตั๋วจากรอบนี้ไม่ถูกบันทึก',
-      14, '#c3d3ee', { lineSpacing: 4 }).setOrigin(0.5).setDepth(21);
+      14, '#c3d3ee', { lineSpacing: 4, align: 'center' }).setOrigin(0.5).setDepth(21);
     this.children.list.slice(firstText).forEach(o => { if (o.type === 'Text') o.y += OY; });
     $('overBar').style.top = `calc(var(--u) * ${470 + OY})`;
 
@@ -3935,10 +3946,15 @@ class Game extends Phaser.Scene {
       return;
     }
     rankLine.setText('กำลังส่งคะแนน...');
-    Board.submit({
-      score: this.score, loop: this.loop, wave: this.wave, maxCombo: this.maxCombo, graze: this.graze, ship: this.shipId,
-    }).then(res => {
+    App.submitting = Promise.resolve(this.runReq).then(runId => Board.submit({
+      runId, score: this.score, loop: this.loop, wave: this.wave, maxCombo: this.maxCombo, graze: this.graze, ship: this.shipId,
+      coins: this.runCoins, tickets: this.runTickets,
+    })).then(res => {
+      if (res.data) Save.data = Save.normalize(res.data);
       if (!this.sys.isActive()) return;
+      const rw = res.reward || { coins: 0, tickets: 0, scoreBonus: 0 };
+      rewardT.setText(rewardLine(rw.coins, rw.scoreBonus, rw.tickets,
+        `รวม คริสตัล ${fmt(Save.data.coins)} · ตั๋วสุ่ม ${fmt(Save.data.tickets)} ใบ`));
       const runRank = Board.standing(this.score).rank;
       info.rank = res.best > this.score ? runRank : res.rank;
       info.total = res.total;
@@ -3957,6 +3973,7 @@ class Game extends Phaser.Scene {
     }).catch(err => {
       if (!this.sys.isActive()) return;
       const msg = String(err && err.message);
+      rewardT.setText('บันทึกรางวัลรอบนี้ไม่สำเร็จ');
       rankLine.setText(msg === 'too_fast' ? 'ส่งคะแนนถี่เกินไป' : msg === 'unauthorized' ? 'การล็อกอินหมดอายุ' : 'ส่งคะแนนไม่สำเร็จ');
       rankSub.setText(msg === 'too_fast' ? 'รอสักครู่แล้วเล่นใหม่ได้เลย' : msg === 'unauthorized' ? 'ล็อกอินใหม่ที่หน้าแรก' : 'ตรวจอินเทอร์เน็ตแล้วลองเล่นใหม่');
     });
@@ -4305,6 +4322,59 @@ const fontsReady = document.fonts
       document.fonts.load('500 20px "Chakra Petch"', 'ศึกยานต่างดาว'),
     ])
   : Promise.resolve();
+// ประกาศ update patch + ตรวจเวอร์ชัน
+// - deploy.sh ใส่เวลาที่จะ deploy ไว้ใน /api/notice → แสดงแถบเลื่อนนับถอยหลัง เล่นต่อได้ตามปกติ
+// - deploy เสร็จ version.json เปลี่ยน → บอกผู้เล่น แล้วโหลดเวอร์ชันใหม่ตอนอยู่หน้าเมนู (ไม่ตัดกลางเกม)
+const Updater = {
+  build: null, ready: false, deployAt: null, skew: 0,
+  async version() {
+    try { return (await (await fetch('version.json', { cache: 'no-store' })).json()).build || null; } catch (e) { return null; }
+  },
+  async poll() {
+    try {
+      const n = await api('/api/notice');
+      this.skew = n.now - Date.now();
+      this.deployAt = n.deployAt;
+    } catch (e) {}
+    const b = await this.version();
+    if (this.build && b && b !== this.build) this.ready = true;
+    this.render();
+    this.reloadIfIdle();
+  },
+  // อยู่หน้าเมนูและไม่ได้เปิดหน้าต่างอะไรค้าง → โหลดเวอร์ชันใหม่ได้เลย
+  reloadIfIdle() {
+    if (!this.ready || !App.game) return;
+    const title = App.scene('title');
+    if (title && title.sys.isActive() && !UI.modalOpen() && !App.spinning) location.reload();
+  },
+  // รอส่งคะแนนรอบที่เพิ่งจบให้เสร็จก่อน แล้วค่อยโหลดใหม่ (กันรางวัลหาย)
+  reloadAfterSubmit() {
+    Promise.race([Promise.resolve(App.submitting).catch(() => {}), new Promise(r => setTimeout(r, 8000))])
+      .then(() => location.reload());
+  },
+  text() {
+    if (this.ready) return 'อัปเดตเสร็จแล้ว! เล่นรอบนี้ต่อได้เลย จบรอบแล้วเกมจะโหลดเวอร์ชันใหม่ให้เอง';
+    if (!this.deployAt) return '';
+    const left = Math.ceil((this.deployAt - (Date.now() + this.skew)) / 1000);
+    if (left <= 0) return 'กำลัง update patch... เล่นต่อได้ตามปกติ ไม่ต้องตกใจ ความคืบหน้าไม่หาย';
+    const when = left >= 60 ? `${Math.ceil(left / 60)} นาที` : `${left} วินาที`;
+    return `ระบบจะทำการ update patch ในอีก ${when} · เล่นต่อได้ตามปกติ ไม่ต้องตกใจ`;
+  },
+  render() {
+    const el = $('notice'), t = this.text();
+    el.hidden = !t;
+    el.classList.toggle('done', this.ready);
+    if (t && el.firstChild.textContent !== t) el.firstChild.textContent = t;
+  },
+  async start() {
+    this.build = await this.version();
+    this.poll();
+    setInterval(() => this.poll(), 15000);
+    setInterval(() => this.render(), 1000);
+  },
+};
+Updater.start();
+
 // กู้การล็อกอินเดิม แล้วโหลดตารางอันดับ
 Save.restore().then(() => Board.refresh()).then(() => {
   if (App.game && App.scene('title') && App.scene('title').sys.isActive()) App.refreshMenu();
