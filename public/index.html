@@ -2634,7 +2634,7 @@ class Game extends Phaser.Scene {
   startBonus() {
     this.inBonus = true;
     this.waveActive = false;
-    this.bonus = { left: 40, hits: 0, total: 40 };
+    this.bonus = { left: 40, hits: 0, total: 40, startAt: this.time.now };
     this.updateHud();
     this.banner('CHALLENGE STAGE', 'ศัตรูไม่ยิงกลับ ยิงให้หมดทั้ง 40 ตัว!');
     const P = (pts, mirror) => new Phaser.Curves.Spline(pts.map(([x, y]) => new V(mirror ? W - x : x, y)));
@@ -2645,7 +2645,7 @@ class Game extends Phaser.Scene {
     const dur = Math.max(3200, 4200 - (this.loop - 1) * 200);
     paths.forEach((path, g) => {
       for (let i = 0; i < 8; i++) {
-        const e = this.makeEnemy(i === 0 && g % 2 ? 'shooter' : 'normal', { state: 'bonus', hp: 1, maxHp: 1 });
+        const e = this.makeEnemy(i === 0 && g % 2 ? 'shooter' : 'normal', { state: 'bonus', inBonus: true, hp: 1, maxHp: 1 });
         this.followPath(e, path, dur, 1800 + g * 3000 + i * 170, 0, () => {
           if (e.active) { e.destroy(); this.bonusTick(false); }
         });
@@ -3220,7 +3220,8 @@ class Game extends Phaser.Scene {
       if (type === 'tank') this.hitStop(45);
       if (!isBoss && state !== 'bonus' && Math.random() < 0.015 * this.letterMul) this.spawnLetter(x, y);
     }
-    if (state === 'bonus') this.bonusTick(byPlayer);
+    // นับด้วย inBonus ไม่ใช่ state: ตอน ON AIR มอนโบนัสถูกดูดจน state เป็น 'sucked' เคยไม่ถูกนับ ด่านค้าง
+    if (e.getData('inBonus')) this.bonusTick(byPlayer);
 
     if (isBoss) {
       this.boss = null;
@@ -4275,6 +4276,10 @@ class Game extends Phaser.Scene {
         .setScale(1.5 + Math.sin(time / 70) * 0.18).setAlpha(pv ? 0.8 : 0);
       this.comboNum.setColor(hexStr(c2));
     }
+
+    // ด่านโบนัส: มอนหมดแล้วแต่ตัวนับยังไม่ครบ (กันค้างทุกกรณี) → จบด่านเลย
+    if (this.bonus && !this.over && this.time.now - this.bonus.startAt > 4000
+        && !this.enemies.getChildren().some(e => e.active && e.getData('inBonus'))) this.finishBonus();
 
     // ศัตรูหลักหมด ไป wave ถัดไป
     if (this.waveActive && !this.over && !this.onair && this.wave < WAVES_PER_LOOP) {   // ระหว่าง ON AIR ไม่ข้ามด่าน
