@@ -539,6 +539,13 @@ const V = Phaser.Math.Vector2;
 const rand = Phaser.Math.Between;
 const frand = Phaser.Math.FloatBetween;
 
+// อาวุธซ้อนกันได้: กระจาย = รูปแบบยิงเป็นพัด, เลเซอร์ = กระสุนทะลุ, ติดตาม = จรวดนำวิถียิงเสริม
+// มีครบ = เลเซอร์พัด + จรวด · รวมกันแล้วแรงต่อนัดลดลงกันไม่ให้แรงเกิน · ตายเสียอาวุธที่เก็บล่าสุด 1 แบบ
+const MOD_ORDER = ['spread', 'laser', 'homing'];
+const MOD_SHORT = { spread: 'กระจาย', laser: 'เลเซอร์', homing: 'ติดตาม' };
+const LASER_SPREAD_DMG = 0.6;     // เลเซอร์พัด: แรงต่อลำ
+const MISSILE_COMBO_DMG = 0.75;   // จรวดตอนรวมกับอาวุธอื่น: แรงต่อลูก
+const FULL_COMBO_ALPHA = 0.8;     // มีครบ 3 แบบ: กระสุนเราจางลงนิด ให้เห็นกระสุนศัตรู
 const WEAPONS = {
   spread: { name: 'กระสุนกระจาย', color: '#6fe3ff', delay: 140 },
   laser:  { name: 'เลเซอร์ทะลุ',  color: '#ff7a9a', delay: 120 },
@@ -2277,7 +2284,7 @@ class Game extends Phaser.Scene {
       score: 0, lives: Math.min(MAX_LIVES, ship.lives), starHeld: false, starUntil: 0,
       comboWindow: COMBO_WINDOW + (shipId === 'nova' ? sk.combo : 0),
       campRef: { x: W / 2, y: H - 110, t: 0 }, lockActive: false, campWarned: -1e9, waveStart: 0, enraged: false,
-      shield: lv >= 5 ? 1 : 0, weapon: 'spread', power: lv >= 10 ? 2 : 1,
+      shield: lv >= 5 ? 1 : 0, mods: ['spread'], power: lv >= 10 ? 2 : 1,
       magnetR: 70,
       grazeR: shipId === 'phantom' ? sk.r : GRAZE_R,
       letterMul: shipId === 'prism' ? sk.letter : 1,
@@ -2304,7 +2311,7 @@ class Game extends Phaser.Scene {
 
     this.scroll = addBackdrop(this, 0);
 
-    this.bullets =this.physics.add.group({ defaultKey: 'bullet', maxSize: 260 });
+    this.bullets = this.physics.add.group({ defaultKey: 'bullet', maxSize: 360 });
     this.ebullets = this.physics.add.group({ defaultKey: 'ebullet', maxSize: 200 });
     this.enemies = this.physics.add.group();
     this.powerups = this.physics.add.group();
@@ -2515,9 +2522,9 @@ class Game extends Phaser.Scene {
     else if (this.wave > 0) w = this.wave === WAVES_PER_LOOP ? (this.boss && this.boss.active ? 'BOSS · ' + this.boss.getData('def').name : 'BOSS') : `WAVE ${this.wave}/${WAVES_PER_LOOP}`;
     this.waveText.setText(this.loop > 1 && w ? `รอบ ${this.loop} · ${w}` : w);
     this.lifeIcons.forEach((ic, i) => ic.setVisible(i < this.lives));
-    const wp = WEAPONS[this.weapon];
+    const wp = WEAPONS[this.mods[this.mods.length - 1]];
     const P = Math.min(this.power, SPREAD_MAX), over = Math.max(0, this.power - SPREAD_MAX);
-    this.weaponText.setText(`${wp.name} Lv${this.power} ` + '■'.repeat(P) + '□'.repeat(SPREAD_MAX - P) + (over ? ' ' + '◆'.repeat(over) : ''))
+    this.weaponText.setText(`${this.modName()} Lv${this.power} ` + '■'.repeat(P) + '□'.repeat(SPREAD_MAX - P) + (over ? ' ' + '◆'.repeat(over) : ''))
       .setColor(over ? '#ffd23f' : wp.color);
     this.coinText.setText('คริสตัล +' + fmt(this.runCoins) + (this.runTickets ? ` · ตั๋ว +${this.runTickets}` : ''));
     // ป้ายใต้ปุ่มอมตะ: บอกปุ่มที่ต้องกด (มือถือบอกให้แตะ) ยังไม่มีอมตะจะจางลง
@@ -2600,7 +2607,7 @@ class Game extends Phaser.Scene {
   //  อาวุธ
   // =========================================================
   fireDelay() {
-    const d = WEAPONS[this.weapon].delay * this.ship.fire * (this.time.now < this.overdriveUntil ? 0.67 : 1);
+    const d = WEAPONS[this.has('spread') ? 'spread' : this.has('laser') ? 'laser' : 'homing'].delay * this.ship.fire * (this.time.now < this.overdriveUntil ? 0.67 : 1);
     return this.fever ? d * 0.5 : d;       // FEVER ยิงเร็วขึ้นเท่าตัว
   }
 
@@ -2620,6 +2627,7 @@ class Game extends Phaser.Scene {
     b.target = null;
     b.born = this.time.now;
     b.setScale(s.scale || 1);
+    b.setAlpha(this.mods.length >= MOD_ORDER.length ? FULL_COMBO_ALPHA : 1);
     b.setBlendMode(this.evolved ? 'ADD' : 'NORMAL');
     if (this.fever) b.setTint(feverShotColor(this.time.now * 0.4 + i * 50));
     else if (this.evolved) b.setTint(s.wing ? this.evo.alt : this.evo.shot || this.evo.color);
@@ -2638,36 +2646,48 @@ class Game extends Phaser.Scene {
     const hot = over > 0;
     const shots = [];
     const bk = this.evolved ? 'bullet2' : 'bullet', bs = this.evolved ? 0.7 : 1;   // ร่าง 2: กระสุนหัวเพชร
-    if (this.weapon === 'spread') {
-      // แนวกลางยิงตรงเสมอ ระดับ 4-5 ได้กระสุนกางพัดเพิ่มสองข้างเป็นของแถม
+    const spread = this.has('spread'), laser = this.has('laser'), homing = this.has('homing');
+    if (spread) {
+      // แนวกลางยิงตรงเสมอ ระดับ 4-5 ได้กระสุนกางพัดเพิ่มสองข้าง · มีเลเซอร์ด้วย = เลเซอร์ยิงเป็นพัด (ทะลุ แรงลำละ 60%)
+      const key = laser ? 'laser' : bk, sc = laser ? scale : scale * bs, dmg = laser ? mul * LASER_SPREAD_DMG : mul, vy = laser ? -1100 : -760;
       const straight = [[0], [-9, 9], [-16, 0, 16], [-16, 0, 16], [-24, -8, 8, 24]][P - 1];
-      for (const ox of straight) shots.push({ key: bk, x: px + ox, y: py - 30, vx: 0, vy: -760, dmg: mul, scale: scale * bs, hot });
+      for (const ox of straight) shots.push({ key, x: px + ox, y: py - 30, vx: 0, vy, dmg, pierce: laser, scale: sc, hot });
       if (P >= 4) {
-        const fan = P === 4 ? [[-1, 150]] : [[-1, 150], [-1, 260]];
-        for (const [, vx] of fan) for (const side of [-1, 1]) {
-          shots.push({ key: bk, x: px + side * 30, y: py - 26, vx: side * vx, vy: -740, dmg: mul, scale: scale * bs, hot });
+        const fan = P === 4 ? [150] : [150, 260];
+        for (const vx of fan) for (const side of [-1, 1]) {
+          shots.push({ key, x: px + side * 30, y: py - 26, vx: side * vx, vy: vy + 20, dmg, pierce: laser, scale: sc, hot });
         }
       }
-    } else if (this.weapon === 'laser') {
+    } else if (laser) {
       const n = [1, 2, 3, 3, 4][P - 1], gap = P >= 4 ? 14 : 11;
       for (let i = 0; i < n; i++) shots.push({ key: 'laser', x: px + (i - (n - 1) / 2) * gap, y: py - 40, vx: 0, vy: -1100, dmg: mul, pierce: true, scale, hot });
       if (P >= 4) for (const s of [-1, 1]) shots.push({ key: 'laser', x: px + s * 26, y: py - 20, vx: s * 130, vy: -1080, dmg: mul, pierce: true, scale, hot });
     } else {
       for (const ox of (P >= 3 ? [-7, 7] : [0])) shots.push({ key: this.evolved ? bk : 'bulletG', x: px + ox, y: py - 28, vx: 0, vy: -800, dmg: mul, scale: scale * bs, hot });
-      if (this.missileTick++ % 2 === 0) {
-        const n = [1, 2, 2, 3, 4][P - 1];
-        for (let i = 0; i < n; i++) {
-          const side = (i + this.missileTick) % 2 === 0 ? -1 : 1;
-          const ang = -Math.PI / 2 + side * (0.5 + Math.floor(i / 2) * 0.35);
-          shots.push({ key: 'missile', x: px + side * 20, y: py - 6, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: 2 * mul, homing: true, scale, hot });
-        }
+    }
+    // จรวดติดตาม: ยิงเสริมทุก 2 ชุด · รวมกับอาวุธอื่นแล้วออกน้อยลงและแรงลดลง
+    if (homing && this.missileTick++ % 2 === 0) {
+      const combo = spread || laser;
+      const n = (combo ? [1, 1, 2, 2, 3] : [1, 2, 2, 3, 4])[P - 1];
+      for (let i = 0; i < n; i++) {
+        const side = (i + this.missileTick) % 2 === 0 ? -1 : 1;
+        const ang = -Math.PI / 2 + side * (0.5 + Math.floor(i / 2) * 0.35);
+        shots.push({ key: 'missile', x: px + side * 20, y: py - 6, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: 2 * mul * (combo ? MISSILE_COMBO_DMG : 1), homing: true, scale, hot });
       }
     }
     if (this.evolved && this.shotCount % 4 === 0) {
       for (const sd of [-1, 1]) shots.push({ key: 'bullet2', x: px + sd * 30, y: py - 10, vx: sd * 140, vy: -700, dmg: 0.5 * mul, scale: 0.7, wing: true });
     }
     shots.forEach((s, i) => this.spawnBullet(s, i));
-    if (this.shotCount++ % (this.fever ? 3 : 2) === 0) sfx.shoot(this.weapon, L);
+    if (this.shotCount++ % (this.fever ? 3 : 2) === 0) sfx.shoot(this.has('laser') ? 'laser' : this.has('spread') ? 'spread' : 'homing', L);
+  }
+
+  has(mod) { return this.mods.includes(mod); }
+  modName() { return MOD_ORDER.filter(m => this.has(m)).map(m => MOD_SHORT[m]).join('+'); }
+  // อาวุธที่ยังไม่มี (สุ่ม) ถ้ามีครบแล้วคืนอันที่เก็บล่าสุด
+  missingMod() {
+    const miss = MOD_ORDER.filter(m => !this.has(m));
+    return miss.length ? Phaser.Utils.Array.GetRandom(miss) : this.mods[this.mods.length - 1];
   }
 
   fireDrones() {
@@ -3513,7 +3533,7 @@ class Game extends Phaser.Scene {
       for (let i = 1; i <= 6; i++) this.time.delayedCall(i * 170, () => this.explode(x + rand(-60, 60), y + rand(-40, 40), 1.3, 'boss'));
       this.time.delayedCall(700, () => {
         this.dropPowerup(x - 40, y, this.lives < MAX_LIVES ? 'life' : 'shield');
-        this.dropPowerup(x + 40, y, this.weapon);
+        this.dropPowerup(x + 40, y, this.missingMod());
       });
       this.time.delayedCall(900, () => this.spawnLetter(x, y));
       if (Math.random() < 0.6) this.time.delayedCall(1200, () => this.dropPowerup(x + 40, y + 20, 'ticket'));
@@ -3572,10 +3592,10 @@ class Game extends Phaser.Scene {
       let r = Math.random() * pool.reduce((s, [, v]) => s + v.weight, 0);
       for (const [k, v] of pool) { r -= v.weight; if (r <= 0) { type = k; break; } }
       type = type || 'shield';
-      // รอบแรก: ได้อาวุธแล้ว 60% เป็นสีที่ใช้อยู่ ระดับพลังยิงจะได้ขึ้นต่อเนื่อง
-      if (this.easy && WEAPONS[type] && Math.random() < 0.6) type = this.weapon;
-      // อาวุธตันแล้ว ไอเท็มอาวุธส่วนใหญ่เปลี่ยนเป็นคริสตัล (ยังเหลือบางส่วนไว้เปลี่ยนชนิดอาวุธได้)
-      if (WEAPONS[type] && this.power >= MAX_POWER && Math.random() < MAXED_WEAPON_TO_COIN) { this.dropCoins(x, y, 5); return; }
+      // รอบแรก: ได้อาวุธแล้ว 60% เป็นแบบที่ยังไม่มี จะได้รวมอาวุธได้เร็ว
+      if (this.easy && WEAPONS[type] && Math.random() < 0.6) type = this.missingMod();
+      // มีครบ 3 แบบและเลเวลตันแล้ว ไอเท็มอาวุธส่วนใหญ่เปลี่ยนเป็นคริสตัล
+      if (WEAPONS[type] && this.power >= MAX_POWER && this.mods.length >= MOD_ORDER.length && Math.random() < MAXED_WEAPON_TO_COIN) { this.dropCoins(x, y, 5); return; }
     }
     const p = this.powerups.create(x, y, ITEMS[type].key).setDepth(3);
     p.setData('type', type);
@@ -3600,7 +3620,14 @@ class Game extends Phaser.Scene {
     p.destroy();
     sfx.power();
     if (WEAPONS[type]) {
-      if (type === this.weapon) {
+      const isNew = !this.has(type);
+      if (isNew) {
+        // ได้อาวุธแบบใหม่: รวมเข้ากับที่มีอยู่
+        this.mods.push(type);
+        this.popText(this.player.x, this.player.y - 74, `รวมอาวุธ! ${this.modName()}`, WEAPONS[type].color, 18);
+        this.sparks.explode(20, this.player.x, this.player.y);
+      }
+      {
         if (this.power < MAX_POWER) {
           this.power++;
           if (this.power > SPREAD_MAX) {
@@ -3610,10 +3637,7 @@ class Game extends Phaser.Scene {
             this.popText(x, y, `พลังยิง Lv${this.power}`, WEAPONS[type].color);
           }
         }
-        else { this.addScore(500); this.popText(x, y, '+500', '#ffd23f'); }
-      } else {
-        this.weapon = type;
-        this.popText(x, y, WEAPONS[type].name + '!', WEAPONS[type].color);
+        else if (!isNew) { this.addScore(500); this.popText(x, y, '+500', '#ffd23f'); }
       }
       if (this.shipId === 'comet' && Math.random() < this.sk.chance) {
         if (this.power < MAX_POWER) {
@@ -4160,7 +4184,11 @@ class Game extends Phaser.Scene {
       return;
     }
     this.lives--;
-    this.power = Math.max(1, this.power - 1);
+    // ตาย: มีอาวุธหลายแบบ = เสียแบบที่เก็บล่าสุด (เลเวลคงเดิม) · มีแบบเดียว = เลเวลลด 1
+    if (this.mods.length > 1) {
+      const lost = this.mods.pop();
+      this.popText(this.player.x, this.player.y - 70, `เสีย${WEAPONS[lost].name}`, '#ff8a8a', 15);
+    } else this.power = Math.max(1, this.power - 1);
     this.explode(this.player.x, this.player.y, 1.5, 'player');
     this.cameras.main.shake(250, 0.012);
     sfx.hit();
@@ -4615,7 +4643,7 @@ class Game extends Phaser.Scene {
       if (!left) {
         this.waveActive = false;
         if (Math.random() < WAVE_TICKET_CHANCE) this.dropPowerup(rand(80, W - 80), -20, 'ticket');   // ตั๋วสุ่ม: เฉลี่ยราว 1.2 ใบต่อรอบ (รวมบอส)
-        if (this.easy) this.dropPowerup(rand(120, W - 120), -40, this.weapon);           // รอบแรก: เคลียร์ wave ได้อาวุธฟรี
+        if (this.easy) this.dropPowerup(rand(120, W - 120), -40, this.missingMod());     // รอบแรก: เคลียร์ wave ได้อาวุธฟรี
         this.time.delayedCall(500, () => this.nextWave());
       }
     }
