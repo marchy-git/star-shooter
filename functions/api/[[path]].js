@@ -10,6 +10,8 @@
 //   POST /api/boss                    ล้มบอสในรอบนี้ { runId } → server สุ่มเศษยาน 2%
 //   POST /api/evolve                  แปลงร่างยาน (Lv10 + เศษครบ 5) { ship }
 //   POST /api/shard/sell              ขายเศษยานเป็นคริสตัล { ship, n }
+//   POST /api/chest                   เปิดหีบสมบัติ (ใช้คริสตัล) ได้สมบัติสุ่ม 1 ชิ้น
+//   POST /api/equip                   ใส่สมบัติ { slots: [id, id] }
 //   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
 //   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
@@ -94,6 +96,10 @@ const SHARD_CHANCE = 0.02;          // ล้มบอส 1 ตัว มีโ�
 const SHARD_NEED = 5;               // เศษที่ใช้แปลงร่าง
 const SHARD_TIERS = ['rare', 'epic', 'legendary', 'mythic'];   // ยานธรรมดาไม่มีเศษ
 const SHARD_PRICE = { rare: 80, epic: 180, legendary: 400, mythic: 1000 };
+// สมบัติ (ต้องตรงกับ TREASURES ในเกม)
+const TREASURE_IDS = ['feather', 'heart', 'battery', 'shield', 'compass', 'lens', 'hourglass', 'lucky', 'mirror', 'bag'];
+const TREASURE_MAX = 3, TREASURE_SLOTS = 2, CHEST_PRICE = 1500, CHEST_REFUND = 500;
+const BAG_BONUS = [0, 0.1, 0.2, 0.3];   // กระเป๋าคริสตัล: คริสตัลที่เก็บได้ในรอบ +% ตามขั้น
 const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIP_TIER[id]].cost / 10) * 10;
 
 const randFloat = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
@@ -117,7 +123,16 @@ function normalizeData(raw) {
     shards: Object.fromEntries(Object.entries(d.shards || {})
       .filter(([k]) => SHARD_TIERS.includes(SHIP_TIER[k])).map(([k, v]) => [k, nat(v)]).filter(([, v]) => v > 0)),
     evo: Object.fromEntries(Object.keys(d.evo || {}).filter(k => SHARD_TIERS.includes(SHIP_TIER[k]) && d.evo[k]).map(k => [k, true])),
+    ...treasureData(d),
   };
+}
+
+function treasureData(d) {
+  const nat = v => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const treasures = {};
+  for (const id of TREASURE_IDS) { const lv = Math.min(TREASURE_MAX, nat(d.treasures && d.treasures[id])); if (lv) treasures[id] = lv; }
+  const equip = [...new Set(Array.isArray(d.equip) ? d.equip : [])].filter(id => treasures[id]).slice(0, TREASURE_SLOTS);
+  return { treasures, equip };
 }
 
 // สุ่มเศษยาน: เลือกระดับตามโอกาสแบบเดียวกับตั๋วสุ่ม (ไม่รวมระดับธรรมดา) แล้วสุ่มยานในระดับนั้น
@@ -331,6 +346,36 @@ async function bossDown(env, request) {
   return json({ shard: id, data: d });
 }
 
+// ----- สมบัติ -----
+async function openChest(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const d = dataOf(u);
+  if (d.coins < CHEST_PRICE) return json({ error: 'not_enough', need: CHEST_PRICE - d.coins }, 400);
+  d.coins -= CHEST_PRICE;
+  const id = TREASURE_IDS[Math.floor(randFloat() * TREASURE_IDS.length)];
+  const lv = d.treasures[id] || 0;
+  let refund = 0;
+  if (lv >= TREASURE_MAX) { refund = CHEST_REFUND; d.coins += refund; }
+  else d.treasures[id] = lv + 1;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ treasure: id, level: d.treasures[id], isNew: lv === 0, refund, data: d });
+}
+
+async function equipTreasures(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const d = dataOf(u);
+  const slots = body && Array.isArray(body.slots) ? body.slots : null;
+  if (!slots || slots.length > TREASURE_SLOTS || new Set(slots).size !== slots.length || !slots.every(id => d.treasures[id])) {
+    return json({ error: 'bad_equip' }, 400);
+  }
+  d.equip = slots;
+  await writeData(env, u.id, d);
+  return json({ data: d });
+}
+
 // ----- รอบเล่น -----
 async function startRun(env, request) {
   const u = await currentUser(env, request);
@@ -394,7 +439,9 @@ async function submit(env, request) {
   if (score > 600_000 * loop + 400_000 || score > 50_000 + sec * SCORE_PER_SEC) return json({ error: 'implausible' }, 400);
 
   // รางวัล: ของที่เก็บได้ถูกจำกัดเพดาน, โบนัสจากคะแนน 1 คริสตัลต่อ 1,000 แต้ม
-  const coins = Math.min(int(body.coins, 0, 1_000_000) ?? 0, Math.floor(sec * COINS_PER_SEC));
+  const d0 = dataOf(u);
+  const bag = d0.equip.includes('bag') ? BAG_BONUS[d0.treasures.bag] || 0 : 0;
+  const coins = Math.floor(Math.min(int(body.coins, 0, 1_000_000) ?? 0, Math.floor(sec * COINS_PER_SEC)) * (1 + bag));
   const tickets = Math.min(int(body.tickets, 0, 10_000) ?? 0, loop * TICKETS_PER_LOOP, 1 + Math.floor(sec / TICKET_MIN_SEC));
   const scoreBonus = Math.floor(score / 1000);
   const d = dataOf(u);
@@ -454,6 +501,8 @@ export async function onRequest({ request, env }) {
     if (route === 'boss' && m === 'POST') return await bossDown(env, request);
     if (route === 'evolve' && m === 'POST') return await evolve(env, request);
     if (route === 'shard/sell' && m === 'POST') return await sellShard(env, request);
+    if (route === 'chest' && m === 'POST') return await openChest(env, request);
+    if (route === 'equip' && m === 'POST') return await equipTreasures(env, request);
     if (route === 'logout' && m === 'POST') return await logout(env, request);
     return json({ error: 'not_found' }, 404);
   } catch (err) {
