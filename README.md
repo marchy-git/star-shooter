@@ -1,92 +1,100 @@
-# ศึกยานต่างดาว
+# ศึกยานต่างดาว (Neon Star Shooter)
 
-เกมยิงยานอวกาศบนเบราว์เซอร์ เล่นฟรี ไม่ต้องล็อกอิน มีตารางอันดับออนไลน์
-ใช้ Cloudflare ทั้งหมด: **Pages** ฝากเว็บ, **Pages Functions** เป็น API, **D1** เก็บคะแนน
+เกมยิงยานอวกาศแนวตั้ง ธีมนีออน เล่นบนเบราว์เซอร์ทั้งคอมและมือถือ (เพิ่มลงหน้าจอโฮมได้) มีบัญชีผู้เล่นและตารางอันดับออนไลน์
 
+เล่นได้ที่ **https://star-shooter.pages.dev**
+
+ใช้ Cloudflare ทั้งหมด: **Pages** ฝากเว็บ · **Pages Functions** เป็น API · **D1** เก็บบัญชี ความคืบหน้า และคะแนน
+
+## ในเกมมีอะไร
+- **ด่านวนไม่รู้จบ:** wave 1–4 → ด่านกีดขวาง DANGER ZONE → บอส → ด่าน CHALLENGE → รอบถัดไป (ฉากเปลี่ยนทุกรอบ)
+- **สิ่งกีดขวาง 7 แบบ** ยิงไม่แตกต้องหลบ: ทางเดินกำแพง, ประตูเลเซอร์, ม่านกระสุน, เขตเตือนภัย, ทุ่นระเบิด, หลุมดำ, แผ่นหิน
+- **รูหนอน:** โผล่บางรอบ เข้าไปลุ้นโซนโบนัส (ยิงยานแจกแต้ม ไม่ชนเลยได้ x2) หรือโซนอันตราย (อุกกาบาต + ศัตรูบุก รอดได้คริสตัล)
+- **บอส 3 ตัว** มีกลไกเฉพาะ (ปักเสา ฮีล แช่น้ำแข็ง) รอบสูงใช้หลายกลไกและเลือดเพิ่มขึ้น
+- **อาวุธซ้อนกันได้:** กระจาย + เลเซอร์ทะลุ + จรวดติดตาม เลเวล 1–10 (Lv10 เลเซอร์เป็นลำแสงใหญ่)
+- **คอมโบ / FEVER / ON AIR** (เก็บตัวอักษร O N A I R ครบ) คูณคะแนน
+- **ยาน 10 ลำ 5 ระดับ** ได้จากตั๋วสุ่ม (มีระบบการันตี) อัปเลเวลด้วยคริสตัล แต่ละลำมีสกิลเฉพาะ
+- **แปลงร่างยาน:** ยานระดับหายากขึ้นไป Lv10 + เศษยานครบ 5 (ได้จากการล้มบอส) → ร่าง 2 หน้าตาใหม่ กระสุนใหม่ สกิลแรงขึ้น
+- **การ์ดแชร์คะแนน** และป้ายคู่แข่งในตารางอันดับระหว่างเล่น
+
+## โครงสร้าง
 ```
 space-shooter/
-├─ public/index.html          ตัวเกมทั้งหมด (ไฟล์เดียว)
-├─ functions/api/[[path]].js  API ตารางอันดับ (/api/leaderboard, /api/score)
+├─ public/index.html          ตัวเกมทั้งหมด (ไฟล์เดียว · Phaser 3 · วาดภาพ/เสียงด้วยโค้ด)
+├─ public/manifest.webmanifest, icon-*.png   สำหรับเพิ่มลงหน้าจอโฮม
+├─ functions/api/[[path]].js  API ทั้งหมด
 ├─ schema.sql                 โครงสร้างตารางใน D1
+├─ deploy.sh                  deploy พร้อมประกาศในเกมล่วงหน้า
+├─ design/                    หน้าพรีวิวดีไซน์ (ไม่ขึ้นเว็บ)
 ├─ wrangler.toml              ตั้งค่า Cloudflare
-├─ Dockerfile, docker-compose.yml   ใช้ wrangler ผ่าน Docker โดยไม่ต้องลง Node.js
+└─ Dockerfile, docker-compose.yml   ใช้ wrangler ผ่าน Docker โดยไม่ต้องลง Node.js
 ```
 
-## ทดสอบในเครื่อง
+## API
+ทุกอย่างที่เกี่ยวกับคริสตัล ตั๋ว ยาน และรางวัล คำนวณที่ server (เครื่องผู้เล่นแก้ค่าเองไม่ได้) · ยืนยันตัวตนด้วย `Authorization: Bearer <token>`
 
+| เส้นทาง | ใช้ทำอะไร |
+|---|---|
+| `GET /api/leaderboard` | ตารางอันดับ |
+| `POST /api/signup`, `POST /api/login`, `POST /api/logout`, `GET /api/me` | บัญชีผู้เล่น |
+| `POST /api/ship`, `POST /api/upgrade`, `POST /api/spin` | เลือกยาน อัปเลเวล สุ่มยาน |
+| `POST /api/run` → `POST /api/score` | เริ่มรอบ (ได้ runId) → จบรอบ ส่งคะแนนและของที่เก็บได้ (จำกัดเพดานตามเวลาเล่นจริง) |
+| `POST /api/boss` | ล้มบอส: server สุ่มเศษยาน |
+| `POST /api/evolve`, `POST /api/shard/sell` | แปลงร่างยาน · ขายเศษยาน |
+| `GET /api/notice` | ประกาศ update patch ที่กำลังจะมา |
+
+## ทดสอบในเครื่อง
 ```bash
 docker compose up dev
 ```
+แล้วเปิด http://localhost:8788 ทำงานเหมือนของจริงรวมถึง D1 จำลอง (ข้อมูลอยู่ใน `.wrangler/`)
 
-แล้วเปิด http://localhost:8788 ทุกอย่างทำงานเหมือนของจริง รวมถึง D1 จำลอง (ข้อมูลอยู่ในโฟลเดอร์ `.wrangler/`)
-
-แก้ `public/index.html` แล้วกด refresh ได้เลย แต่ถ้าแก้ไฟล์ใน `functions/` ต้อง restart ก่อน (บน Windows ตัว Docker ไม่เห็นว่าไฟล์เปลี่ยน):
-
+แก้ `public/index.html` แล้ว refresh ได้เลย ถ้าแก้ไฟล์ใน `functions/` ต้อง restart ก่อน (บน Windows Docker ไม่เห็นว่าไฟล์เปลี่ยน):
 ```bash
 docker compose restart dev
 ```
 
-## Deploy ขึ้นเว็บจริง (ทำครั้งแรกครั้งเดียว)
-
-### 1. เตรียมรหัสเข้าใช้ Cloudflare
-
-1. เข้า Cloudflare dashboard → My Profile → API Tokens → Create Token → Create Custom Token
-2. ให้สิทธิ์ 2 อย่าง ระดับ Account: **Cloudflare Pages: Edit** และ **D1: Edit**
-3. ก๊อปไฟล์ `.env.example` เป็น `.env` แล้วใส่ token กับ Account ID (Account ID ดูได้ที่หน้า Workers & Pages ด้านขวา)
-
-ไฟล์ `.env` ห้ามส่งขึ้น Git (มีใน `.gitignore` แล้ว)
-
-### 2. สร้างฐานข้อมูล D1
-
+ถ้าแก้ `schema.sql` ให้สร้างตารางในเครื่องใหม่:
 ```bash
-docker compose run --rm tool d1 create star-shooter
+docker compose run --rm tool d1 execute star-shooter --local --file=schema.sql
 ```
 
-คำสั่งนี้จะแสดง `database_id` ให้ก๊อปไปใส่แทนค่าศูนย์ใน `wrangler.toml` แล้วสร้างตาราง:
+## Deploy
 
+### ตั้งค่าครั้งแรก
+1. Cloudflare dashboard → My Profile → API Tokens → Create Custom Token ให้สิทธิ์ระดับ Account: **Cloudflare Pages: Edit** และ **D1: Edit**
+2. ก๊อป `.env.example` เป็น `.env` ใส่ `CLOUDFLARE_API_TOKEN` และ `CLOUDFLARE_ACCOUNT_ID` (ไฟล์นี้ห้ามขึ้น Git)
+3. สร้างฐานข้อมูล แล้วใส่ `database_id` ที่ได้ลงใน `wrangler.toml`:
+   ```bash
+   docker compose run --rm tool d1 create star-shooter
+   ```
+4. สร้างโปรเจกต์ Pages:
+   ```bash
+   docker compose run --rm tool pages project create star-shooter --production-branch main
+   ```
+
+### อัปเดตเกม (ใช้ทุกครั้ง)
 ```bash
-docker compose run --rm tool d1 execute star-shooter --remote --file=schema.sql
+./deploy.sh
 ```
-
-### 3. สร้างโปรเจกต์ Pages และ deploy
-
-```bash
-docker compose run --rm tool pages project create star-shooter --production-branch main
-```
-
-```bash
-docker compose run --rm tool pages deploy
-```
-
-เสร็จแล้วจะได้ลิงก์ประมาณ `https://star-shooter.pages.dev` ส่งให้เพื่อนเล่นได้เลย
-
-## อัปเดตเกมครั้งต่อไป
-
-แก้ไฟล์แล้วรันแค่คำสั่งเดียว:
-
-```bash
-docker compose run --rm tool pages deploy
-```
+สคริปต์จะสร้าง/อัปเดตตารางใน D1 → ขึ้นแถบประกาศในเกม "ระบบจะทำการ update patch" ตอนเหลือ 1 นาทีและ 30 วินาที → deploy → ปิดประกาศ
+- `./deploy.sh 120` รอ 120 วินาที · `./deploy.sh 0` deploy ทันที
+- ผู้เล่นไม่หลุด: เล่นรอบที่ค้างอยู่ต่อได้ แล้วเกมจะโหลดเวอร์ชันใหม่ให้เองหลังจบรอบ (ส่งคะแนนเสร็จก่อน)
 
 ## ดูหรือจัดการคะแนน
-
 ```bash
-docker compose run --rm tool d1 execute star-shooter --remote --command "SELECT name, best, games FROM players ORDER BY best DESC LIMIT 20"
+docker compose run --rm tool d1 execute star-shooter --remote --command "SELECT name, best, loop FROM players ORDER BY best DESC LIMIT 20"
 ```
-
-ลบชื่อที่ไม่เหมาะสม (แทน `ชื่อ` ด้วยชื่อจริงในตาราง):
-
+ลบชื่อที่ไม่เหมาะสม:
 ```bash
 docker compose run --rm tool d1 execute star-shooter --remote --command "DELETE FROM players WHERE name = 'ชื่อ'"
 ```
 
-## กันโกง (ระดับพื้นฐาน)
+## กันโกง
+- รางวัลทุกอย่างคิดที่ server: เริ่มรอบได้ runId ใช้ส่งผลได้ครั้งเดียว และคะแนน/รอบ/คริสตัล/ตั๋วถูกจำกัดตามเวลาที่เล่นจริง
+- การสุ่มยาน อัปเลเวล เศษยาน และแปลงร่าง ทำที่ server ทั้งหมด
+- รหัสผ่านเก็บแบบ PBKDF2 + salt · ชื่อในเกมกรองคำหยาบ
+- ข้อจำกัด: ยังโกงแบบ "รอเวลาแล้วส่งตัวเลขที่ไม่เกินเพดาน" ได้ ถ้าเจอคะแนนแปลกให้ลบด้วยคำสั่งด้านบน
 
-- ผู้เล่นแต่ละเครื่องมีรหัสลับใน localStorage ฝั่ง server เก็บแค่ SHA-256 ของรหัสนี้ คนอื่นจึงส่งคะแนนแทนไม่ได้
-- ส่งคะแนนได้ไม่ถี่กว่า 8 วินาทีต่อคน และคะแนนต้องไม่เกินเพดานตามรอบที่ไปถึง
-- เกมฝั่งเบราว์เซอร์ถูกแก้โค้ดได้เสมอ ถ้าเจอคะแนนแปลกให้ลบด้วยคำสั่งด้านบน
-
-## ข้อจำกัด
-
-- เหรียญ ยาน และอัปเกรดเก็บใน localStorage ของแต่ละเบราว์เซอร์ ล้างข้อมูลเว็บหรือเปลี่ยนเครื่องแล้วจะหาย
+## หมายเหตุ
 - ปุ่มคัดลอกรูปใช้ได้บน Chrome, Edge, Safari รุ่นใหม่ (ต้องเปิดผ่าน https) ถ้าคัดลอกไม่ได้จะเปิดรูปให้กดค้างบันทึกแทน
