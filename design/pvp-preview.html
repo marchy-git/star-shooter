@@ -19,7 +19,10 @@
   .phone { width: 360px; max-width: calc(100vw - 32px); aspect-ratio: 360 / 680; border-radius: 34px; border: 2px solid #2d2d5e; overflow: hidden;
     box-shadow: 0 0 0 6px #0c0a20, 0 20px 60px rgba(0,0,0,.6); background: #05030f; }
   .phone canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
-  .side { flex: 1; min-width: 280px; max-width: 520px; }
+  .side { flex: 1; min-width: 280px; max-width: 420px; }
+  .phone-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .cap { font-size: 13px; color: var(--dim); }
+  .cap b { color: var(--text); }
   .ctrl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
   .ctrl button { font: 500 14px "Chakra Petch", sans-serif; color: var(--text); background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15);
     border-radius: 10px; padding: 8px 12px; cursor: pointer; }
@@ -40,18 +43,36 @@
 <body>
 <div class="wrap">
   <h1>PvP ARENA · ต่อสู้ 1 ต่อ 1 <small>หน้าพรีวิวดีไซน์ (ยังไม่ได้ใส่เกม)</small></h1>
-  <p class="lead">กดในจอได้เลย: <b>หาคู่ต่อสู้</b> → เรดาร์หาคู่ → <b>ฉาก VS</b> → แข่ง 2 จอ (บอทเล่นแทนทั้งสองฝั่ง) → ผลแพ้ชนะ ·
-    หลบกำแพงแบบ <b style="color:var(--gold)">PERFECT</b> หรือ <b style="color:var(--gold)">เคลียร์มอนไว</b> = ชาร์จหลอด เต็มแล้วยิงการโจมตีข้ามไปจออีกฝ่าย</p>
+  <p class="lead">โทรศัพท์ 2 เครื่อง: <b>ซ้าย = คุณ</b> สร้างห้อง → กด <b>📣 ประกาศเรียกคน</b> · <b>ขวา = เพื่อนที่อยู่หน้าแรก</b> จะมีป้ายเด้ง → กด <b>เข้าร่วม</b> →
+    ทั้งสองเครื่องเข้าฉาก VS แล้วแข่งพร้อมกัน (เครื่องขวาเห็นมุมกลับด้าน) · หลบกำแพง <b style="color:var(--gold)">PERFECT</b> / <b style="color:var(--gold)">เคลียร์ไว</b> = ชาร์จหลอด เต็มแล้วยิงการโจมตีข้ามจอ</p>
   <div class="main">
-    <div class="phone"><canvas id="cv"></canvas></div>
+    <div class="phone-col"><div class="cap"><b style="color:var(--me)">เครื่องคุณ</b> · เปิดห้อง</div><div class="phone"><canvas id="cv"></canvas></div></div>
+    <div class="phone-col"><div class="cap"><b style="color:var(--opp)">เครื่องเพื่อน</b> · อยู่หน้าแรกของเกม</div><div class="phone"><canvas id="cv2"></canvas></div></div>
     <div class="side">
-      <div class="lbl">ข้ามไปหน้า</div>
+      <div class="lbl">เครื่องคุณ: ข้ามไปหน้า</div>
       <div class="ctrl" id="jump">
-        <button data-s="lobby">① Matching</button><button data-s="search">② กำลังหาคู่</button><button data-s="vs">③ ฉาก VS</button>
-        <button data-s="battle">④ แข่ง 2 จอ</button><button data-s="result">⑤ ผลการแข่ง</button>
+        <button data-s="lobby">① หน้า PvP</button><button data-s="room">② ห้องรอ</button><button data-s="vs">③ ฉาก VS</button>
+        <button data-s="battle">④ แข่ง 2 จอ</button><button data-s="result">⑤ ผลการแข่ง</button><button data-s="search">หาคู่อัตโนมัติ (ไว้ทีหลัง)</button>
+      </div>
+      <div class="lbl">เครื่องเพื่อน: จำลองสถานการณ์</div>
+      <div class="ctrl" id="gctrl">
+        <button data-g="home" class="on">อยู่หน้าแรก</button><button data-g="ingame">กำลังเล่นอยู่</button><button id="otherFirst">มีคนอื่นกดเข้าก่อน: ปิด</button>
       </div>
       <div class="lbl">รูปแบบจอแข่ง</div>
       <div class="ctrl" id="layout"><button data-l="equal" class="on">แบ่งครึ่งเท่ากัน</button><button data-l="big">จอเราใหญ่ + จอคู่แข่งเล็ก</button></div>
+
+      <div class="card">
+        <h3>ห้อง + ประกาศเรียกคน</h3>
+        <ul>
+          <li><b>สร้างห้อง</b> → ได้รหัส 4 หลัก + ลิงก์ <span class="dim">star-shooter.pages.dev/?room=xxxx</span> ส่งไลน์ให้เพื่อนได้</li>
+          <li><b>📣 ประกาศเรียกคน</b> → ป้ายเด้งที่<b>ทุกคนที่อยู่หน้าแรก</b> · ประกาศได้ 1 ครั้งต่อ 2 นาที</li>
+          <li>ป้ายมี <b>[เข้าร่วม] [ไม่ล่ะ]</b> + แถบเวลา 30 วิ · <b>คนแรกที่กดได้เข้า</b> คนที่กดช้าเห็น "ห้องเต็มแล้ว"</li>
+          <li>คน<b>กำลังเล่นอยู่ไม่เด้งป้าย</b> (กันตายกลางเกม) เห็นแค่ไอคอน 📣 เล็กๆ มุมจอ</li>
+          <li>เข้าห้องครบ 2 คน → นับ 3 วิ → ฉาก VS ทั้งสองเครื่องพร้อมกัน</li>
+          <li>ตั้งค่า "ไม่รับคำเชิญ PvP" ได้ · ไม่มีใครเข้าใน 60 วิ → ประกาศใหม่ หรือรอต่อ</li>
+          <li class="dim">ระบบจริง: ป้ายใช้การเช็กห้องทุก 5 วิ (แบบประกาศ update patch ที่มีอยู่) · การแข่งสดใช้ Durable Object 1 ตัวต่อห้อง</li>
+        </ul>
+      </div>
 
       <div class="card">
         <h3>ทำอะไร → ส่งอะไรไปจออีกฝ่าย</h3>
@@ -72,9 +93,9 @@
           <li>ด่านสุ่มจาก <b>seed เดียวกัน</b> ทั้งสองฝั่งเจอมอน/กำแพงชุดเดียวกัน (ต่างกันแค่ที่อีกฝ่ายส่งมา)</li>
           <li><b>สิ่งกีดขวางเร็วกว่าปกติ:</b> กำแพงตกเร็ว ×1.45 และมาถี่ทุก 3.6 วิ (โหมดปกติรอบแรก ~5–6 วิ)</li>
           <li><b>สนามเท่าเทียม:</b> ยานทุกลำปรับเป็นเลเวลเดียวกัน ใช้สกิลได้ · ปิดสมบัติชุบชีวิต (ขนนก/ซูเปอร์โนวา)</li>
-          <li>ไม่มีคนออนไลน์ภายใน 15 วิ → สู้กับ <b>เงา</b> (บันทึกการเล่นจริงของผู้เล่นอื่น) จะได้มีคู่ทุกครั้ง</li>
+          <li>หาคู่อัตโนมัติ + สู้กับ <b>เงา</b> เก็บไว้ทำทีหลัง (ปุ่มล็อกไว้ในหน้า PvP)</li>
           <li>รางวัลตอนนี้เป็น<b>ถ้วยอย่างเดียว</b>: ชนะ <b style="color:var(--gold)">+25 🏆</b> · แพ้ −15 🏆 · ชนะติดกันได้โบนัสถ้วย · ตารางอันดับ PvP รายสัปดาห์</li>
-          <li><b>ร้านค้า PvP</b> มีปุ่มในหน้า Matching แต่ล็อกไว้ ขึ้น <b style="color:var(--gold)">COMING SOON</b> (ของในร้านค่อยกำหนดทีหลัง)</li>
+          <li><b>ร้านค้า PvP</b> มีปุ่มในหน้า PvP แต่ล็อกไว้ ขึ้น <b style="color:var(--gold)">COMING SOON</b> (ของในร้านค่อยกำหนดทีหลัง)</li>
         </ul>
       </div>
     </div>
@@ -84,10 +105,14 @@
 <script>
 // หน้าพรีวิวโหมด PvP — เปิดไฟล์นี้ตรงๆ ในเบราว์เซอร์ได้เลย (ไม่ได้ deploy) · วาดด้วย canvas ทั้งหมด บอทเล่นแทนทั้งสองฝั่ง
 const W = 360, H = 680, DPR = 2, TAU = Math.PI * 2, FONT = '"Chakra Petch", sans-serif';
-const cv = document.getElementById('cv'), c = cv.getContext('2d');
-cv.width = W * DPR; cv.height = H * DPR;
+const cv = document.getElementById('cv'), cv2 = document.getElementById('cv2'), c1 = cv.getContext('2d'), c2 = cv2.getContext('2d');
+let c = c1;   // ตัววาดปัจจุบัน (สลับระหว่างเครื่องคุณ / เครื่องเพื่อน)
+cv.width = cv2.width = W * DPR; cv.height = cv2.height = H * DPR;
 const ME_COL = '#36f1ff', OPP_COL = '#ffb000';
-const ME = { name: 'คุณ (EvoTest)', ship: 'โนวา', trophy: 1240, col: ME_COL };
+const ME = { name: 'คุณ (EvoTest)', nick: 'EvoTest', ship: 'โนวา', trophy: 1240, col: ME_COL };
+// เพื่อนที่อยู่หน้าแรก (เครื่องขวา) · มุมมองเครื่องเพื่อน: เพื่อน = คุณ, EvoTest = คู่แข่ง
+const GUEST = { name: 'แมวอวกาศ', nick: 'แมวอวกาศ', ship: 'พายุ', trophy: 1195, col: OPP_COL };
+const GV_ME = { name: 'คุณ (แมวอวกาศ)', ship: 'พายุ', trophy: 1195, col: OPP_COL }, GV_OPP = { name: 'EvoTest', ship: 'โนวา', trophy: 1240, col: ME_COL };
 const POOL = [
   { name: 'PhantomX', ship: 'แฟนทอม', trophy: 1310 }, { name: 'แมวอวกาศ', ship: 'พายุ', trophy: 1195 },
   { name: 'NovaKing', ship: 'โนวา', trophy: 1402 }, { name: 'ดาวตกไม่หยุด', ship: 'ฟีนิกซ์', trophy: 1288 }, { name: 'เช่นช้างน้อย', ship: 'ปริซึม', trophy: 1350 },
@@ -102,6 +127,7 @@ function txt(s, x, y, size, col, align = 'center', weight = 700, glow) {
   if (glow) { c.shadowColor = glow; c.shadowBlur = size * 0.6; }
   c.fillText(s, x, y); c.restore();
 }
+const shade = (h, k) => `rgb(${[1, 3, 5].map(i => Math.round(parseInt(h.slice(i, i + 2), 16) * k)).join(',')})`;
 function rrect(x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 // ยานนีออน (dir 1 = หัวขึ้น, -1 = หัวลง)
 function ship(x, y, s, col, dir = 1, t = 0) {
@@ -216,7 +242,7 @@ class Sim {
     for (const a of this.incoming) a.t -= dt;
     for (const a of this.incoming.filter(a => a.t <= 0)) this.apply(a.type);
     this.incoming = this.incoming.filter(a => a.t > 0);
-    if (this.charge >= 100) { this.charge -= 100; match.send(this, this.chargeSrc); }
+    if (this.charge >= 100) { this.charge -= 100; if (!this.solo) match.send(this, this.chargeSrc); }
   }
 }
 
@@ -322,23 +348,23 @@ function drawPane(sim, r, t, label) {
   txt(`ATTACK ${Math.floor(clamp(sim.charge, 0, 100))}%`, r.x + r.w / 2, by + 20, 10, '#c9d3f0', 'center', 500);
   return { h, by };
 }
-function drawBattle(t) {
-  const R = rects(), m = match;
+function drawBattle(t, mirror = false) {
+  const R = rects(), m = match, A = mirror ? m.opp : m.me, B = mirror ? m.me : m.opp, oppName = mirror ? ME.nick : OPP.name;
   c.fillStyle = '#05030f'; c.fillRect(0, 0, W, H);
   // แถบบน: ชื่อ แต้ม เวลา ชีวิต
   const hearts = n => '♥'.repeat(Math.max(0, n)) + '♡'.repeat(3 - Math.max(0, n));
-  txt('คุณ', 12, 16, 11, ME_COL, 'left'); txt(m.me.score.toLocaleString(), 12, 34, 18, '#fff', 'left'); txt(hearts(m.me.lives), 12, 52, 11, '#ff6b8a', 'left', 500);
-  txt(OPP.name, W - 12, 16, 11, OPP_COL, 'right'); txt(m.opp.score.toLocaleString(), W - 12, 34, 18, '#fff', 'right'); txt(hearts(m.opp.lives), W - 12, 52, 11, '#ff6b8a', 'right', 500);
+  txt('คุณ', 12, 16, 11, A.col, 'left'); txt(A.score.toLocaleString(), 12, 34, 18, '#fff', 'left'); txt(hearts(A.lives), 12, 52, 11, '#ff6b8a', 'left', 500);
+  txt(oppName, W - 12, 16, 11, B.col, 'right'); txt(B.score.toLocaleString(), W - 12, 34, 18, '#fff', 'right'); txt(hearts(B.lives), W - 12, 52, 11, '#ff6b8a', 'right', 500);
   const left = Math.max(0, MATCH - m.t);
   txt(`0:${String(Math.ceil(left)).padStart(2, '0')}`, W / 2, 24, 20, left < 10 ? '#ff6b6b' : '#fff');
   // แถบแต้มเทียบกัน
-  const tot = m.me.score + m.opp.score || 1, mid = 110 + 140 * (m.me.score / tot);
-  c.fillStyle = ME_COL; c.fillRect(110, 44, mid - 110, 4); c.fillStyle = OPP_COL; c.fillRect(mid, 44, 250 - mid, 4);
+  const tot = A.score + B.score || 1, mid = 110 + 140 * (A.score / tot);
+  c.fillStyle = A.col; c.fillRect(110, 44, mid - 110, 4); c.fillStyle = B.col; c.fillRect(mid, 44, 250 - mid, 4);
   txt('VS', W / 2, 55, 9, '#8b93b8');
-  const a = drawPane(m.me, R.me, t, 'คุณ'), b = drawPane(m.opp, R.opp, t, layout === 'equal' ? OPP.name : 'คู่แข่ง');
+  const a = drawPane(A, R.me, t, 'คุณ'), b = drawPane(B, R.opp, t, layout === 'equal' ? oppName : 'คู่แข่ง');
   // ลูกพลังการโจมตีบินข้ามจอ
   for (const p of m.proj) {
-    const fr = p.from === m.me ? R.me : R.opp, to = p.from === m.me ? R.opp : R.me, fh = p.from === m.me ? a : b;
+    const fromA = p.from === A, fr = fromA ? R.me : R.opp, to = fromA ? R.opp : R.me, fh = fromA ? a : b;
     const x0 = fr.x + fr.w / 2, y0 = fh.by, x1 = to.x + to.w / 2, y1 = to.y + 24, k = ease(Math.min(1, p.t));
     const x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k - Math.sin(k * Math.PI) * 120, col = ATK[p.type].col;
     if (p.t < 1) {
@@ -353,7 +379,7 @@ function drawBattle(t) {
   const fy = Math.max(a.by, b.by) + 38;
   if (fy < H - 30) {
     txt('เหตุการณ์ล่าสุด', 14, fy, 11, '#8b93b8', 'left', 500);
-    m.feed.forEach((f, i) => { txt(`${f.side === 'me' ? '▲' : '▼'} ${f.who}: ${f.s}`, 14, fy + 20 + i * 19, 12, f.col, 'left', 500); });
+    m.feed.forEach((f, i) => { const mine = (f.side === 'me') !== mirror; txt(`${mine ? '▲' : '▼'} ${mine ? 'คุณ' : oppName}: ${f.s}`, 14, fy + 20 + i * 19, 12, f.col, 'left', 500); });
   }
   if (m.over) {
     const k = clamp((now() - m.endAt) / 600, 0, 1);
@@ -365,16 +391,42 @@ function drawBattle(t) {
 // ================================================================ หน้า Matching / หาคู่ / VS / ผล
 let state = 'lobby', st0 = 0, searchFound = 2.6;
 const now = () => performance.now() / 1000;
+const ROOM = { code: '4821', announcedAt: -999, joinedAt: -1, joiner: null, copiedAt: -9 };
+let gstate = 'home', gst0 = 0, guestIn = false, otherFirst = false, guestPill = false, guestSolo = null;
+const IN_MATCH = ['joining', 'waiting', 'vs', 'battle', 'result', 'alert', 'full'];
+function ggo(s) {
+  gstate = s; gst0 = now();
+  if (s === 'ingame') guestSolo = new Sim({ side: 'me', col: OPP_COL, shot: '#c18bff', skill: 0.9, solo: true });
+  if (s === 'home' || s === 'ingame') guestIn = false;
+  document.querySelectorAll('#gctrl [data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === (s === 'ingame' ? 'ingame' : 'home')));
+}
 function go(s) {
   state = s; st0 = now();
-  if (s === 'search') { searchFound = rnd(2.2, 3.4); }
-  if (s === 'vs' || s === 'search') OPP = Object.assign({ col: OPP_COL }, POOL[Math.floor(Math.random() * POOL.length)]);
-  if (s === 'battle') match.start();
-  if (s === 'result' && !match.me) { match.start(); match.me.score = 48200; match.opp.score = 41700; match.me.stats = { sent: 5, perfect: 7, fast: 3, cancel: 1, kills: 61 }; match.opp.stats = { sent: 4, perfect: 5, fast: 2, cancel: 0, kills: 54 }; match.opp.lives = 0; match.opp.dead = true; }
+  if (s === 'search') { searchFound = rnd(2.2, 3.4); OPP = Object.assign({ col: OPP_COL }, POOL[Math.floor(Math.random() * POOL.length)]); }
+  if (s === 'room') { Object.assign(ROOM, { code: String(1000 + Math.floor(Math.random() * 9000)), announcedAt: -999, joinedAt: -1, joiner: null }); guestPill = false; if (IN_MATCH.includes(gstate)) ggo('home'); }
+  if (s === 'lobby' && IN_MATCH.includes(gstate)) ggo('home');
+  if (s === 'vs' && guestIn) ggo('vs');
+  if (s === 'battle') { match.start(); if (guestIn) ggo('battle'); }
+  if (s === 'result') {
+    if (!match.me) { match.start(); match.me.score = 48200; match.opp.score = 41700; match.me.stats = { sent: 5, perfect: 7, fast: 3, cancel: 1, kills: 61 }; match.opp.stats = { sent: 4, perfect: 5, fast: 2, cancel: 0, kills: 54 }; match.opp.lives = 0; match.opp.dead = true; }
+    if (guestIn) ggo('result');
+  }
   document.querySelectorAll('#jump button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
 }
-let shopMsgAt = -9;
-const BTN = { lobby: { x: 50, y: 506, w: 260, h: 64 }, shop: { x: 50, y: 584, w: 260, h: 48 }, again: { x: 40, y: 560, w: 136, h: 54 }, back: { x: 184, y: 560, w: 136, h: 54 }, cancel: { x: 110, y: 590, w: 140, h: 42 } };
+let shopMsgAt = -9, hostToast = { s: '', at: -9 };
+const BTN = {
+  create: { x: 50, y: 482, w: 260, h: 62 }, code: { x: 50, y: 554, w: 126, h: 44 }, auto: { x: 184, y: 554, w: 126, h: 44 }, shop: { x: 50, y: 608, w: 260, h: 42 },
+  announce: { x: 30, y: 418, w: 300, h: 64 }, copy: { x: 262, y: 171, w: 62, h: 26 }, close: { x: 110, y: 614, w: 140, h: 40 },
+  again: { x: 40, y: 560, w: 136, h: 54 }, back: { x: 184, y: 560, w: 136, h: 54 }, cancel: { x: 110, y: 590, w: 140, h: 42 },
+  gJoin: { x: 24, y: 98, w: 196, h: 36 }, gNo: { x: 228, y: 98, w: 108, h: 36 },
+};
+const mmss = v => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
+function toastDraw(m) {
+  const e = now() - m.at; if (e > 1.8) return;
+  const a = Math.min(1, e / 0.15, (1.8 - e) / 0.3);
+  c.save(); c.globalAlpha = a; rrect(40, H - 112, W - 80, 40, 12); c.fillStyle = 'rgba(10,8,30,.96)'; c.fill(); c.strokeStyle = '#ffd23f'; c.lineWidth = 1.2; c.stroke();
+  txt(m.s, W / 2, H - 92, 12, '#fff', 'center', 500); c.restore();
+}
 function button(b, label, sub, col = '#ffd23f', t = 0, primary = true) {
   c.save();
   if (primary) { c.shadowColor = col; c.shadowBlur = 18 + Math.sin(t * 4) * 8; }
@@ -406,8 +458,12 @@ function drawLobby(t) {
   ship(W / 2, cy, 1.9, ME_COL, 1, t);
   txt(`${ME.ship} · สนามเท่าเทียม (Lv เท่ากันทุกลำ)`, W / 2, 410, 12, '#c9d3f0', 'center', 500);
   // สถิติ
-  [['ชนะ', '38'], ['แพ้', '21'], ['ชนะติด', '4🔥']].forEach(([a, b], i) => { const x = 70 + i * 110; txt(b, x, 446, 20, '#fff'); txt(a, x, 468, 11, '#8b93b8', 'center', 500); });
-  button(BTN.lobby, 'หาคู่ต่อสู้', 'ไม่เจอใน 15 วิ → สู้กับเงาของผู้เล่นจริง', '#ffd23f', t);
+  [['ชนะ', '38'], ['แพ้', '21'], ['ชนะติด', '4🔥']].forEach(([a, b], i) => { const x = 70 + i * 110; txt(b, x, 436, 20, '#fff'); txt(a, x, 456, 11, '#8b93b8', 'center', 500); });
+  button(BTN.create, 'สร้างห้อง', 'ได้รหัสห้อง + ประกาศเรียกคนได้', '#ffd23f', t);
+  button(BTN.code, 'ใส่รหัสห้อง', '', '#fff', t, false);
+  const au = BTN.auto;
+  rrect(au.x, au.y, au.w, au.h, 14); c.fillStyle = 'rgba(255,255,255,.04)'; c.fill(); c.setLineDash([5, 4]); c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 1.2; c.stroke(); c.setLineDash([]);
+  txt('🔒 หาคู่อัตโนมัติ', au.x + au.w / 2, au.y + 15, 12, 'rgba(255,255,255,.5)'); txt('เร็วๆ นี้', au.x + au.w / 2, au.y + 31, 10, 'rgba(255,210,63,.7)', 'center', 500);
   // ร้านค้า PvP (ล็อก · COMING SOON)
   const b = BTN.shop;
   rrect(b.x, b.y, b.w, b.h, 14); c.fillStyle = 'rgba(255,255,255,.05)'; c.fill(); c.setLineDash([6, 5]); c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1.5; c.stroke(); c.setLineDash([]);
@@ -417,7 +473,8 @@ function drawLobby(t) {
   c.save(); c.translate(b.x + b.w - 52, b.y + b.h / 2); c.rotate(-0.08);
   rrect(-44, -12, 88, 24, 6); c.fillStyle = '#ffd23f'; c.shadowColor = '#ffd23f'; c.shadowBlur = 10 + Math.sin(t * 3) * 5; c.fill(); c.restore();
   c.save(); c.translate(b.x + b.w - 52, b.y + b.h / 2); c.rotate(-0.08); txt('COMING SOON', 0, 1, 11, '#1a1000'); c.restore();
-  txt('ตารางอันดับ PvP สัปดาห์นี้ · อันดับคุณ #4', W / 2, 656, 12, '#8b93b8', 'center', 500);
+  txt('ตารางอันดับ PvP สัปดาห์นี้ · อันดับคุณ #4', W / 2, 664, 12, '#8b93b8', 'center', 500);
+  toastDraw(hostToast);
   const mk = now() - shopMsgAt;
   if (mk < 1.8) {
     const a = Math.min(1, mk / 0.15, (1.8 - mk) / 0.3);
@@ -452,32 +509,32 @@ function drawSearch(t) {
   if (!found) button(BTN.cancel, 'ยกเลิก', '', '#fff', t, false);
   if (found && e > searchFound + 0.9) go('vs');
 }
-function drawVS(t) {
-  const e = now() - st0, k = ease(e / 0.55);
-  // พื้นหลังแบ่งทแยง: บนขวา = คู่แข่ง (ส้มทอง) · ล่างซ้าย = เรา (ฟ้า)
+function drawVS(t, e, meP, oppP, onDone) {
+  const k = ease(e / 0.55);
+  // พื้นหลังแบ่งทแยง: บนขวา = คู่แข่ง · ล่างซ้าย = เรา (สีตามผู้เล่น)
   const yl = H * 0.6, yr = H * 0.4;
   c.save(); c.beginPath(); c.moveTo(0, 0); c.lineTo(W, 0); c.lineTo(W, yr); c.lineTo(0, yl); c.closePath(); c.clip();
-  let g = c.createLinearGradient(W, 0, 0, H * 0.6); g.addColorStop(0, '#5a3a00'); g.addColorStop(1, '#120800'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-  for (let i = 0; i < 14; i++) { c.fillStyle = 'rgba(255,176,0,.08)'; const y = ((i * 60 + e * 400) % (H + 100)) - 100; c.fillRect(0, y, W, 6); }
-  stars(0, 0, W, H, t, -60, '#ffd27a');
+  let g = c.createLinearGradient(W, 0, 0, H * 0.6); g.addColorStop(0, shade(oppP.col, 0.35)); g.addColorStop(1, shade(oppP.col, 0.07)); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 14; i++) { c.fillStyle = rgba(oppP.col, 0.08); const y = ((i * 60 + e * 400) % (H + 100)) - 100; c.fillRect(0, y, W, 6); }
+  stars(0, 0, W, H, t, -60, '#ffffff');
   c.restore();
   c.save(); c.beginPath(); c.moveTo(0, yl); c.lineTo(W, yr); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.clip();
-  g = c.createLinearGradient(0, H, W, H * 0.4); g.addColorStop(0, '#003a4a'); g.addColorStop(1, '#020c18'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-  for (let i = 0; i < 14; i++) { c.fillStyle = 'rgba(54,241,255,.07)'; const y = H - (((i * 60 + e * 400) % (H + 100)) - 100); c.fillRect(0, y, W, 6); }
-  stars(0, 0, W, H, t, 60, '#9ff8ff');
+  g = c.createLinearGradient(0, H, W, H * 0.4); g.addColorStop(0, shade(meP.col, 0.3)); g.addColorStop(1, shade(meP.col, 0.06)); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 14; i++) { c.fillStyle = rgba(meP.col, 0.07); const y = H - (((i * 60 + e * 400) % (H + 100)) - 100); c.fillRect(0, y, W, 6); }
+  stars(0, 0, W, H, t, 60, '#ffffff');
   c.restore();
   // ยานพุ่งเข้ามา
   const ox = W * 0.68 + (1 - k) * 260, oy = H * 0.22, mx = W * 0.32 - (1 - k) * 260, my = H * 0.76;
-  ship(ox, oy, 2.4, OPP_COL, -1, t);
-  ship(mx, my, 2.4, ME_COL, 1, t);
+  ship(ox, oy, 2.4, oppP.col, -1, t);
+  ship(mx, my, 2.4, meP.col, 1, t);
   // ป้ายชื่อ
-  const plate = (x, y, p, col, al) => {
-    c.save(); c.globalAlpha = k; rrect(al === 'left' ? x : x - 170, y - 26, 170, 54, 10); c.fillStyle = 'rgba(5,3,15,.65)'; c.fill(); c.strokeStyle = col; c.lineWidth = 1.5; c.stroke(); c.restore();
+  const plate = (x, y, p, al) => {
+    c.save(); c.globalAlpha = k; rrect(al === 'left' ? x : x - 170, y - 26, 170, 54, 10); c.fillStyle = 'rgba(5,3,15,.65)'; c.fill(); c.strokeStyle = p.col; c.lineWidth = 1.5; c.stroke(); c.restore();
     const tx = al === 'left' ? x + 12 : x - 12;
-    txt(p.name, tx, y - 8, 18, '#fff', al); txt(`${p.ship} · 🏆 ${p.trophy}`, tx, y + 14, 11, col, al, 500);
+    txt(p.name, tx, y - 8, 18, '#fff', al); txt(`${p.ship} · 🏆 ${p.trophy}`, tx, y + 14, 11, p.col, al, 500);
   };
-  plate(14, H * 0.37 - 60, OPP, OPP_COL, 'left');
-  plate(W - 14, H * 0.63 + 60, ME, ME_COL, 'right');
+  plate(14, H * 0.37 - 60, oppP, 'left');
+  plate(W - 14, H * 0.63 + 60, meP, 'right');
   // รอยต่อสายฟ้า
   c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = '#fff'; c.shadowColor = '#fff'; c.shadowBlur = 16; c.lineWidth = 3;
   c.beginPath(); c.moveTo(0, yl); for (let i = 1; i <= 12; i++) { const f = i / 12; c.lineTo(W * f, yl + (yr - yl) * f + (i < 12 ? (Math.random() - 0.5) * 14 : 0)); } c.stroke(); c.restore();
@@ -490,54 +547,208 @@ function drawVS(t) {
   if (cd > 0) {
     const n = Math.floor(cd), f = cd - n, label = n < 3 ? String(3 - n) : 'FIGHT!';
     c.fillStyle = 'rgba(5,3,15,.35)'; c.fillRect(0, 0, W, H);
-    c.save(); c.globalAlpha = 1 - f * 0.6; txt(label, W / 2, H / 2, (n < 3 ? 90 : 56) * (1.4 - ease(f) * 0.4), '#fff', 'center', 700, n < 3 ? '#36f1ff' : '#ffd23f'); c.restore();
-    if (cd > 3.7) go('battle');
+    c.save(); c.globalAlpha = 1 - f * 0.6; txt(label, W / 2, H / 2, (n < 3 ? 90 : 56) * (1.4 - ease(f) * 0.4), '#fff', 'center', 700, n < 3 ? meP.col : '#ffd23f'); c.restore();
+    if (cd > 3.7 && onDone) onDone();
   } else txt('ด่านสุ่มจาก seed เดียวกัน · สิ่งกีดขวางเร็ว ×1.45', W / 2, H - 22, 11, '#c9d3f0', 'center', 500);
 }
-function drawResult(t) {
-  const m = match, win = m.winner() === 'me', e = now() - st0, k = ease(e / 0.6), col = win ? '#ffd23f' : '#8b93b8';
+function drawResult(t, mirror = false, e = now() - st0) {
+  const m = match, A = mirror ? m.opp : m.me, B = mirror ? m.me : m.opp, meP = mirror ? GV_ME : ME, oppName = mirror ? ME.nick : OPP.name;
+  const win = (m.winner() === 'me') !== mirror, k = ease(e / 0.6), col = win ? '#ffd23f' : '#8b93b8';
   bg(t, win ? '#3a2a00' : '#1a1a2a');
   if (win) { c.save(); c.globalCompositeOperation = 'lighter'; c.translate(W / 2, 190); c.rotate(t * 0.3);
     for (let i = 0; i < 12; i++) { c.rotate(TAU / 12); c.fillStyle = 'rgba(255,210,63,.08)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, -260); c.lineTo(18, -260); c.fill(); } c.restore(); }
   c.save(); c.translate(W / 2, 80); c.scale(0.6 + 0.4 * k, 0.6 + 0.4 * k); txt(win ? 'VICTORY!' : 'DEFEAT', 0, 0, 46, col, 'center', 700, win ? '#ff8a00' : '#000'); c.restore();
-  ship(W / 2, 190 + Math.sin(t * 2) * 5, 1.6, win ? ME_COL : '#5a6a8a', 1, t);
+  ship(W / 2, 190 + Math.sin(t * 2) * 5, 1.6, win ? meP.col : '#5a6a8a', 1, t);
   const tr = win ? 25 : -15, shown = Math.round(tr * clamp((e - 0.5) / 0.8, 0, 1));
-  txt(`🏆 ${(ME.trophy + shown).toLocaleString()}`, W / 2, 268, 22, '#fff');
+  txt(`🏆 ${(meP.trophy + shown).toLocaleString()}`, W / 2, 268, 22, '#fff');
   txt(`${tr > 0 ? '+' : ''}${shown}${win ? ' · ชนะติด 5 🔥 +5 โบนัส' : ''}`, W / 2, 294, 13, win ? '#7dff6a' : '#ff8a8a', 'center', 500);
   // ตารางเทียบ
-  const rows = [['แต้ม', m.me.score.toLocaleString(), m.opp.score.toLocaleString()], ['ส่งการโจมตี', m.me.stats.sent, m.opp.stats.sent], ['หลบ PERFECT', m.me.stats.perfect, m.opp.stats.perfect],
-    ['เคลียร์ไว', m.me.stats.fast, m.opp.stats.fast], ['หักล้าง', m.me.stats.cancel, m.opp.stats.cancel], ['ชีวิตเหลือ', Math.max(0, m.me.lives), Math.max(0, m.opp.lives)]];
+  const rows = [['แต้ม', A.score.toLocaleString(), B.score.toLocaleString()], ['ส่งการโจมตี', A.stats.sent, B.stats.sent], ['หลบ PERFECT', A.stats.perfect, B.stats.perfect],
+    ['เคลียร์ไว', A.stats.fast, B.stats.fast], ['หักล้าง', A.stats.cancel, B.stats.cancel], ['ชีวิตเหลือ', Math.max(0, A.lives), Math.max(0, B.lives)]];
   rrect(24, 318, W - 48, 34 + rows.length * 28, 14); c.fillStyle = 'rgba(255,255,255,.05)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.12)'; c.stroke();
-  txt('คุณ', W / 2 + 5, 336, 12, ME_COL); txt(OPP.name, W / 2 + 95, 336, 12, OPP_COL);
+  txt('คุณ', W / 2 + 5, 336, 12, A.col); txt(oppName, W / 2 + 95, 336, 12, B.col);
   rows.forEach(([a, b, d], i) => { const y = 364 + i * 28; txt(a, 40, y, 12, '#8b93b8', 'left', 500); txt(String(b), W / 2 + 5, y, 15, '#fff'); txt(String(d), W / 2 + 95, y, 15, '#fff'); });
-  button(BTN.again, 'แข่งอีกครั้ง', '', '#ffd23f', t);
+  button(BTN.again, mirror ? 'ท้าอีกรอบ' : 'แข่งอีกครั้ง', '', '#ffd23f', t);
   button(BTN.back, 'กลับ', '', '#fff', t, false);
   txt(win ? 'รางวัล: ถ้วย +25 (ร้านค้า PvP เร็วๆ นี้)' : 'แพ้เสียถ้วย −15 · สู้ใหม่ได้เลย', W / 2, 636, 12, '#c9d3f0', 'center', 500);
+}
+
+// ================================================================ ห้องรอ (เครื่องคุณ)
+function slotCard(x, y, p, tag, t, empty) {
+  rrect(x, y, 140, 178, 16);
+  if (empty) { c.fillStyle = 'rgba(255,255,255,.03)'; c.fill(); c.setLineDash([6, 5]); c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1.5; c.stroke(); c.setLineDash([]);
+    for (let i = 0; i < 8; i++) { const a = t * 4 + i * TAU / 8; c.fillStyle = `rgba(255,255,255,${0.15 + 0.6 * (i / 8)})`; c.beginPath(); c.arc(x + 70 + Math.cos(a) * 18, y + 70 + Math.sin(a) * 18, 3, 0, TAU); c.fill(); }
+    txt('รอผู้เล่น...', x + 70, y + 126, 13, 'rgba(255,255,255,.6)', 'center', 500);
+    txt(tag, x + 70, y + 150, 10, '#8b93b8', 'center', 500); return; }
+  c.fillStyle = rgba(p.col, 0.1); c.fill(); c.strokeStyle = p.col; c.lineWidth = 1.5; c.stroke();
+  ship(x + 70, y + 66 + Math.sin(t * 2 + x) * 3, 1.05, p.col, 1, t);
+  txt(p.nick || p.name, x + 70, y + 126, 15, '#fff'); txt(`${p.ship} · 🏆 ${p.trophy}`, x + 70, y + 146, 10, p.col, 'center', 500);
+  rrect(x + 30, y + 158, 80, 16, 8); c.fillStyle = rgba(p.col, 0.25); c.fill(); txt(tag, x + 70, y + 166, 9, '#fff');
+}
+function announce() {
+  ROOM.announcedAt = now();
+  hostToast = { s: '📣 ส่งประกาศแล้ว · ถึง 3 คนที่เปิดเกมอยู่', at: now() };
+  setTimeout(() => { if (gstate === 'home') ggo('alert'); else if (gstate === 'ingame') guestPill = true; }, 800);
+}
+function drawRoom(t) {
+  const e = now() - st0;
+  bg(t, '#10183a');
+  txt('ห้อง PvP ของคุณ', W / 2, 50, 20, '#fff');
+  txt('ส่งรหัส/ลิงก์ให้เพื่อน หรือกดประกาศเรียกคน', W / 2, 74, 11, '#8b93b8', 'center', 500);
+  for (let i = 0; i < 4; i++) { const x = W / 2 - 104 + i * 52 + 4; rrect(x, 92, 44, 58, 10); c.fillStyle = 'rgba(54,241,255,.08)'; c.fill(); c.strokeStyle = 'rgba(54,241,255,.6)'; c.lineWidth = 1.5; c.stroke(); txt(ROOM.code[i], x + 22, 122, 30, '#fff', 'center', 700, '#36f1ff'); }
+  rrect(30, 166, 300, 36, 10); c.fillStyle = 'rgba(255,255,255,.05)'; c.fill();
+  txt(`🔗 star-shooter.pages.dev/?room=${ROOM.code}`, 42, 184, 10.5, '#c9d3f0', 'left', 500);
+  const cb = BTN.copy; rrect(cb.x, cb.y, cb.w, cb.h, 8); c.fillStyle = '#ffd23f'; c.fill(); txt(now() - ROOM.copiedAt < 1.5 ? 'คัดลอกแล้ว' : 'คัดลอก', cb.x + cb.w / 2, cb.y + cb.h / 2, 10, '#1a1000');
+  slotCard(30, 220, ME, 'เจ้าของห้อง', t, false);
+  slotCard(190, 220, ROOM.joiner, ROOM.joiner ? 'ผู้ท้าชิง' : `รอแล้ว ${mmss(e)}`, t, !ROOM.joiner);
+  txt('VS', W / 2, 306, 20, '#ffd23f', 'center', 700, '#ff8a00');
+  if (ROOM.joiner) {
+    const je = now() - ROOM.joinedAt;
+    txt(`${ROOM.joiner.nick || ROOM.joiner.name} เข้าห้องแล้ว!`, W / 2, 432, 16, '#7dff6a', 'center', 700, '#2a8a1a');
+    if (je > 0.6) txt(`เริ่มใน ${Math.max(1, 3 - Math.floor(je - 0.6))}`, W / 2, 470, 26, '#fff', 'center', 700, '#36f1ff');
+    if (je > 3.6) { OPP = Object.assign({}, ROOM.joiner); go('vs'); }
+  } else {
+    const cd = 120 - (now() - ROOM.announcedAt);
+    if (cd > 0) {
+      button(BTN.announce, `📣 ประกาศแล้ว · อีกครั้งได้ใน ${mmss(cd)}`, 'ส่งถึง: แมวอวกาศ · PhantomX · NovaKing', '#fff', t, false);
+      const pulse = (now() - ROOM.announcedAt) % 1.6 / 1.6;
+      c.save(); c.strokeStyle = `rgba(255,210,63,${0.6 * (1 - pulse)})`; c.lineWidth = 2; rrect(BTN.announce.x - pulse * 10, BTN.announce.y - pulse * 10, BTN.announce.w + pulse * 20, BTN.announce.h + pulse * 20, 18); c.stroke(); c.restore();
+    } else button(BTN.announce, '📣 ประกาศเรียกคน', 'เด้งป้ายชวนทุกคนที่อยู่หน้าแรกของเกม', '#ffd23f', t);
+    txt('ไม่มีใครเข้าใน 60 วิ → ประกาศใหม่ หรือรอต่อก็ได้', W / 2, 504, 11, '#8b93b8', 'center', 500);
+  }
+  button(BTN.close, 'ปิดห้อง', '', '#fff', t, false);
+  toastDraw(hostToast);
+}
+
+// ================================================================ เครื่องเพื่อน
+function drawHome(t) {
+  bg(t, '#1a0f3a');
+  txt('ศึกยานต่างดาว', W / 2, 120, 32, '#fff', 'center', 700, '#ff3df2');
+  txt('NEON STAR SHOOTER', W / 2, 152, 11, '#c9b8ff', 'center', 500);
+  ship(W / 2, 290 + Math.sin(t * 1.4) * 6, 1.6, OPP_COL, 1, t);
+  txt(`สถิติสูงสุด 3,482,100 · ${GUEST.nick}`, W / 2, 380, 12, '#c9d3f0', 'center', 500);
+  button({ x: 60, y: 420, w: 240, h: 58 }, 'เริ่มเกม', '', '#ffd23f', t);
+  ['PvP', 'ยาน', 'สมบัติ', 'อันดับ'].forEach((s, i) => button({ x: 30 + i * 77, y: 498, w: 69, h: 44 }, s, '', '#fff', t, false));
+  txt('(จำลองหน้าแรกของเกม)', W / 2, 640, 11, '#5a6080', 'center', 500);
+}
+function drawBanner(t, kind) {
+  const e = now() - gst0, k = ease(e / 0.35), y = -130 + k * 144;
+  c.fillStyle = `rgba(5,3,15,${0.45 * k})`; c.fillRect(0, 0, W, H);
+  const full = kind === 'full', col = full ? '#ff8a8a' : '#ffd23f';
+  c.save(); c.shadowColor = col; c.shadowBlur = 20 + (full ? 0 : Math.sin(t * 5) * 8);
+  rrect(12, y, W - 24, full ? 84 : 132, 18); c.fillStyle = 'rgba(14,10,40,.97)'; c.fill(); c.restore();
+  rrect(12, y, W - 24, full ? 84 : 132, 18); c.strokeStyle = col; c.lineWidth = 1.6; c.stroke();
+  if (full) {
+    txt('😢 ห้องเต็มแล้ว', W / 2, y + 30, 18, '#fff');
+    txt(`มีคนกดเข้าห้องของ ${ME.nick} ไปก่อน`, W / 2, y + 56, 12, '#ff8a8a', 'center', 500);
+    return;
+  }
+  rrect(24, y + 12, 94, 22, 11); c.fillStyle = '#ffd23f'; c.fill(); txt('📣 ชวนสู้ PvP', 71, y + 23, 10, '#1a1000');
+  txt(`${30 - Math.floor(e)} วิ`, W - 30, y + 23, 11, '#c9d3f0', 'right', 500);
+  txt(`${ME.nick} เปิดห้องท้าสู้!`, 24, y + 50, 17, '#fff', 'left');
+  txt(`🏆 ${ME.trophy.toLocaleString()} · ${ME.ship} · ห้อง ${ROOM.code}`, 24, y + 70, 11, '#36f1ff', 'left', 500);
+  const j = Object.assign({}, BTN.gJoin, { y: y + 84 }), n = Object.assign({}, BTN.gNo, { y: y + 84 });
+  c.save(); c.shadowColor = '#ffd23f'; c.shadowBlur = 12; rrect(j.x, j.y, j.w, j.h, 12); c.fillStyle = '#ffd23f'; c.fill(); c.restore();
+  txt('เข้าร่วม', j.x + j.w / 2, j.y + j.h / 2, 15, '#1a1000');
+  rrect(n.x, n.y, n.w, n.h, 12); c.fillStyle = 'rgba(255,255,255,.08)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.25)'; c.stroke();
+  txt('ไม่ล่ะ', n.x + n.w / 2, n.y + n.h / 2, 13, '#fff', 'center', 500);
+  c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(24, y + 125, W - 48, 3);
+  c.fillStyle = '#ffd23f'; c.fillRect(24, y + 125, (W - 48) * clamp(1 - e / 30, 0, 1), 3);
+}
+function drawJoining(t) {
+  bg(t, '#1a0f3a');
+  for (let i = 0; i < 10; i++) { const a = t * 5 + i * TAU / 10; c.fillStyle = `rgba(255,176,0,${0.1 + 0.8 * (i / 10)})`; c.beginPath(); c.arc(W / 2 + Math.cos(a) * 30, 300 + Math.sin(a) * 30, 4, 0, TAU); c.fill(); }
+  txt(`กำลังเข้าห้อง ${ROOM.code} ...`, W / 2, 370, 16, '#fff');
+}
+function drawGuestWait(t) {
+  bg(t, '#1a1408');
+  txt(`เข้าห้องของ ${ME.nick} แล้ว`, W / 2, 70, 18, '#fff');
+  txt(`ห้อง ${ROOM.code}`, W / 2, 96, 12, '#8b93b8', 'center', 500);
+  slotCard(30, 150, GV_OPP, 'เจ้าของห้อง', t, false);
+  slotCard(190, 150, Object.assign({ nick: 'คุณ' }, GV_ME), 'ผู้ท้าชิง', t, false);
+  txt('VS', W / 2, 236, 20, '#ffd23f', 'center', 700, '#ff8a00');
+  const je = now() - ROOM.joinedAt;
+  if (je > 0.6) txt(`เริ่มใน ${Math.max(1, 3 - Math.floor(je - 0.6))}`, W / 2, 400, 26, '#fff', 'center', 700, '#ffb000');
+}
+function drawGuestGame(t, dt) {
+  guestSolo.update(dt);
+  if (guestSolo.dead) guestSolo.reset();
+  c.fillStyle = '#05030f'; c.fillRect(0, 0, W, H);
+  drawPane(guestSolo, { x: 0, y: 0, w: W }, t, '');
+  txt(guestSolo.score.toLocaleString(), 14, 24, 18, '#fff', 'left'); txt('SCORE', 14, 42, 9, '#c9d3f0', 'left', 500);
+  if (guestPill) {
+    const bl = 0.7 + 0.3 * Math.sin(t * 6);
+    c.save(); c.globalAlpha = bl; rrect(W - 150, 12, 138, 26, 13); c.fillStyle = 'rgba(14,10,40,.9)'; c.fill(); c.strokeStyle = '#ffd23f'; c.lineWidth = 1.2; c.stroke(); c.restore();
+    txt(`📣 ${ME.nick} เปิดห้อง`, W - 81, 25, 10, '#ffd23f');
+  }
+  rrect(16, H - 64, W - 32, 46, 12); c.fillStyle = 'rgba(5,3,15,.85)'; c.fill();
+  txt('กำลังเล่นอยู่ → ไม่เด้งป้ายกลางเกม', W / 2, H - 49, 11, '#fff', 'center', 500);
+  txt('มีแค่ไอคอน 📣 มุมจอ · จบเกมแล้วค่อยเห็นห้อง', W / 2, H - 31, 10, '#8b93b8', 'center', 500);
+}
+function guestJoin() {
+  ggo('joining');
+  setTimeout(() => {
+    if (otherFirst) { ggo('full'); if (!ROOM.joiner) { ROOM.joiner = Object.assign({ col: OPP_COL, nick: POOL[0].name }, POOL[0]); ROOM.joinedAt = now(); } return; }
+    if (state !== 'room' || ROOM.joiner) { ggo('full'); return; }
+    guestIn = true; ROOM.joiner = Object.assign({}, GUEST); ROOM.joinedAt = now(); ggo('waiting');
+  }, 900);
 }
 
 // ================================================================ ลูปหลัก + คลิก
 let last = now();
 function frame() {
   const t = now(), dt = Math.min(0.05, t - last); last = t;
-  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // เครื่องคุณ
+  c = c1; c.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (state === 'lobby') drawLobby(t);
+  else if (state === 'room') drawRoom(t);
   else if (state === 'search') drawSearch(t);
-  else if (state === 'vs') drawVS(t);
+  else if (state === 'vs') drawVS(t, now() - st0, ME, OPP, () => go('battle'));
   else if (state === 'battle') { match.update(dt); drawBattle(t); if (match.over && now() - match.endAt > 2.2) go('result'); }
   else drawResult(t);
+  // เครื่องเพื่อน
+  c = c2; c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const ge = now() - gst0;
+  if (gstate === 'home') drawHome(t);
+  else if (gstate === 'alert') { drawHome(t); drawBanner(t, 'alert'); if (ge > 30) ggo('home'); }
+  else if (gstate === 'full') { drawHome(t); drawBanner(t, 'full'); if (ge > 2.6) ggo('home'); }
+  else if (gstate === 'joining') drawJoining(t);
+  else if (gstate === 'waiting') drawGuestWait(t);
+  else if (gstate === 'vs') drawVS(t, ge, GV_ME, GV_OPP, null);
+  else if (gstate === 'battle') { if (match.me) drawBattle(t, true); }
+  else if (gstate === 'result') drawResult(t, true, ge);
+  else if (gstate === 'ingame') drawGuestGame(t, dt);
+  c = c1;
   requestAnimationFrame(frame);
 }
 const inside = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+const pos = (el, ev) => { const r = el.getBoundingClientRect(); return [(ev.clientX - r.left) * W / r.width, (ev.clientY - r.top) * H / r.height]; };
 cv.addEventListener('click', ev => {
-  const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * W / r.width, y = (ev.clientY - r.top) * H / r.height;
-  if (state === 'lobby' && inside(BTN.lobby, x, y)) go('search');
-  else if (state === 'lobby' && inside(BTN.shop, x, y)) shopMsgAt = now();
-  else if (state === 'search' && inside(BTN.cancel, x, y)) go('lobby');
-  else if (state === 'result') { if (inside(BTN.again, x, y)) go('search'); else if (inside(BTN.back, x, y)) go('lobby'); }
+  const [x, y] = pos(cv, ev);
+  if (state === 'lobby') {
+    if (inside(BTN.create, x, y)) go('room');
+    else if (inside(BTN.code, x, y)) hostToast = { s: '(พรีวิว) ช่องใส่รหัสห้อง 4 หลัก', at: now() };
+    else if (inside(BTN.auto, x, y)) hostToast = { s: '🔒 หาคู่อัตโนมัติ เปิดเร็วๆ นี้', at: now() };
+    else if (inside(BTN.shop, x, y)) shopMsgAt = now();
+  } else if (state === 'room') {
+    if (inside(BTN.announce, x, y) && !ROOM.joiner && now() - ROOM.announcedAt > 120) announce();
+    else if (inside(BTN.copy, x, y)) ROOM.copiedAt = now();
+    else if (inside(BTN.close, x, y)) go('lobby');
+  } else if (state === 'search' && inside(BTN.cancel, x, y)) go('lobby');
+  else if (state === 'result') { if (inside(BTN.again, x, y)) go('room'); else if (inside(BTN.back, x, y)) go('lobby'); }
+});
+cv2.addEventListener('click', ev => {
+  const [x, y] = pos(cv2, ev);
+  if (gstate === 'alert' && now() - gst0 > 0.35) {
+    if (inside(BTN.gJoin, x, y)) guestJoin();
+    else if (inside(BTN.gNo, x, y)) ggo('home');
+  } else if (gstate === 'result' && (inside(BTN.again, x, y) || inside(BTN.back, x, y))) ggo('home');
 });
 document.querySelectorAll('#jump button').forEach(b => b.onclick = () => go(b.dataset.s));
+document.querySelectorAll('#gctrl [data-g]').forEach(b => b.onclick = () => { guestPill = false; ggo(b.dataset.g); });
+document.getElementById('otherFirst').onclick = ev => { otherFirst = !otherFirst; ev.target.textContent = `มีคนอื่นกดเข้าก่อน: ${otherFirst ? 'เปิด' : 'ปิด'}`; ev.target.classList.toggle('on', otherFirst); };
 document.querySelectorAll('#layout button').forEach(b => b.onclick = () => { layout = b.dataset.l; document.querySelectorAll('#layout button').forEach(x => x.classList.toggle('on', x === b)); });
-document.fonts.ready.then(() => { go('lobby'); requestAnimationFrame(frame); });
+document.fonts.ready.then(() => { go('lobby'); ggo('home'); requestAnimationFrame(frame); });
 </script>
 </body>
 </html>
