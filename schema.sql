@@ -73,3 +73,36 @@ CREATE TABLE IF NOT EXISTS flagged_runs (
   ship    TEXT,
   at      INTEGER NOT NULL
 );
+
+-- PvP 1 ต่อ 1 แบบสร้างห้อง: เครื่องผู้เล่นส่งสถานะ (แต้ม ชีวิต หลอดชาร์จ การโจมตีที่ส่ง) ผ่าน /api/pvp/poll ทุก ~0.7 วิ
+-- status: open = รอคนเข้า · play = กำลังแข่ง · done = จบแล้ว (result = JSON ผล) · closed = เจ้าของปิดห้อง
+CREATE TABLE IF NOT EXISTS pvp_rooms (
+  code         TEXT PRIMARY KEY,
+  host_id      TEXT    NOT NULL,
+  host_name    TEXT    NOT NULL,
+  host_ship    TEXT    NOT NULL,
+  guest_id     TEXT,
+  guest_name   TEXT,
+  guest_ship   TEXT,
+  status       TEXT    NOT NULL,
+  created_at   INTEGER NOT NULL,
+  announced_at INTEGER NOT NULL DEFAULT 0,
+  start_at     INTEGER NOT NULL DEFAULT 0,
+  host_state   TEXT    NOT NULL DEFAULT '{}',
+  guest_state  TEXT    NOT NULL DEFAULT '{}',
+  host_seen    INTEGER NOT NULL DEFAULT 0,
+  guest_seen   INTEGER NOT NULL DEFAULT 0,
+  result       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pvp_rooms_announce ON pvp_rooms (status, announced_at);
+
+-- ถ้วยรางวัล PvP (เริ่ม 1000) แยกจากข้อมูลเกมหลัก
+CREATE TABLE IF NOT EXISTS pvp_stats (
+  user_id    TEXT PRIMARY KEY,
+  name       TEXT    NOT NULL,
+  trophy     INTEGER NOT NULL DEFAULT 1000,
+  wins       INTEGER NOT NULL DEFAULT 0,
+  losses     INTEGER NOT NULL DEFAULT 0,
+  streak     INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);

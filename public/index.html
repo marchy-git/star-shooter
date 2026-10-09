@@ -236,6 +236,66 @@
   .ship.fx-epic img, .ship.fx-legendary img, .ship.fx-mythic img { animation: floaty 2.2s ease-in-out infinite; filter: drop-shadow(0 0 calc(var(--u) * 8) var(--tier)); }
   /* สมบัติ: ไอคอนเป็น canvas ที่วาดด้วย TrArt (ขยับได้ตอนเปิดหน้าต่าง) */
   .tr-note { font-size: calc(var(--u) * 11); color: var(--muted); margin: 0; line-height: 1.5; }
+
+  /* ----- PvP ----- */
+  .pvp-top { display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 14); }
+  .pvp-trophy { font-size: calc(var(--u) * 24); font-weight: 700; color: var(--gold); }
+  .pvp-rec { font-size: calc(var(--u) * 13); color: var(--muted); }
+  .pvp-join { display: flex; gap: calc(var(--u) * 8); }
+  .pvp-join input { flex: 1; text-align: center; letter-spacing: .3em; font-size: calc(var(--u) * 20) !important; padding: calc(var(--u) * 8) !important; }
+  .btn.locked { opacity: .55; border-style: dashed; font-size: calc(var(--u) * 14); width: 100%; justify-content: space-between; }
+  .btn.locked b { background: var(--gold); color: #1a1000; font-size: calc(var(--u) * 11); padding: calc(var(--u) * 2) calc(var(--u) * 8); border-radius: calc(var(--u) * 6); transform: rotate(-4deg); }
+  .pvp-code { display: flex; justify-content: center; gap: calc(var(--u) * 8); }
+  .pvp-code b { width: calc(var(--u) * 46); height: calc(var(--u) * 58); display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 32);
+    color: #fff; border: 2px solid rgba(111, 227, 255, .6); border-radius: calc(var(--u) * 10); background: rgba(111, 227, 255, .08); text-shadow: 0 0 12px #36f1ff; }
+  .pvp-link { display: flex; align-items: center; gap: calc(var(--u) * 8); background: rgba(255,255,255,.05); border-radius: calc(var(--u) * 10); padding: calc(var(--u) * 6) calc(var(--u) * 10); }
+  .pvp-link span { flex: 1; font-size: calc(var(--u) * 12); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pvp-link .btn { font-size: calc(var(--u) * 13); padding: calc(var(--u) * 6) calc(var(--u) * 12); }
+  .pvp-slots { display: flex; align-items: center; gap: calc(var(--u) * 8); }
+  .pvp-slot { flex: 1; min-height: calc(var(--u) * 150); border-radius: calc(var(--u) * 14); display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: calc(var(--u) * 4); border: 2px dashed rgba(255,255,255,.25); background: rgba(255,255,255,.03); text-align: center; padding: calc(var(--u) * 8); }
+  .pvp-slot.on { border-style: solid; border-color: var(--tc, #36f1ff); background: color-mix(in srgb, var(--tc, #36f1ff) 12%, transparent); }
+  .pvp-slot img { width: calc(var(--u) * 64); height: calc(var(--u) * 64); object-fit: contain; filter: drop-shadow(0 0 8px var(--tc, #36f1ff)); }
+  .pvp-slot b { font-size: calc(var(--u) * 16); color: #fff; }
+  .pvp-slot span { font-size: calc(var(--u) * 11); color: var(--muted); }
+  .pvp-slot i { font-style: normal; font-size: calc(var(--u) * 10); color: #fff; background: color-mix(in srgb, var(--tc, #36f1ff) 35%, transparent); border-radius: 99px; padding: 0 calc(var(--u) * 8); }
+  .pvp-spin { width: calc(var(--u) * 30); height: calc(var(--u) * 30); border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: #fff; animation: pvpSpin 1s linear infinite; }
+  @keyframes pvpSpin { to { transform: rotate(360deg); } }
+  .pvp-vs { color: var(--gold); font-size: calc(var(--u) * 20); text-shadow: 0 0 10px #ff8a00; }
+  #pvpInvite { position: absolute; left: calc(var(--u) * 12); right: calc(var(--u) * 12); top: calc(var(--u) * 12); z-index: 5;
+    background: rgba(14, 10, 40, .97); border: 2px solid var(--gold); border-radius: calc(var(--u) * 16); padding: calc(var(--u) * 12) calc(var(--u) * 14);
+    box-shadow: 0 0 calc(var(--u) * 24) rgba(255, 210, 63, .45); animation: pvpDrop .35s ease-out; display: flex; flex-direction: column; gap: calc(var(--u) * 6); }
+  @keyframes pvpDrop { from { transform: translateY(-120%); } to { transform: none; } }
+  #pvpInvite .tag { display: flex; justify-content: space-between; font-size: calc(var(--u) * 12); }
+  #pvpInvite .tag b { background: var(--gold); color: #1a1000; border-radius: 99px; padding: 0 calc(var(--u) * 10); }
+  #pvpInvite .nm { font-size: calc(var(--u) * 19); font-weight: 700; color: #fff; }
+  #pvpInvite .sub { font-size: calc(var(--u) * 12); color: var(--cyan); }
+  #pvpInvite .row { justify-content: stretch; flex-wrap: nowrap; }
+  #pvpInvite .row .btn { flex: 1; padding: calc(var(--u) * 8); }
+  #pvpInvite .bar { height: calc(var(--u) * 3); background: rgba(255,255,255,.12); border-radius: 3px; overflow: hidden; }
+  #pvpInvite .bar i { display: block; height: 100%; background: var(--gold); }
+  #pvpHud { position: absolute; right: calc(var(--u) * 8); top: calc(var(--u) * 50); width: calc(var(--u) * 132); pointer-events: none !important;
+    background: rgba(10, 8, 30, .78); border: 1.5px solid #ffb000; border-radius: calc(var(--u) * 12); padding: calc(var(--u) * 6) calc(var(--u) * 8);
+    font-size: calc(var(--u) * 11); color: var(--muted); display: flex; flex-direction: column; gap: calc(var(--u) * 3); }
+  #pvpHud .nm { color: #ffb000; font-weight: 700; font-size: calc(var(--u) * 12); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #pvpHud .sc { color: #fff; font-weight: 700; font-size: calc(var(--u) * 17); }
+  #pvpHud .hp { color: #ff6b8a; }
+  #pvpHud .bar { height: calc(var(--u) * 5); background: rgba(255,255,255,.12); border-radius: 3px; overflow: hidden; }
+  #pvpHud .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffb000, #fff); }
+  #pvpHud .trk { position: relative; height: calc(var(--u) * 10); border-bottom: 1px solid rgba(255,176,0,.35); }
+  #pvpHud .trk i { position: absolute; top: 0; width: calc(var(--u) * 10); height: calc(var(--u) * 10); margin-left: calc(var(--u) * -5); background: #ffb000; clip-path: polygon(50% 0, 100% 100%, 0 100%); transition: left .6s linear; }
+  #pvpHud .st { color: #ffe9b0; min-height: 1.2em; }
+  #pvpHud.ko { border-color: #ff6b6b; }
+  .pvp-res { align-items: center; text-align: center; }
+  .pvp-res h2 { font-size: calc(var(--u) * 40) !important; letter-spacing: .06em; }
+  .pvp-res h2.win { color: var(--gold) !important; text-shadow: 0 0 20px #ff8a00; }
+  .pvp-res h2.lose { color: #8b93b8 !important; }
+  .pvp-res .tro { font-size: calc(var(--u) * 22); font-weight: 700; color: #fff; }
+  .pvp-res .tro span { font-size: calc(var(--u) * 14); margin-left: calc(var(--u) * 6); }
+  .pvp-tbl { width: 100%; border-collapse: collapse; font-size: calc(var(--u) * 14); }
+  .pvp-tbl th, .pvp-tbl td { padding: calc(var(--u) * 5) calc(var(--u) * 6); border-bottom: 1px solid var(--line); }
+  .pvp-tbl th { color: var(--muted); font-weight: 500; text-align: left; }
+  .pvp-tbl td { color: #fff; font-weight: 700; text-align: center; }
   .tr-wallet { display: flex; justify-content: space-around; gap: calc(var(--u) * 6); }
   .tr-wallet span { display: flex; align-items: center; gap: calc(var(--u) * 3); font-size: calc(var(--u) * 13); font-weight: 700; color: var(--ink); }
   .tr-wallet canvas { width: calc(var(--u) * 28); height: calc(var(--u) * 28); }
@@ -428,6 +488,7 @@
           <button id="btnTreasure" class="btn" type="button">สมบัติ</button>
           <button id="btnBoard" class="btn" type="button">ตารางอันดับ</button>
         </div>
+        <button id="btnPvp" class="btn" type="button">⚔ PvP 1 ต่อ 1</button>
       </div>
       <div class="meta">
         <span id="menuName"></span><button id="btnLogout" class="link" type="button" hidden>ออกจากระบบ</button><br>
@@ -526,6 +587,46 @@
         <p>กด P หรือ Esc เพื่อหยุดและเล่นต่อ · กดเล่นต่อแล้วจะนับถอยหลัง 3 วินาที<br>กดเริ่มใหม่หรือหน้าแรก = จบรอบนี้ ขึ้นสรุปผล บันทึกคะแนนและรางวัลให้</p>
       </div>
     </div>
+    <div id="pvpDlg" class="modal" hidden>
+      <div class="card">
+        <div class="head"><h2>PvP ARENA</h2><button id="pvpClose" class="btn" type="button">ปิด</button></div>
+        <div id="pvpLobby" class="group" style="align-items:stretch">
+          <div class="pvp-top"><span id="pvpTrophy" class="pvp-trophy"></span><span id="pvpRec" class="pvp-rec"></span></div>
+          <button id="pvpCreate" class="btn primary big" type="button">สร้างห้อง</button>
+          <div class="pvp-join"><input id="pvpCode" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="รหัสห้อง"><button id="pvpJoinBtn" class="btn" type="button">เข้าห้อง</button></div>
+          <button id="pvpAuto" class="btn locked" type="button">🔒 หาคู่อัตโนมัติ <b>เร็วๆ นี้</b></button>
+          <button id="pvpShop" class="btn locked" type="button">🔒 ร้านค้า PvP <b>COMING SOON</b></button>
+          <p class="tr-note">แข่ง 60 วิ · ชีวิต 3 · ตายก่อนแพ้ · หมดเวลาวัดแต้ม<br>หลบกำแพงผ่านช่อง PERFECT / เคลียร์ wave ไว / ยิงมอน = ชาร์จหลอด เต็มแล้วส่งการโจมตีไปจออีกฝ่าย
+            · มีการโจมตีกำลังมาแล้วหลอดเต็ม = หักล้าง<br>สนามเท่าเทียม: เลเวลยานเท่ากันทุกลำ ไม่ใช้สมบัติ · ชนะ +25 🏆 แพ้ −15 🏆</p>
+        </div>
+        <div id="pvpRoom" class="group" style="align-items:stretch" hidden>
+          <p class="tr-note" style="text-align:center">ส่งรหัส/ลิงก์ให้เพื่อน หรือกดประกาศเรียกคน</p>
+          <div id="pvpRoomCode" class="pvp-code"></div>
+          <div class="pvp-link"><span id="pvpLink"></span><button id="pvpCopy" class="btn" type="button">คัดลอก</button></div>
+          <div class="pvp-slots"><div id="pvpSlotA" class="pvp-slot"></div><b class="pvp-vs">VS</b><div id="pvpSlotB" class="pvp-slot"></div></div>
+          <button id="pvpAnnounce" class="btn primary" type="button">📣 ประกาศเรียกคน</button>
+          <p id="pvpRoomNote" class="tr-note" style="text-align:center"></p>
+          <button id="pvpLeave" class="btn" type="button">ปิดห้อง</button>
+        </div>
+      </div>
+    </div>
+    <div id="pvpResultDlg" class="modal" hidden>
+      <div class="card pvp-res">
+        <h2 id="pvpResTitle"></h2>
+        <p id="pvpResWhy"></p>
+        <div id="pvpResTrophy" class="tro"></div>
+        <table id="pvpResTbl" class="pvp-tbl"></table>
+        <div class="row"><button id="pvpResAgain" class="btn primary" type="button">แข่งอีกครั้ง</button><button id="pvpResHome" class="btn" type="button">หน้าแรก</button></div>
+      </div>
+    </div>
+    <div id="pvpInvite" hidden>
+      <div class="tag"><b>📣 ชวนสู้ PvP</b><span id="pvpInvLeft"></span></div>
+      <div id="pvpInvName" class="nm"></div>
+      <div id="pvpInvSub" class="sub"></div>
+      <div class="row"><button id="pvpInvJoin" class="btn primary" type="button">เข้าร่วม</button><button id="pvpInvNo" class="btn" type="button">ไม่ล่ะ</button></div>
+      <div class="bar"><i id="pvpInvBar"></i></div>
+    </div>
+    <div id="pvpHud" hidden></div>
     <div id="countdown" aria-live="assertive" hidden></div>
     <div id="toast" role="status" hidden></div>
     <div id="notice" role="status" aria-live="polite" hidden><span></span></div>
@@ -1929,6 +2030,7 @@ const App = {
       this.refreshMenu();
       Board.refresh().then(() => this.refreshMenu());
       UI.toast(signup ? `สมัครเรียบร้อย ยินดีต้อนรับ ${r.profile.nickname}! ได้ตั๋วสุ่มฟรี 1 ใบ` : `ยินดีต้อนรับกลับ ${r.profile.nickname}`);
+      PvP.afterLogin();
     } catch (ex) {
       const m = ex.message;
       err.textContent = m === 'username_taken' ? 'ชื่อผู้ใช้นี้มีคนใช้แล้ว ลองชื่ออื่น'
@@ -1949,7 +2051,7 @@ const App = {
   paused: false, counting: false,
   pause() {
     const g = this.scene('game');
-    if (!g || !g.sys.isActive() || g.over || this.paused) return;
+    if (!g || !g.sys.isActive() || g.over || this.paused || g.pvp) return;   // PvP หยุดเกมไม่ได้ (อีกฝ่ายเล่นต่อ)
     this.paused = true;
     g.pauseClock = g.time.now;
     if (g.held) g.held.clear();
@@ -2594,6 +2696,8 @@ const App = {
     $('btnHangar').onclick = () => this.openHangar();
     $('btnTreasure').onclick = () => this.openTreasure();
     $('btnBoard').onclick = () => this.openBoard();
+    $('btnPvp').onclick = () => PvP.open();
+    PvP.wire();
     $('btnOverBoard').onclick = () => this.openBoard();
     $('btnBoardGuest').onclick = () => this.openBoard();
     $('btnSignup').onclick = () => this.openAuth('signup');
@@ -2628,12 +2732,219 @@ const App = {
         if (g && g.sys.isActive() && !g.over && !UI.modalOpen()) { e.preventDefault(); this.pause(); return; }
       }
       if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => {
-        if (m.id !== 'pauseDlg' && !(m.id === 'hangarDlg' && this.spinning)) m.hidden = true;
+        if (m.id !== 'pauseDlg' && m.id !== 'pvpResultDlg' && !(m.id === 'hangarDlg' && this.spinning)) m.hidden = true;
       });
       if (e.key === 'Escape') document.querySelectorAll('.reveal').forEach(r => { r.hidden = true;
       });
     });
   },
+};
+
+// =====================================================================
+//  PvP 1 ต่อ 1: ห้อง + ประกาศเรียกคน · สองเครื่องส่งสถานะกันผ่าน /api/pvp/poll ทุก ~0.7 วิ
+//  พรีวิวดีไซน์: design/pvp-preview.html
+// =====================================================================
+const PVP_ATK = {
+  wall:    { name: 'กำแพงคู่',   color: '#ffb84d' },
+  swarm:   { name: 'ฝูงมอนบุก',  color: '#ff7af0' },
+  curtain: { name: 'ม่านกระสุน', color: '#ff6b6b' },
+  fog:     { name: 'หมอกมืด',    color: '#c18bff' },
+};
+const PVP_SRC = { perfect: 'wall', fast: 'swarm', kill: 'curtain' };   // หลอดเต็มจากอะไร ส่งอะไร
+const PVP_LV = 5;                  // สนามเท่าเทียม: ทุกลำใช้สกิลเลเวลนี้
+const PVP_GATE_EVERY = 3600;       // กำแพงเลเซอร์มาทุกกี่ ms (โหมดปกติ ~5–6 วิ)
+const PVP_GATE_SPEED = 0.25;       // px/ms (ประตูเลเซอร์ปกติ 0.17 → เร็ว ×1.45)
+const PVP_FAST_MS = 12000;         // เคลียร์ wave ภายในนี้ = เคลียร์ไว
+const PVP_WARN_MS = 1200;          // ป้ายเตือนก่อนการโจมตีลง
+const pvpClock = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const pvpErr = e => ({
+  room_full: 'ห้องเต็มแล้ว มีคนเข้าไปก่อน', room_closed: 'ห้องนี้ปิดไปแล้ว', room_not_found: 'ไม่พบห้องนี้ ตรวจรหัสอีกครั้ง',
+  own_room: 'นี่คือห้องของคุณเอง', unauthorized: 'การล็อกอินหมดอายุ ล็อกอินใหม่ที่หน้าแรก', busy: 'ระบบไม่ว่าง ลองใหม่',
+}[e && e.message] || 'เชื่อมต่อไม่สำเร็จ ลองใหม่อีกครั้ง');
+const PvP = {
+  room: null, stats: null, skew: 0, roomTimer: null, invTimer: null, invTick: null, invite: null, dismissed: new Set(), pending: null, busy: false, polling: false,
+  get now() { return Date.now() + this.skew; },
+  shipKey(id) { return (SHIPS[id] || SHIPS.bolt).key; },
+  shipImg(id) { try { return App.game.textures.getBase64(this.shipKey(id)); } catch (e) { return ''; } },
+  me(r = this.room) { return r && (r.role === 'host' ? r.host : r.guest); },
+  opp(r = this.room) { return r && (r.role === 'host' ? r.guest : r.host); },
+  setRoom(r) { if (r) { this.room = r; this.skew = r.now - Date.now(); } },
+  link(code) { return location.origin + location.pathname + '?room=' + code; },
+  wire() {
+    $('pvpClose').onclick = () => this.close();
+    $('pvpCreate').onclick = () => this.create();
+    $('pvpJoinBtn').onclick = () => { const c = $('pvpCode').value.replace(/\D/g, ''); if (c.length === 4) this.join(c); else UI.toast('ใส่รหัสห้อง 4 หลัก'); };
+    $('pvpCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('pvpJoinBtn').click(); } });
+    $('pvpAuto').onclick = () => UI.toast('🔒 หาคู่อัตโนมัติ เปิดเร็วๆ นี้');
+    $('pvpShop').onclick = () => UI.toast('🔒 ร้านค้า PvP เปิดเร็วๆ นี้ · สะสมถ้วยไว้ก่อน!');
+    $('pvpAnnounce').onclick = () => this.announce();
+    $('pvpCopy').onclick = () => this.copy();
+    $('pvpLeave').onclick = () => { this.leave(); this.render(); };
+    $('pvpInvJoin').onclick = () => this.acceptInvite();
+    $('pvpInvNo').onclick = () => this.dismiss();
+    $('pvpResAgain').onclick = () => this.backToTitle(true);
+    $('pvpResHome').onclick = () => this.backToTitle(false);
+    this.invTimer = setInterval(() => this.pollInvites(), 5000);
+    this.checkLink();
+  },
+  // ----- หน้าต่าง PvP -----
+  async open() {
+    if (!Save.loggedIn) return App.openAuth('login');
+    this.hideInvite();
+    $('pvpDlg').hidden = false;
+    this.render();
+    try { this.stats = (await api('/api/pvp/me')).stats; this.render(); } catch (e) {}
+  },
+  close() {
+    if (this.room && this.room.status === 'open') this.leave();
+    $('pvpDlg').hidden = true;
+  },
+  render() {
+    const r = this.room, s = this.stats, inRoom = !!(r && r.status === 'open');
+    $('pvpLobby').hidden = inRoom;
+    $('pvpRoom').hidden = !inRoom;
+    $('pvpTrophy').textContent = s ? `🏆 ${fmt(s.trophy)}` : '🏆 …';
+    $('pvpRec').textContent = s ? `ชนะ ${s.wins} · แพ้ ${s.losses}` + (s.streak >= 2 ? ` · ชนะติด ${s.streak} 🔥` : '') : '';
+    if (!inRoom) return;
+    $('pvpRoomCode').innerHTML = [...r.code].map(ch => `<b>${ch}</b>`).join('');
+    $('pvpLink').textContent = this.link(r.code).replace(/^https?:\/\//, '');
+    this.slot($('pvpSlotA'), r.host, 'เจ้าของห้อง', '#36f1ff');
+    this.slot($('pvpSlotB'), r.guest, 'ผู้ท้าชิง', '#ffb000');
+    this.renderAnnounce();
+  },
+  slot(el, p, tag, col) {
+    el.textContent = '';
+    el.className = 'pvp-slot' + (p ? ' on' : '');
+    el.style.setProperty('--tc', col);
+    if (!p) { el.append(Object.assign(document.createElement('div'), { className: 'pvp-spin' }), Object.assign(document.createElement('span'), { textContent: 'รอผู้เล่น...' })); return; }
+    const img = document.createElement('img'); img.src = this.shipImg(p.ship); img.alt = '';
+    el.append(img, Object.assign(document.createElement('b'), { textContent: p.name }),
+      Object.assign(document.createElement('span'), { textContent: (SHIPS[p.ship] || SHIPS.bolt).name }), Object.assign(document.createElement('i'), { textContent: tag }));
+  },
+  renderAnnounce() {
+    const r = this.room;
+    if (!r || $('pvpRoom').hidden) return;
+    const left = r.announcedAt ? 120000 - (this.now - r.announcedAt) : 0, b = $('pvpAnnounce');
+    b.disabled = left > 0;
+    b.textContent = left > 0 ? `📣 ประกาศแล้ว · อีกครั้งได้ใน ${pvpClock(left)}` : '📣 ประกาศเรียกคน';
+    $('pvpRoomNote').textContent = left > 0 ? 'ส่งป้ายเชิญถึงทุกคนที่อยู่หน้าแรกของเกมแล้ว (ป้ายอยู่ 30 วิ)'
+      : r.announcedAt ? 'ยังไม่มีใครเข้า · ประกาศใหม่ได้แล้ว' : 'เด้งป้ายชวนทุกคนที่อยู่หน้าแรกของเกม';
+  },
+  async create() {
+    if (this.busy) return;
+    this.busy = true;
+    try { const r = await api('/api/pvp/create', {}); this.stats = r.stats; this.setRoom(r.room); this.render(); this.watchRoom(); }
+    catch (e) { UI.toast(pvpErr(e)); }
+    this.busy = false;
+  },
+  async announce() {
+    const r = this.room;
+    if (!r) return;
+    try { r.announcedAt = (await api('/api/pvp/announce', { code: r.code })).announcedAt; UI.toast('📣 ส่งประกาศแล้ว'); }
+    catch (e) { if (e.message !== 'cooldown') UI.toast(pvpErr(e)); }
+    this.renderAnnounce();
+  },
+  async copy() {
+    const t = this.link(this.room.code);
+    try { await navigator.clipboard.writeText(t); UI.toast('คัดลอกลิงก์แล้ว ส่งให้เพื่อนได้เลย'); } catch (e) { UI.toast(t, 5000); }
+  },
+  async join(code) {
+    if (!Save.loggedIn) { this.pending = code; UI.toast(`ล็อกอินก่อน แล้วจะพาเข้าห้อง ${code}`); return App.openAuth('login'); }
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      const r = await api('/api/pvp/join', { code });
+      this.stats = r.stats; this.setRoom(r.room); this.hideInvite();
+      $('pvpDlg').hidden = true;
+      this.toVs();
+    } catch (e) { UI.toast(pvpErr(e)); }
+    this.busy = false;
+  },
+  leave() {
+    const r = this.room;
+    this.stopRoom();
+    this.room = null;
+    if (r) api('/api/pvp/leave', { code: r.code }).catch(() => {});
+  },
+  watchRoom() { this.stopRoom(); this.roomTimer = setInterval(() => this.pollRoom(), 1200); },
+  stopRoom() { clearInterval(this.roomTimer); this.roomTimer = null; },
+  async pollRoom() {
+    const r = this.room;
+    if (!r || this.polling) return;
+    if ($('pvpDlg').hidden && r.status === 'open') { this.leave(); return; }   // ปิดหน้าต่าง (Esc) = ปิดห้อง
+    this.polling = true;
+    try {
+      const x = (await api('/api/pvp/poll', { code: r.code })).room;
+      this.setRoom(x);
+      if (x.status === 'play') { this.stopRoom(); this.render(); $('pvpDlg').hidden = true; this.toVs(); }
+      else if (x.status !== 'open') { this.stopRoom(); this.room = null; this.render(); UI.toast('ห้องถูกปิดแล้ว'); }
+      else this.renderAnnounce();
+    } catch (e) {}
+    this.polling = false;
+  },
+  toVs() {
+    const sm = App.game.scene;
+    const from = ['game', 'evolve', 'title'].find(k => sm.isActive(k));
+    if (from === 'game' && App.paused) { App.paused = false; $('pauseDlg').hidden = true; }
+    if (from) App.scene(from).scene.start('pvpvs'); else sm.start('pvpvs');
+  },
+  backToTitle(again) {
+    $('pvpResultDlg').hidden = true;
+    $('pvpHud').hidden = true;
+    this.room = null;
+    const sm = App.game.scene, from = ['game', 'pvpvs'].find(k => sm.isActive(k));
+    if (from) App.scene(from).scene.start('title');
+    if (again) setTimeout(() => { this.open(); this.create(); }, 300);
+  },
+  // ----- ลิงก์ ?room=1234 -----
+  checkLink() {
+    const code = new URLSearchParams(location.search).get('room');
+    if (!/^\d{4}$/.test(code || '')) return;
+    history.replaceState(null, '', location.pathname);
+    this.pending = code;
+    const tryJoin = () => {
+      if (!App.scene('title') || !App.scene('title').sys.isActive()) return setTimeout(tryJoin, 400);
+      if (Save.loggedIn) { const c = this.pending; this.pending = null; this.join(c); }
+      else { UI.toast(`ล็อกอินก่อน แล้วจะพาเข้าห้อง ${code}`, 4000); App.openAuth('login'); }
+    };
+    setTimeout(tryJoin, 800);
+  },
+  afterLogin() { if (this.pending) { const c = this.pending; this.pending = null; setTimeout(() => this.join(c), 300); } },
+  // ----- ป้ายเชิญ: หน้าแรกเช็กทุก 5 วิ · ระหว่างเล่นเช็กทุก 10 วิ (โชว์แค่ไอคอนเล็ก) -----
+  async pollInvites() {
+    if (!Save.loggedIn || document.hidden || this.room || !App.game) return;
+    const title = App.scene('title'), game = App.scene('game');
+    const onTitle = !!(title && title.sys.isActive());
+    const inGame = !!(game && game.sys.isActive() && !game.pvp && !game.over);
+    if (!onTitle && !inGame) return this.hideInvite();
+    if (inGame) { if (Date.now() - (this.lastGamePoll || 0) < 9500) return; this.lastGamePoll = Date.now(); }
+    let list;
+    try { const r = await api('/api/pvp/invites'); this.skew = r.now - Date.now(); list = r.invites || []; } catch (e) { return; }
+    const inv = list.find(i => !this.dismissed.has(i.code + ':' + i.until)) || null;
+    if (onTitle && !UI.modalOpen()) this.showInvite(inv);
+    else if (inGame && inv && game.pvpPill) game.pvpPill(inv);
+  },
+  showInvite(inv) {
+    if (!inv) return this.hideInvite();
+    if (this.invite && this.invite.code === inv.code && this.invite.until === inv.until) return;
+    this.invite = inv;
+    $('pvpInvName').textContent = `${inv.name} เปิดห้องท้าสู้!`;
+    $('pvpInvSub').textContent = `🏆 ${fmt(inv.trophy)} · ${(SHIPS[inv.ship] || SHIPS.bolt).name} · ห้อง ${inv.code}`;
+    $('pvpInvite').hidden = false;
+    sfx.power();
+    clearInterval(this.invTick);
+    const tick = () => {
+      const left = inv.until - this.now, title = App.scene('title');
+      if (left <= 0 || !title || !title.sys.isActive() || UI.modalOpen()) return this.hideInvite();
+      $('pvpInvLeft').textContent = Math.ceil(left / 1000) + ' วิ';
+      $('pvpInvBar').style.width = Math.max(0, left / 300) + '%';
+    };
+    tick();
+    this.invTick = setInterval(tick, 250);
+  },
+  hideInvite() { clearInterval(this.invTick); this.invite = null; $('pvpInvite').hidden = true; },
+  dismiss() { if (this.invite) this.dismissed.add(this.invite.code + ':' + this.invite.until); this.hideInvite(); },
+  acceptInvite() { const inv = this.invite; if (!inv) return; this.dismiss(); this.join(inv.code); },
 };
 
 // =====================================================================
@@ -3301,17 +3612,93 @@ class Title extends Phaser.Scene {
   }
 }
 
+// ฉาก VS: ยานสองลำพุ่งเข้าหากัน แบ่งจอทแยง · นับ 3-2-1 ตรงกับเวลาเริ่มจาก server แล้วเข้าเกมโหมด PvP
+class PvpVs extends Phaser.Scene {
+  constructor() { super('pvpvs'); }
+  create() {
+    const r = PvP.room;
+    if (!r) { this.scene.start('title'); return; }
+    $('menu').hidden = true;
+    PvP.hideInvite();
+    music.setMode(null);
+    this.started = false;
+    this.scroll = addBackdrop(this, 0);
+    const me = PvP.me(r), opp = PvP.opp(r), yl = H * 0.6, yr = H * 0.4;
+    const g = this.add.graphics();
+    g.fillStyle(0x4a3000, 0.82).fillPoints([{ x: 0, y: 0 }, { x: W, y: 0 }, { x: W, y: yr }, { x: 0, y: yl }], true);
+    g.fillStyle(0x00303e, 0.82).fillPoints([{ x: 0, y: yl }, { x: W, y: yr }, { x: W, y: H }, { x: 0, y: H }], true);
+    this.bolt = this.add.graphics().setBlendMode('ADD');
+    this.boltT = 0; this.yl = yl; this.yr = yr;
+    const ring = (x, y, c) => this.add.image(x, y, 'ring').setBlendMode('ADD').setTint(c).setScale(3).setAlpha(0.5);
+    const ro = ring(W * 0.68, H * 0.22, 0xffb000), rm = ring(W * 0.32, H * 0.76, 0x36f1ff);
+    const so = this.add.image(W * 0.68 + 320, H * 0.22, PvP.shipKey(opp.ship)).setScale(2.2).setAngle(180);
+    const sm = this.add.image(W * 0.32 - 320, H * 0.76, PvP.shipKey(me.ship)).setScale(2.2);
+    this.tweens.add({ targets: so, x: W * 0.68, duration: 550, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: sm, x: W * 0.32, duration: 550, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: [ro, rm], scale: 3.6, alpha: 0.25, duration: 900, yoyo: true, repeat: -1 });
+    const plate = (x, y, p, col, right) => {
+      const a = txt(this, x, y, p.name, 26, '#ffffff', { stroke: '#000000', strokeThickness: 5 }).setOrigin(right ? 1 : 0, 0.5);
+      const b = txt(this, x, y + 28, (SHIPS[p.ship] || SHIPS.bolt).name, 15, col, { stroke: '#000000', strokeThickness: 3 }).setOrigin(right ? 1 : 0, 0.5);
+      [a, b].forEach(o => { o.setAlpha(0); this.tweens.add({ targets: o, alpha: 1, delay: 300, duration: 300 }); });
+    };
+    plate(24, H * 0.36, opp, '#ffb000', false);
+    plate(W - 24, H * 0.62, me, '#7df9ff', true);
+    const vs = txt(this, W / 2, H / 2, 'VS', 110, '#ffd23f', { stroke: '#ff8a00', strokeThickness: 10 }).setOrigin(0.5).setAngle(-10).setScale(3).setAlpha(0);
+    this.tweens.add({ targets: vs, scale: 1, alpha: 1, delay: 350, duration: 350, ease: 'Back.easeOut', onComplete: () => { this.cameras.main.flash(250, 255, 255, 255); this.cameras.main.shake(200, 0.01); sfx.boom(1.5); } });
+    this.cd = txt(this, W / 2, H / 2, '', 120, '#ffffff', { stroke: '#000000', strokeThickness: 10 }).setOrigin(0.5).setDepth(5).setVisible(false);
+    this.hint = txt(this, W / 2, H - 30, 'สิ่งกีดขวางเร็วกว่าปกติ · หลบ PERFECT / เคลียร์ไว = ส่งการโจมตี', 14, '#c3d3ee').setOrigin(0.5);
+    this.lastN = 0;
+    // ระหว่างรอ: ส่งสัญญาณว่ายังอยู่ + รู้ว่าอีกฝ่ายออกไปไหม
+    this.ping = setInterval(async () => {
+      try {
+        const x = (await api('/api/pvp/poll', { code: r.code })).room;
+        PvP.setRoom(x);
+        if (x.status === 'done' && !this.started) { UI.toast('อีกฝ่ายออกจากห้องแล้ว'); PvP.backToTitle(false); }
+      } catch (e) {}
+    }, 1000);
+    this.events.once('shutdown', () => clearInterval(this.ping));
+  }
+  update(t, dt) {
+    if (!PvP.room) return;
+    this.scroll(dt);
+    this.boltT -= dt;
+    if (this.boltT <= 0) {
+      this.boltT = 70;
+      const g = this.bolt.clear().lineStyle(4, 0xffffff, 0.9);
+      g.beginPath(); g.moveTo(0, this.yl);
+      for (let i = 1; i <= 12; i++) { const f = i / 12; g.lineTo(W * f, this.yl + (this.yr - this.yl) * f + (i < 12 ? frand(-9, 9) : 0)); }
+      g.strokePath();
+    }
+    const left = PvP.room.startAt - PvP.now;
+    if (left <= 3000 && !this.started) {
+      const n = Math.max(1, Math.ceil(left / 1000));
+      if (n !== this.lastN) {
+        this.lastN = n;
+        this.cd.setText(String(n)).setVisible(true).setScale(1.5).setAlpha(1);
+        this.tweens.add({ targets: this.cd, scale: 1, duration: 300, ease: 'Back.easeOut' });
+        sfx.power();
+      }
+    }
+    if (left <= 0 && !this.started) {
+      this.started = true;
+      this.cd.setText('FIGHT!').setColor('#ffd23f').setScale(1.4);
+      this.time.delayedCall(450, () => this.scene.start('game', { pvp: true }));
+    }
+  }
+}
+
 class Game extends Phaser.Scene {
   constructor() { super('game'); }
 
-  create() {
+  create(data) {
     const d = Save.data;
+    const pvp = !!(data && data.pvp && PvP.room);   // โหมด PvP: เลเวลยานเท่ากัน ไม่ใช้สมบัติ ไม่มีบอส ไม่บันทึกคะแนน
     const shipId = SHIPS[d.ship] && d.chars[d.ship] ? d.ship : 'bolt';
-    const evolved = !!(EVO[shipId] && d.evo && d.evo[shipId]);
-    const ship = SHIPS[shipId], lv = d.chars[shipId] || 1, sk = ship.skill(evolved ? EVO_LV : lv);
+    const evolved = !pvp && !!(EVO[shipId] && d.evo && d.evo[shipId]);
+    const ship = SHIPS[shipId], lv = pvp ? PVP_LV : d.chars[shipId] || 1, sk = ship.skill(evolved ? EVO_LV : lv);
     Object.assign(this, {
       ship, shipId, lv, sk, evolved, evo: EVO[shipId] || null, shipKey: evolved ? 'ship2_' + shipId : ship.key, bossKills: 0,
-      score: 0, lives: Math.min(MAX_LIVES, ship.lives), starHeld: false, starUntil: 0,
+      score: 0, lives: pvp ? 3 : Math.min(MAX_LIVES, ship.lives), starHeld: false, starUntil: 0, pvp: null,
       comboWindow: COMBO_WINDOW + (shipId === 'nova' ? sk.combo : 0),
       campRef: { x: W / 2, y: H - 110, t: 0 }, lockActive: false, campWarned: -1e9, waveStart: 0, enraged: false,
       shield: lv >= 5 ? 1 : 0, mods: ['spread'], power: lv >= 10 ? 2 : 1,
@@ -3320,14 +3707,14 @@ class Game extends Phaser.Scene {
       letterMul: shipId === 'prism' ? sk.letter : 1,
       onairMs: ONAIR_MS + (shipId === 'prism' ? sk.onair : 0),
       runTickets: 0, scoreBonus: 0,
-      runReq: Save.loggedIn ? api('/api/run', {}).then(r => r.runId).catch(() => null) : null,
+      runReq: Save.loggedIn && !pvp ? api('/api/run', {}).then(r => r.runId).catch(() => null) : null,
       skKills: 0, skCoins: 0, skGrazes: 0, nextStormAt: Infinity,
       overdriveUntil: 0, dashUntil: 0, phaseUntil: 0, superMagnetUntil: 0, shieldRegenAt: 0, novaAt: 0, lastGhost: 0,
       iceUntil: 0, bossCD: 0, mechCD: 0, bossMechs: [], mechTurn: 0, mechBag: [], ultBag: [], volley: 0, lastHeavy: false,
       bossShieldUntil: 0, shieldAng: 0, shieldGapW: 1, shieldSpin: 0, bossVulnUntil: 0, orbitOn: false, orbitAng: 0,
       gravUntil: 0, gravWarnUntil: 0, gravPull: 0, bombLabels: [], setPiece: null,
       loop: 1, wave: 0, kills: 0, lastPattern: null,
-      hazard: null, inPre: false, portal: null, portalObj: null, portalPlan: Math.random() < PORTAL_CHANCE ? rand(2, 4) : 0,
+      hazard: null, inPre: false, portal: null, portalObj: null, portalPlan: !pvp && Math.random() < PORTAL_CHANCE ? rand(2, 4) : 0,
       over: false, ended: false, waveActive: false, invulnUntil: 0,
       swayX: 0, ringRot: 0, boss: null, bossPhase: 0, bossTurn: 0, weakGlows: [],
       fireCD: 0, turnCD: 1200, kamiCD: 3000, droneCD: 0, shotCount: 0, missileTick: 0,
@@ -3341,7 +3728,7 @@ class Game extends Phaser.Scene {
     $('menu').hidden = true;
     $('overBar').hidden = true;
     this.time.paused = false;
-    this.applyTreasures(d);
+    this.applyTreasures(pvp ? { equip: [], treasures: {} } : d);
 
     this.scroll = addBackdrop(this, 0);
 
@@ -3534,7 +3921,205 @@ class Game extends Phaser.Scene {
     this.spSmall = txt(this, W / 2, H * 0.44 + 54, '', 17, '#ffe9b0', { stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(12).setVisible(false);
     this.portalTint = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(-4);
     this.portalEdge = this.add.graphics().setDepth(9);
+    if (pvp) this.pvpSetup();
     this.time.delayedCall(500, () => this.nextWave());
+  }
+
+  // =========================================================
+  //  PvP: กำแพงเลเซอร์เร็ว · หลอดชาร์จ · ส่ง/รับการโจมตี · ซิงก์กับ server
+  // =========================================================
+  pvpSetup() {
+    const r = PvP.room;
+    this.pvp = { code: r.code, role: r.role, startAt: r.startAt, matchMs: r.matchMs, opp: PvP.opp(r), charge: 0, src: 'kill', sent: [], incoming: [],
+      seenAtk: 0, gates: [], nextGate: 2500, fogUntil: 0, dead: false, fin: false, done: false, oppSt: {}, oppSent: 0,
+      stats: { sent: 0, perfect: 0, fast: 0, cancel: 0, kills: 0 } };
+    this.pvpGfx = this.add.graphics().setDepth(3);
+    this.pvpBar = this.add.graphics().setDepth(10);
+    this.pvpBarText = txt(this, 14, 40, 'ATTACK', 11, '#c3d3ee').setDepth(10);
+    if (!this.textures.exists('pvpFog')) {   // หมอกมืด: จอดำ เว้นวงรอบยาน
+      const t = this.textures.createCanvas('pvpFog', W * 2, H * 2), c = t.getContext();
+      const gr = c.createRadialGradient(W, H, 90, W, H, 210);
+      gr.addColorStop(0, 'rgba(8,4,22,0)'); gr.addColorStop(1, 'rgba(8,4,22,0.94)');
+      c.fillStyle = gr; c.fillRect(0, 0, W * 2, H * 2); t.refresh();
+    }
+    this.pvpFog = this.add.image(0, 0, 'pvpFog').setDepth(8).setVisible(false);
+    // ซ่อนสิ่งที่ไม่ใช้ในโหมดนี้
+    [this.rivalA, this.rivalB, this.coinText].forEach(o => o && o.setVisible(false));
+    this.pauseBtn.setVisible(false);
+    this.rankState = null;
+    this.lastBoardFetch = Infinity;
+    const hud = $('pvpHud');
+    hud.innerHTML = '<div class="nm"></div><div class="sc">0</div><div class="hp"></div><div class="bar"><i></i></div><div class="trk"><i></i></div><div class="st"></div>';
+    hud.querySelector('.nm').textContent = '⚔ ' + this.pvp.opp.name;
+    hud.className = ''; hud.hidden = false;
+    this.pvpTimer = setInterval(() => this.pvpSync(), 700);
+    this.events.once('shutdown', () => { clearInterval(this.pvpTimer); hud.hidden = true; });
+    this.banner('PvP · FIGHT!', `ปะทะ ${this.pvp.opp.name} · 60 วินาที`, { size: 44 });
+  }
+  pvpCharge(v, src, label) {
+    const p = this.pvp;
+    if (!p || p.fin) return;
+    p.charge += v;
+    p.src = src;
+    if (label) this.popText(this.player.x, this.player.y - 60, label, '#ffd23f', 18);
+    if (p.charge >= 100) { p.charge -= 100; this.pvpSend(); }
+  }
+  pvpSend() {
+    const p = this.pvp;
+    if (p.incoming.length) {   // หักล้างการโจมตีที่กำลังมา
+      const a = p.incoming.shift();
+      if (a.label) a.label.destroy();
+      p.stats.cancel++;
+      this.popText(this.player.x, this.player.y - 80, '🛡 หักล้าง!', '#7dff6a', 20);
+      sfx.shield();
+      return;
+    }
+    let type = PVP_SRC[p.src] || 'curtain';
+    if (Math.random() < 0.1) type = 'fog';
+    p.sent.push(type);
+    p.stats.sent++;
+    const A = PVP_ATK[type];
+    this.popText(this.player.x, this.player.y - 80, `ส่ง ${A.name}!`, A.color, 20);
+    const orb = this.add.image(this.player.x, this.player.y - 20, 'ring').setBlendMode('ADD').setTint(parseInt(A.color.slice(1), 16)).setScale(0.4).setDepth(11);
+    this.tweens.add({ targets: orb, x: W - 70, y: 70, scale: 0.9, duration: 550, ease: 'Cubic.easeIn', onComplete: () => { this.sparks.explode(20, W - 70, 70); orb.destroy(); } });
+    sfx.power();
+    this.pvpSync();
+  }
+  pvpIncoming(type) {
+    const p = this.pvp, A = PVP_ATK[type];
+    if (!A || p.fin) return;
+    const label = txt(this, W / 2, 128, `⚠ ${A.name} จาก ${p.opp.name}`, 20, A.color, { stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5).setDepth(12);
+    this.tweens.add({ targets: label, alpha: 0.35, duration: 120, yoyo: true, repeat: -1 });
+    p.incoming.push({ type, at: this.time.now + PVP_WARN_MS, label });
+    sfx.alarm();
+  }
+  pvpApply(type) {
+    const p = this.pvp;
+    this.popText(W / 2, 170, PVP_ATK[type].name + '!', PVP_ATK[type].color, 22);
+    if (type === 'wall') { this.pvpGate(66); this.time.delayedCall(650, () => { if (!this.over) this.pvpGate(66); }); }
+    if (type === 'swarm') for (let i = 0; i < 9; i++) this.time.delayedCall(i * 120, () => {
+      if (this.over) return;
+      const e = this.makeEnemy(Math.random() < 0.25 ? 'shooter' : 'normal', { state: 'swarm', hp: 1, maxHp: 1 });
+      e.setVisible(true).setPosition(rand(30, W - 30), -30).setVelocity(frand(-30, 30), 175 * frand(0.9, 1.3));
+    });
+    if (type === 'curtain') for (let k = 0; k < 3; k++) this.time.delayedCall(k * 550, () => {
+      if (this.over) return;
+      const gap = rand(60, W - 60);
+      for (let x = 12; x < W; x += 24) if (Math.abs(x - gap) > 44) this.enemyShoot(x, -20, Math.PI / 2, 190);
+    });
+    if (type === 'fog') p.fogUntil = this.time.now + 3500;
+  }
+  pvpGate(w) { this.pvp.gates.push({ y: 22, gap: rand(Math.ceil(w / 2) + 20, Math.floor(W - w / 2 - 20)), w, warn: 450 }); }
+  updatePvp(time, dt) {
+    const p = this.pvp, g = this.pvpGfx, left = p.startAt + p.matchMs - PvP.now;
+    g.clear();
+    this.waveText.setText(`PvP · ${pvpClock(left)}`).setColor(left < 10000 ? '#ff6b6b' : '#7fcfff');
+    if (!p.fin && left <= 0) this.pvpEnd('time');
+    // หลอดชาร์จ
+    const bw = 150, k = Phaser.Math.Clamp(p.charge / 100, 0, 1);
+    this.pvpBar.clear().fillStyle(0xffffff, 0.12).fillRoundedRect(70, 43, bw, 8, 4);
+    if (k > 0) this.pvpBar.fillStyle(k > 0.85 ? 0xffd23f : 0x36f1ff, 1).fillRoundedRect(70, 43, Math.max(8, bw * k), 8, 4);
+    // กำแพงเลเซอร์ (เร็วกว่าโหมดปกติ)
+    if (!this.over && !p.fin) { p.nextGate -= dt; if (p.nextGate <= 0) { p.nextGate = PVP_GATE_EVERY; this.pvpGate(92); } }
+    const px = this.player.x, py = this.player.y;
+    for (const o of p.gates) {
+      if (o.warn > 0) {
+        o.warn -= dt;
+        if (Math.floor(o.warn / 90) % 2) { g.lineStyle(2, HAZ_RED, 0.9); g.lineBetween(0, o.y, W, o.y); g.fillStyle(HAZ_RED, 0.25).fillRect(o.gap - o.w / 2, o.y - 3, o.w, 6); }
+        continue;
+      }
+      o.y += dt * PVP_GATE_SPEED;
+      for (const [a, b] of [[0, o.gap - o.w / 2], [o.gap + o.w / 2, W]]) {
+        g.fillStyle(HAZ_RED, 0.25).fillRect(a, o.y - 8, b - a, 16);
+        g.fillStyle(o.w < 80 ? 0xffb84d : HAZ_RED2, 1).fillRect(a, o.y - 2.5, b - a, 5);
+      }
+      g.fillStyle(0xffffff, 1).fillCircle(o.gap - o.w / 2, o.y, 4.5).fillCircle(o.gap + o.w / 2, o.y, 4.5);
+      if (this.over || !this.player.active) continue;
+      if (Math.abs(py - o.y) < 12 && Math.abs(px - o.gap) > o.w / 2 - 10) { o.hit = true; this.hazardTouch(); }
+      if (!o.judged && o.y > py + 14) { o.judged = true; if (!o.hit) { p.stats.perfect++; this.addScore(500); this.pvpCharge(25, 'perfect', 'PERFECT!'); } }
+    }
+    p.gates = p.gates.filter(o => o.y < H + 30);
+    // การโจมตีที่กำลังมา
+    for (const a of p.incoming.filter(a => time >= a.at)) { if (a.label) a.label.destroy(); this.pvpApply(a.type); }
+    p.incoming = p.incoming.filter(a => time < a.at);
+    // หมอกมืด
+    const fl = p.fogUntil - time;
+    this.pvpFog.setVisible(fl > 0 && !this.over).setPosition(px, py).setAlpha(Phaser.Math.Clamp(fl / 400, 0, 1));
+  }
+  async pvpSync() {
+    const p = this.pvp;
+    if (!p || p.done || this.pvpBusy) return;
+    this.pvpBusy = true;
+    const st = Object.assign({ score: this.score, lives: Math.max(0, this.lives), charge: Math.floor(p.charge), x: this.player.x / W, dead: p.dead, fin: p.fin, atk: p.sent }, p.stats);
+    try {
+      const r = (await api('/api/pvp/poll', { code: p.code, st })).room;
+      PvP.setRoom(r);
+      p.oppSt = r.opp || {};
+      const atk = p.oppSt.atk || [];
+      while (p.seenAtk < atk.length) this.pvpIncoming(atk[p.seenAtk++]);
+      this.pvpHud();
+      if (r.status === 'done' && r.result) this.pvpResult(r);
+    } catch (e) {}
+    this.pvpBusy = false;
+  }
+  pvpHud() {
+    const p = this.pvp, o = p.oppSt, hud = $('pvpHud');
+    hud.querySelector('.sc').textContent = fmt(o.score || 0);
+    const lv = o.lives ?? 3;
+    hud.querySelector('.hp').textContent = '♥'.repeat(Math.max(0, lv)) + '♡'.repeat(Math.max(0, 3 - lv));
+    hud.querySelector('.bar i').style.width = Math.min(100, o.charge || 0) + '%';
+    hud.querySelector('.trk i').style.left = ((o.x ?? 0.5) * 100) + '%';
+    const n = (o.atk || []).length;
+    if (n > p.oppSent) { p.oppSent = n; hud.querySelector('.st').textContent = `ส่ง ${PVP_ATK[o.atk[n - 1]].name}!`; }
+    if (o.dead) { hud.classList.add('ko'); hud.querySelector('.st').textContent = 'K.O.!'; }
+  }
+  pvpEnd(why) {
+    const p = this.pvp;
+    if (p.fin) return;
+    p.fin = true;
+    this.over = true;
+    this.waveActive = false;
+    if (this.fever) this.endFever();
+    p.incoming.forEach(a => a.label && a.label.destroy());
+    p.incoming = [];
+    this.banner(why === 'ko' ? 'K.O.' : why === 'time' ? 'TIME UP!' : 'จบการแข่ง', 'กำลังรอผล...', { size: 52 });
+    this.pvpSync();
+    this.pvpWait = this.time.delayedCall(15000, () => { if (!p.done) this.pvpResult(null); });   // server ไม่ตอบ → ไม่รอค้าง
+  }
+  pvpResult(r) {
+    const p = this.pvp;
+    if (p.done) return;
+    p.done = true;
+    clearInterval(this.pvpTimer);
+    if (!p.fin) { p.fin = true; this.over = true; this.waveActive = false; }
+    $('pvpHud').hidden = true;
+    const res = r && r.result, mine = r ? r.role : p.role, oppRole = mine === 'host' ? 'guest' : 'host';
+    const win = res && res.winner === mine, draw = res && !res.winner;
+    const t = $('pvpResTitle');
+    t.textContent = !res ? 'ไม่ทราบผล' : draw ? 'DRAW' : win ? 'VICTORY!' : 'DEFEAT';
+    t.className = win ? 'win' : draw ? '' : 'lose';
+    $('pvpResWhy').textContent = !res ? 'เชื่อมต่อ server ไม่สำเร็จ ผลรอบนี้จะถูกคิดให้อัตโนมัติ'
+      : res.why === 'left' ? (win ? 'อีกฝ่ายหลุด/ออกจากเกม' : 'คุณหลุดจากการแข่ง') : res.why === 'ko' ? (win ? 'อีกฝ่ายถูก K.O.' : 'คุณถูก K.O.') : draw ? 'แต้มเท่ากัน' : 'หมดเวลา วัดแต้ม';
+    const d = res && res[mine] && res[mine].delta, s = r && r.stats;
+    $('pvpResTrophy').innerHTML = '';
+    if (s) $('pvpResTrophy').append(`🏆 ${fmt(s.trophy)}`, Object.assign(document.createElement('span'), {
+      textContent: d ? `${d > 0 ? '+' : ''}${d}` + (win && res.bonus ? ` (ชนะติด +${res.bonus})` : '') : '±0', style: `color:${d > 0 ? '#7dff6a' : d < 0 ? '#ff8a8a' : '#a9b9d6'}` }));
+    const o = p.oppSt, rows = [
+      ['แต้ม', fmt(this.score), fmt(res && res[oppRole] ? res[oppRole].score : o.score || 0)], ['ส่งการโจมตี', p.stats.sent, o.sent || 0],
+      ['หลบ PERFECT', p.stats.perfect, o.perfect || 0], ['เคลียร์ไว', p.stats.fast, o.fast || 0], ['หักล้าง', p.stats.cancel, o.cancel || 0],
+      ['ชีวิตเหลือ', Math.max(0, this.lives), o.lives ?? '-'],
+    ];
+    const tbl = $('pvpResTbl');
+    tbl.innerHTML = '<tr><th></th><th style="text-align:center;color:#7df9ff">คุณ</th><th style="text-align:center;color:#ffb000"></th></tr>';
+    tbl.rows[0].cells[2].textContent = p.opp.name;
+    for (const [a, b, c] of rows) { const tr = tbl.insertRow(); tr.insertCell().outerHTML = '<th></th>'; tr.cells[0].textContent = a; tr.insertCell().textContent = b; tr.insertCell().textContent = c; }
+    this.time.delayedCall(900, () => { $('pvpResultDlg').hidden = false; if (win) sfx.fanfare(); });
+  }
+  // ระหว่างเล่นโหมดปกติ: มีคนเปิดห้อง → ไอคอนเล็กมุมจอ ไม่เด้งป้ายกลางเกม
+  pvpPill(inv) {
+    if (this.pvpPillText) this.pvpPillText.destroy();
+    const t = this.pvpPillText = txt(this, W / 2, 30, `📣 ${inv.name} เปิดห้อง PvP · จบเกมแล้วเข้าได้ (ห้อง ${inv.code})`, 12, '#ffd23f', { stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(11);
+    this.tweens.add({ targets: t, alpha: 0.4, duration: 500, yoyo: true, repeat: 7, onComplete: () => t.destroy() });
   }
 
   // =========================================================
@@ -3827,6 +4412,11 @@ class Game extends Phaser.Scene {
   // =========================================================
   nextWave() {
     if (this.over) return;
+    if (this.pvp && this.wave + 1 >= WAVES_PER_LOOP) {   // PvP ไม่มีบอส: ครบ 4 wave ขึ้นรอบใหม่ ศัตรูแข็งขึ้น
+      this.loop++;
+      this.wave = 0;
+      this.scroll.setTheme((this.loop - 1) % THEMES.length);
+    }
     this.wave++;
     this.warpIn();
     const isBoss = this.wave === WAVES_PER_LOOP;
@@ -5243,6 +5833,7 @@ class Game extends Phaser.Scene {
 
     if (byPlayer) {
       this.kills++;
+      if (this.pvp) { this.pvp.stats.kills++; this.pvpCharge(4, 'kill'); }
       if (this.goldBurst) this.goldBurst.explode(isBoss ? 40 : 8, x, y);
       if (this.shipId === 'bolt' && this.time.now >= this.overdriveUntil && ++this.skKills >= this.sk.need) {
         this.skKills = 0;
@@ -5332,7 +5923,7 @@ class Game extends Phaser.Scene {
   // เพดานพลังยิงตามรอบ (รอบ 1 Lv6 · รอบ 2 Lv8 · รอบ 3+ Lv10) กันอาวุธตันตั้งแต่ช่วงแรก
   get powerCap() { return Math.min(MAX_POWER, 4 + this.loop * 2); }
   // อาวุธแบบที่ 3 ได้หลังล้มบอสตัวแรก
-  get modCap() { return this.bossKills > 0 ? MOD_ORDER.length : MOD_ORDER.length - 1; }
+  get modCap() { return this.bossKills > 0 || (this.pvp && this.loop >= 2) ? MOD_ORDER.length : MOD_ORDER.length - 1; }
   // ไอคอนสมบัติบน HUD เด้งตอนสมบัติทำงาน
   trPulse(id) {
     const ic = this.trIcons && this.trIcons[Object.keys(this.tr).indexOf(id)];
@@ -6131,6 +6722,7 @@ class Game extends Phaser.Scene {
       this.player.disableBody(true, true);
       this.drones.forEach(d => d.setVisible(false));
       this.flame.stop();
+      if (this.pvp) { this.pvp.dead = true; this.pvpEnd('ko'); return; }
       this.time.delayedCall(900, () => this.endGame());
       return;
     }
@@ -6605,12 +7197,15 @@ class Game extends Phaser.Scene {
     if (this.bonus && !this.over && this.time.now - this.bonus.startAt > 4000
         && !this.enemies.getChildren().some(e => e.active && e.getData('inBonus'))) this.finishBonus();
 
+    if (this.pvp) this.updatePvp(time, dt);
+
     // ศัตรูหลักหมด ไป wave ถัดไป
     if (this.waveActive && !this.over && !this.onair && this.wave < WAVES_PER_LOOP) {   // ระหว่าง ON AIR ไม่ข้ามด่าน
       const left = this.enemies.getChildren().some(e => e.active && !OPTIONAL.has(e.getData('type')));
       if (!left) {
         this.waveActive = false;
-        if (Math.random() < WAVE_TICKET_CHANCE) this.dropPowerup(rand(80, W - 80), -20, 'ticket');   // ตั๋วสุ่ม: เฉลี่ยราว 1.2 ใบต่อรอบ (รวมบอส)
+        if (this.pvp && time - this.waveStart < PVP_FAST_MS) { this.pvp.stats.fast++; this.addScore(1000); this.pvpCharge(35, 'fast', `เคลียร์ไว! ${((time - this.waveStart) / 1000).toFixed(1)} วิ`); }
+        if (!this.pvp && Math.random() < WAVE_TICKET_CHANCE) this.dropPowerup(rand(80, W - 80), -20, 'ticket');   // ตั๋วสุ่ม: เฉลี่ยราว 1.2 ใบต่อรอบ (รวมบอส)
         if (this.easy) this.dropPowerup(rand(120, W - 120), -40, this.missingMod());     // รอบแรก: เคลียร์ wave ได้อาวุธฟรี
         if (this.portalPlan === this.wave) { this.portalPlan = 0; this.time.delayedCall(500, () => this.spawnPortal()); }
         else this.time.delayedCall(500, () => this.nextWave());
@@ -6635,7 +7230,7 @@ const config = {
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   audio: { noAudio: true },
   render: { powerPreference: 'high-performance' },
-  scene: [Boot, Title, Game, Evolve],
+  scene: [Boot, Title, Game, Evolve, PvpVs],
 };
 
 let booted = false;

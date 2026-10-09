@@ -17,6 +17,13 @@
 //   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
 //   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
+//   GET  /api/pvp/me                  ถ้วย ชนะ แพ้ ของ PvP
+//   POST /api/pvp/create              สร้างห้อง PvP ได้รหัส 4 หลัก
+//   POST /api/pvp/announce            ประกาศเรียกคน { code } (1 ครั้ง / 2 นาที)
+//   GET  /api/pvp/invites             ห้องที่เพิ่งประกาศ (หน้าแรกของเกมเช็กทุก 5 วิ)
+//   POST /api/pvp/join                เข้าห้อง { code } (คนแรกได้เข้า)
+//   POST /api/pvp/poll                ส่งสถานะตัวเอง รับสถานะคู่แข่ง { code, st }
+//   POST /api/pvp/leave               ออกจากห้อง / ยอมแพ้ { code }
 // การยืนยันตัวตน: header  Authorization: Bearer <token>
 // กันโกง: คริสตัล ตั๋ว ยาน เลเวล คำนวณที่ server ทั้งหมด เครื่องผู้เล่นแก้ค่าเองไม่ได้
 // ของที่เก็บในรอบถูกจำกัดเพดานตามเวลาที่เล่นจริง (นับจาก /api/run)
@@ -485,6 +492,194 @@ async function notice(env) {
   return json({ now, deployAt: n ? n.deploy_at : null });
 }
 
+// ----- PvP 1 ต่อ 1 (ห้อง + ประกาศเรียกคน) -----
+// ไม่ใช้การเชื่อมต่อค้าง: เครื่องผู้เล่นเรียก /api/pvp/poll ทุก ~0.7 วิ ส่งสถานะตัวเองแล้วรับสถานะอีกฝ่ายกลับไป
+// ผลแพ้ชนะคิดที่ server ครั้งเดียว (UPDATE ... WHERE status = 'play' กันคิดซ้ำ)
+const PVP_MATCH_MS = 60_000;          // เวลาแข่ง
+const PVP_START_DELAY = 5_000;        // เข้าห้องครบ → เริ่มแข่ง (ฉาก VS + นับ 3-2-1)
+const PVP_ANNOUNCE_CD = 120_000;      // ประกาศได้ 1 ครั้งต่อ 2 นาที
+const PVP_INVITE_MS = 30_000;         // ป้ายเชิญอยู่ได้ 30 วิ
+const PVP_STALE_MS = 12_000;          // ไม่ส่งสถานะเกินนี้ระหว่างแข่ง = หลุด แพ้
+const PVP_ROOM_TTL = 15 * 60_000;     // ห้องที่ไม่มีใครเข้าเกิน 15 นาที ถือว่าปิด
+const PVP_WIN = 25, PVP_LOSE = 15, PVP_STREAK_BONUS = 5, PVP_BASE = 1000;
+const PVP_SCORE_PER_SEC = 40_000;     // เพดานแต้มต่อวินาทีในโหมด PvP
+const PVP_ATK = ['wall', 'swarm', 'curtain', 'fog'];
+
+async function pvpStats(env, id) {
+  const r = await env.DB.prepare(`SELECT trophy, wins, losses, streak FROM pvp_stats WHERE user_id = ?1`).bind(id).first();
+  return r || { trophy: PVP_BASE, wins: 0, losses: 0, streak: 0 };
+}
+const pvpParse = s => { try { return JSON.parse(s || '{}') || {}; } catch { return {}; } };
+// สถานะที่เครื่องผู้เล่นส่งมา: เก็บเฉพาะค่าที่รู้จัก จำกัดขนาด
+function pvpCleanState(st, prev) {
+  const n = (v, max) => Math.max(0, Math.min(max, Math.floor(Number(v)) || 0));
+  const atk = Array.isArray(st.atk) ? st.atk.filter(t => PVP_ATK.includes(t)).slice(0, 60) : [];
+  return {
+    score: n(st.score, MAX_SCORE), lives: n(st.lives, 9), charge: n(st.charge, 100), x: Math.max(0, Math.min(1, Number(st.x) || 0.5)),
+    dead: !!st.dead, fin: !!st.fin || !!prev.fin, atk: atk.length >= (prev.atk || []).length ? atk : prev.atk || [],
+    sent: n(st.sent, 99), perfect: n(st.perfect, 999), fast: n(st.fast, 99), cancel: n(st.cancel, 99), kills: n(st.kills, 9999),
+  };
+}
+function pvpView(r, uid, now) {
+  const host = r.host_id === uid, me = host ? 'host' : 'guest', opp = host ? 'guest' : 'host';
+  return {
+    code: r.code, status: r.status, role: me, now, startAt: r.start_at, matchMs: PVP_MATCH_MS,
+    host: { name: r.host_name, ship: r.host_ship }, guest: r.guest_id ? { name: r.guest_name, ship: r.guest_ship } : null,
+    announcedAt: r.announced_at, opp: pvpParse(r[opp + '_state']), oppSeen: r[opp + '_seen'],
+    result: r.result ? pvpParse(r.result) : null,
+  };
+}
+async function pvpRoomOf(env, code) {
+  if (!/^\d{4}$/.test(String(code || ''))) return null;
+  return env.DB.prepare(`SELECT * FROM pvp_rooms WHERE code = ?1`).bind(String(code)).first();
+}
+async function pvpMe(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  return json({ stats: await pvpStats(env, u.id) });
+}
+async function pvpCreate(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const now = Date.now(), d = dataOf(u);
+  // ปิดห้องเก่าของคนนี้ที่ยังเปิดค้าง + ล้างห้องเก่าเกิน 1 วัน
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE pvp_rooms SET status = 'closed' WHERE host_id = ?1 AND status = 'open'`).bind(u.id),
+    env.DB.prepare(`DELETE FROM pvp_rooms WHERE created_at < ?1`).bind(now - 86_400_000),
+  ]);
+  for (let i = 0; i < 8; i++) {
+    const code = String(1000 + Math.floor(randFloat() * 9000));
+    const res = await env.DB.prepare(
+      `INSERT INTO pvp_rooms (code, host_id, host_name, host_ship, status, created_at, host_seen)
+       VALUES (?1, ?2, ?3, ?4, 'open', ?5, ?5)
+       ON CONFLICT(code) DO UPDATE SET host_id = excluded.host_id, host_name = excluded.host_name, host_ship = excluded.host_ship,
+         guest_id = NULL, guest_name = NULL, guest_ship = NULL, status = 'open', created_at = excluded.created_at, announced_at = 0,
+         start_at = 0, host_state = '{}', guest_state = '{}', host_seen = excluded.host_seen, guest_seen = 0, result = NULL
+       WHERE pvp_rooms.status IN ('done', 'closed') OR pvp_rooms.created_at < ?6`
+    ).bind(code, u.id, u.nickname, d.ship, now, now - PVP_ROOM_TTL).run();
+    if (res.meta.changes) {
+      const r = await pvpRoomOf(env, code);
+      return json({ room: pvpView(r, u.id, now), stats: await pvpStats(env, u.id) });
+    }
+  }
+  return json({ error: 'busy' }, 503);
+}
+async function pvpAnnounce(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request), now = Date.now();
+  const r = await pvpRoomOf(env, body && body.code);
+  if (!r || r.host_id !== u.id || r.status !== 'open') return json({ error: 'room_closed' }, 409);
+  if (now - r.announced_at < PVP_ANNOUNCE_CD) return json({ error: 'cooldown', wait: PVP_ANNOUNCE_CD - (now - r.announced_at) }, 429);
+  await env.DB.prepare(`UPDATE pvp_rooms SET announced_at = ?1, host_seen = ?1 WHERE code = ?2`).bind(now, r.code).run();
+  return json({ announcedAt: now, cooldown: PVP_ANNOUNCE_CD });
+}
+async function pvpInvites(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ invites: [] });
+  const now = Date.now();
+  const { results } = await env.DB.prepare(
+    `SELECT r.code, r.host_name, r.host_ship, r.announced_at, COALESCE(s.trophy, ?3) AS trophy
+     FROM pvp_rooms r LEFT JOIN pvp_stats s ON s.user_id = r.host_id
+     WHERE r.status = 'open' AND r.announced_at > ?1 AND r.host_seen > ?2 AND r.host_id != ?4
+     ORDER BY r.announced_at DESC LIMIT 3`
+  ).bind(now - PVP_INVITE_MS, now - PVP_STALE_MS, PVP_BASE, u.id).all();
+  return json({ now, invites: results.map(r => ({ code: r.code, name: r.host_name, ship: r.host_ship, trophy: r.trophy, until: r.announced_at + PVP_INVITE_MS })) });
+}
+async function pvpJoin(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request), now = Date.now(), d = dataOf(u);
+  const code = String((body && body.code) || '');
+  if (!/^\d{4}$/.test(code)) return json({ error: 'room_not_found' }, 404);
+  const res = await env.DB.prepare(
+    `UPDATE pvp_rooms SET guest_id = ?1, guest_name = ?2, guest_ship = ?3, status = 'play', start_at = ?4, guest_seen = ?5
+     WHERE code = ?6 AND status = 'open' AND guest_id IS NULL AND host_id != ?1 AND host_seen > ?7 AND created_at > ?8`
+  ).bind(u.id, u.nickname, d.ship, now + PVP_START_DELAY, now, code, now - PVP_STALE_MS, now - PVP_ROOM_TTL).run();
+  const r = await pvpRoomOf(env, code);
+  if (!res.meta.changes) {
+    if (!r) return json({ error: 'room_not_found' }, 404);
+    if (r.host_id === u.id) return json({ error: 'own_room' }, 409);
+    return json({ error: r.status === 'open' ? 'room_closed' : r.status === 'play' || r.status === 'done' ? 'room_full' : 'room_closed' }, 409);
+  }
+  return json({ room: pvpView(r, u.id, now), stats: await pvpStats(env, u.id) });
+}
+// คิดผล: หลุด/ยอมแพ้ แพ้ก่อน → ตายก่อนแพ้ → แต้มมากกว่าชนะ · เสมอไม่เปลี่ยนถ้วย
+async function pvpFinalize(env, r, now) {
+  const hs = pvpParse(r.host_state), gs = pvpParse(r.guest_state);
+  const elapsed = now - r.start_at;
+  const cap = Math.max(0, Math.floor(PVP_SCORE_PER_SEC * Math.min(PVP_MATCH_MS, Math.max(0, elapsed)) / 1000)) + 50_000;
+  const hScore = Math.min(hs.score || 0, cap), gScore = Math.min(gs.score || 0, cap);
+  const hGone = hs.left || (now - r.host_seen > PVP_STALE_MS), gGone = gs.left || (now - r.guest_seen > PVP_STALE_MS);
+  let winner = null, why = '';
+  if (hGone !== gGone) { winner = hGone ? 'guest' : 'host'; why = 'left'; }
+  else if (!!hs.dead !== !!gs.dead) { winner = hs.dead ? 'guest' : 'host'; why = 'ko'; }
+  else if (hScore !== gScore) { winner = hScore > gScore ? 'host' : 'guest'; why = 'score'; }
+  const result = { winner, why, host: { score: hScore }, guest: { score: gScore } };
+  const res = await env.DB.prepare(`UPDATE pvp_rooms SET status = 'done', result = ?1 WHERE code = ?2 AND status = 'play'`)
+    .bind(JSON.stringify(result), r.code).run();
+  if (!res.meta.changes) return;   // มีคนคิดผลไปแล้ว
+  if (!winner) return;
+  const wid = winner === 'host' ? r.host_id : r.guest_id, lid = winner === 'host' ? r.guest_id : r.host_id;
+  const wname = winner === 'host' ? r.host_name : r.guest_name, lname = winner === 'host' ? r.guest_name : r.host_name;
+  const ws = await pvpStats(env, wid), ls = await pvpStats(env, lid);
+  const bonus = ws.streak + 1 >= 3 ? PVP_STREAK_BONUS : 0;
+  result.host.delta = winner === 'host' ? PVP_WIN + bonus : -Math.min(PVP_LOSE, ls.trophy);
+  result.guest.delta = winner === 'guest' ? PVP_WIN + bonus : -Math.min(PVP_LOSE, ls.trophy);
+  result.bonus = bonus;
+  const up = `INSERT INTO pvp_stats (user_id, name, trophy, wins, losses, streak, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+    ON CONFLICT(user_id) DO UPDATE SET name = excluded.name, trophy = excluded.trophy, wins = excluded.wins, losses = excluded.losses,
+      streak = excluded.streak, updated_at = excluded.updated_at`;
+  await env.DB.batch([
+    env.DB.prepare(up).bind(wid, wname, ws.trophy + PVP_WIN + bonus, ws.wins + 1, ws.losses, ws.streak + 1, now),
+    env.DB.prepare(up).bind(lid, lname, Math.max(0, ls.trophy - PVP_LOSE), ls.wins, ls.losses + 1, 0, now),
+    env.DB.prepare(`UPDATE pvp_rooms SET result = ?1 WHERE code = ?2`).bind(JSON.stringify(result), r.code),
+  ]);
+}
+async function pvpPoll(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request), now = Date.now();
+  let r = await pvpRoomOf(env, body && body.code);
+  if (!r || (r.host_id !== u.id && r.guest_id !== u.id)) return json({ error: 'room_not_found' }, 404);
+  const me = r.host_id === u.id ? 'host' : 'guest';
+  if (r.status === 'open' || r.status === 'play') {
+    let state = r[me + '_state'];
+    if (r.status === 'play' && body.st && typeof body.st === 'object') state = JSON.stringify(pvpCleanState(body.st, pvpParse(state)));
+    await env.DB.prepare(`UPDATE pvp_rooms SET ${me}_state = ?1, ${me}_seen = ?2 WHERE code = ?3`).bind(state, now, r.code).run();
+    r = await pvpRoomOf(env, r.code);
+  }
+  if (r.status === 'open' && r.created_at < now - PVP_ROOM_TTL) {
+    await env.DB.prepare(`UPDATE pvp_rooms SET status = 'closed' WHERE code = ?1 AND status = 'open'`).bind(r.code).run();
+    r = await pvpRoomOf(env, r.code);
+  }
+  if (r.status === 'play') {
+    const hs = pvpParse(r.host_state), gs = pvpParse(r.guest_state);
+    const timeUp = now > r.start_at + PVP_MATCH_MS + 8_000;
+    const stale = now > r.start_at && (now - r.host_seen > PVP_STALE_MS || now - r.guest_seen > PVP_STALE_MS);
+    // จบเมื่อ: ทั้งคู่จบ · มีคนตาย (ตายก่อนแพ้ทันที) · หมดเวลา · มีคนหลุด/ออก
+    if ((hs.fin && gs.fin) || hs.dead || gs.dead || timeUp || stale || hs.left || gs.left) { await pvpFinalize(env, r, now); r = await pvpRoomOf(env, r.code); }
+  }
+  const view = pvpView(r, u.id, now);
+  if (r.status === 'done') view.stats = await pvpStats(env, u.id);
+  return json({ room: view });
+}
+async function pvpLeave(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request), now = Date.now();
+  const r = await pvpRoomOf(env, body && body.code);
+  if (!r) return json({ ok: true });
+  if (r.status === 'open' && r.host_id === u.id) await env.DB.prepare(`UPDATE pvp_rooms SET status = 'closed' WHERE code = ?1`).bind(r.code).run();
+  else if (r.status === 'play' && (r.host_id === u.id || r.guest_id === u.id)) {
+    const me = r.host_id === u.id ? 'host' : 'guest', st = pvpParse(r[me + '_state']);
+    st.left = true; st.fin = true;
+    await env.DB.prepare(`UPDATE pvp_rooms SET ${me}_state = ?1 WHERE code = ?2`).bind(JSON.stringify(st), r.code).run();
+    await pvpFinalize(env, await pvpRoomOf(env, r.code), now);
+  }
+  return json({ ok: true });
+}
+
 // ----- คะแนน -----
 async function leaderboard(env, url) {
   const limit = int(url.searchParams.get('limit'), 1, 500) ?? 200;
@@ -624,6 +819,13 @@ export async function onRequest({ request, env }) {
     if (route === 'treasure/up' && m === 'POST') return await treasureUp(env, request);
     if (route === 'treasure/slot' && m === 'POST') return await unlockSlot(env, request);
     if (route === 'logout' && m === 'POST') return await logout(env, request);
+    if (route === 'pvp/me' && m === 'GET') return await pvpMe(env, request);
+    if (route === 'pvp/create' && m === 'POST') return await pvpCreate(env, request);
+    if (route === 'pvp/announce' && m === 'POST') return await pvpAnnounce(env, request);
+    if (route === 'pvp/invites' && m === 'GET') return await pvpInvites(env, request);
+    if (route === 'pvp/join' && m === 'POST') return await pvpJoin(env, request);
+    if (route === 'pvp/poll' && m === 'POST') return await pvpPoll(env, request);
+    if (route === 'pvp/leave' && m === 'POST') return await pvpLeave(env, request);
     return json({ error: 'not_found' }, 404);
   } catch (err) {
     return json({ error: 'server_error' }, 500);
