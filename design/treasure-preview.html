@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treasure Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #05030f; --card: #0d0a22; --line: #2a2552; --text: #e8f3ff; --dim: #8f9ac0;
+          --common: #9fb0d4; --rare: #36f1ff; --epic: #c18bff; --legend: #ffd23f; --good: #7dff9a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Chakra Petch", system-ui, sans-serif; }
+  body { background: radial-gradient(1200px 600px at 50% -200px, #1b1046 0%, var(--bg) 70%) fixed; }
+  #wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: 1px; text-shadow: 0 0 12px #36f1ff88; }
+  h2 { margin: 40px 0 6px; font-size: 22px; color: #36f1ff; text-shadow: 0 0 10px #36f1ff66; }
+  .sub { color: var(--dim); margin: 0 0 14px; line-height: 1.6; }
+  canvas { display: block; width: 100%; height: auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 14px; position: relative; }
+  .card h3 { margin: 6px 0 2px; font-size: 19px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tag { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; font-weight: 700; }
+  .lv { margin: 8px 0 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.55; }
+  .lv li { display: grid; grid-template-columns: 46px 1fr; gap: 6px; padding: 3px 0; border-top: 1px dashed #241f48; }
+  .lv b { color: var(--dim); font-weight: 500; }
+  .look { color: var(--dim); font-size: 13px; margin: 6px 0 0; }
+  .chg { color: var(--good); font-size: 13px; margin: 6px 0 0; }
+  .chg::before { content: "ปรับ: "; font-weight: 700; }
+  .src { border-left: 4px solid var(--line); }
+  .src.pick { border-left-color: var(--good); box-shadow: 0 0 0 1px #7dff9a44, 0 0 24px #7dff9a14; }
+  .src .badge { position: absolute; top: 12px; right: 12px; background: var(--good); color: #04220e; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 99px; }
+  .src .badge.no { background: #3a3358; color: #c9c3ea; }
+  .src p { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: #cdd6f4; }
+  .src .why { color: var(--dim); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--dim); font-weight: 500; }
+  .tbl { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
+  .note { background: #12102b; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.7; color: #cdd6f4; }
+  .note b { color: var(--text); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>สมบัติดาวนีออน</h1>
+  <p class="sub">หน้าพรีวิวให้เลือกก่อนใส่เกม (ไม่ได้ deploy) · ไอคอนทุกชิ้นวาดด้วยโค้ดแบบเส้นนีออนซ้อน 3 ชั้น เหมือนยานในเกม แทนอีโมจิที่ใช้อยู่ตอนนี้<br>
+  แต่ละการ์ดแสดง <b>ขั้น 1 / 2 / 3</b> · ขั้น 2 มีวงแหวนหมุน · ขั้น 3 มีดาวทองโคจร + มงกุฎ · สีกรอบ = ระดับความหายาก</p>
+
+  <h2>1. สมบัติ 10 ชิ้น</h2>
+  <p class="sub">แนะนำให้แบ่งระดับความหายาก 4 ระดับ (สีเดียวกับยาน) ความสามารถส่วนใหญ่คงของเดิม ปรับเฉพาะชิ้นที่อ่อนหรือแรงเกิน (ตัวเขียว = ที่เปลี่ยน)</p>
+  <div class="grid" id="treasures"></div>
+
+  <h2>2. วิธีได้รับสมบัติ</h2>
+  <p class="sub">หลักคิด: ทุกทางต้องให้ <b>server เป็นคนสุ่ม/ตรวจ</b> เหมือนเศษยาน เพราะของที่หล่นกลางด่านฝั่งเกมโกงง่าย</p>
+  <div class="two" style="margin-bottom:14px">
+    <div class="card"><canvas id="cvLoot" width="480" height="200"></canvas></div>
+    <div class="card"><canvas id="cvChest" width="480" height="200"></canvas></div>
+  </div>
+  <div class="grid" id="sources"></div>
+
+  <h2>3. โอกาสจากหีบ</h2>
+  <div class="tbl">
+    <table>
+      <tr><th>ระดับ</th><th>โอกาส</th><th>สมบัติ</th><th>ได้ซ้ำตอนขั้นเต็ม</th></tr>
+      <tr><td style="color:var(--common)">ธรรมดา</td><td>55%</td><td>หัวใจสำรอง, เลนส์เวลา, ดาวนำโชค, กระเป๋าคริสตัล</td><td>ฝุ่นดาว 1</td></tr>
+      <tr><td style="color:var(--rare)">หายาก</td><td>30%</td><td>แบตเตอรี่สำรอง, โล่ผลึก, เข็มทิศล่าบอส</td><td>ฝุ่นดาว 2</td></tr>
+      <tr><td style="color:var(--epic)">เอพิก</td><td>12%</td><td>นาฬิกาทราย, กระจกสะท้อน</td><td>ฝุ่นดาว 4</td></tr>
+      <tr><td style="color:var(--legend)">ตำนาน</td><td>3%</td><td>ขนนกคืนชีพ</td><td>ฝุ่นดาว 8</td></tr>
+    </table>
+  </div>
+  <p class="sub" style="margin-top:8px">การันตี: เปิดครบ 10 หีบได้เอพิกขึ้นไป · ครบ 30 หีบได้ตำนาน (นับแยกจากตั๋วสุ่มยาน)</p>
+
+  <h2>4. ตอนเล่นในเกม</h2>
+  <div class="two">
+    <div class="card"><canvas id="cvHud" width="480" height="420"></canvas></div>
+    <div class="note">
+      <b>มุมซ้ายบน</b> โชว์ 2 ช่องเป็นไอคอนนีออนเล็ก แทนข้อความอีโมจิเดิม<br>
+      • <b>กระจกสะท้อน</b> มีวงนับถอยหลังวิ่งรอบไอคอน เต็มวง = พร้อม<br>
+      • <b>ขนนก</b> ไอคอนสว่าง = ยังไม่ใช้ · ใช้แล้วจะเทาลง<br>
+      • ตอนสมบัติทำงาน ไอคอนจะกะพริบ + ตัวหนังสือลอยสีประจำชิ้น (ตัวอย่างในภาพ: กระจกสะท้อนกระสุนแดงกลับเป็นสีฟ้า)<br><br>
+      <b>ความยุติธรรมตารางอันดับ</b> (แนะนำ)<br>
+      • ใส่ <b>เอพิก/ตำนานได้ไม่เกิน 1 ชิ้น</b> กันคนเติมหีบเยอะได้เปรียบเกินไป<br>
+      • โชว์ไอคอนสมบัติข้างชื่อในตารางอันดับ ให้เห็นว่าใครใส่อะไร<br>
+      • ช่องที่ 2 ปลดล็อกเมื่อไปถึงรอบ 3 ครั้งแรก (ผู้เล่นใหม่เริ่มที่ 1 ช่อง)
+    </div>
+  </div>
+</div>
+
+<script>
+// พรีวิวสมบัติ — วาดด้วย canvas 2D เทคนิคเดียวกับ neon() ในเกม (เส้น 8/5/2.4 px โปร่ง .12/.3/1 + เติมสี .16) จะย้ายไปเป็น Phaser graphics ได้ตรงๆ
+const RAR = { common: ['ธรรมดา', '#9fb0d4'], rare: ['หายาก', '#36f1ff'], epic: ['เอพิก', '#c18bff'], legend: ['ตำนาน', '#ffd23f'] };
+const GOLD = '#ffd23f';
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+
+function poly(pts, close = true) { const p = new Path2D(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); if (close) p.closePath(); return p; }
+function circ(x, y, r) { const p = new Path2D(); p.arc(x, y, r, 0, Math.PI * 2); return p; }
+function starPts(cx, cy, r1, r2, n, rot = -Math.PI / 2) { return Array.from({ length: n * 2 }, (_, i) => { const a = rot + i * Math.PI / n, r = i % 2 ? r2 : r1; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; }); }
+function neon(c, p, col, fill = 0.16, k = 1) {
+  if (fill) { c.fillStyle = rgba(col, fill); c.fill(p); }
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  for (const [w, a] of [[8, 0.12], [5, 0.3], [2.4, 1]]) { c.lineWidth = w * k; c.strokeStyle = rgba(col, a); c.stroke(p); }
+}
+function line(c, pts, col, k = 1) { neon(c, poly(pts, false), col, 0, k); }
+function sparkle(c, x, y, r, col, a = 1) {
+  c.save(); c.globalAlpha = a; c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
+  c.beginPath(); c.moveTo(x, y - r); c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r); c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r); c.fill(); c.restore();
+}
+
+// ---------- ไอคอนสมบัติ (พิกัดกลาง 0,0 ขนาดราว ±36) ----------
+const ICON = {
+  feather(c, t, lv) {
+    const col = '#ffb84d', alt = '#fff3b0';
+    c.save(); c.rotate(0.62 + Math.sin(t * 1.6) * 0.05);
+    const body = new Path2D(); body.moveTo(0, -38); body.bezierCurveTo(20, -22, 18, 10, 2, 26); body.lineTo(-2, 26); body.bezierCurveTo(-16, 8, -16, -20, 0, -38); body.closePath();
+    neon(c, body, col, 0.2);
+    line(c, [[0, -32], [0, 40]], alt, 0.8);
+    for (const y of [-20, -8, 4, 14]) { line(c, [[0, y + 6], [12 - Math.abs(y) * 0.1, y]], col, 0.55); line(c, [[0, y + 6], [-11 + Math.abs(y) * 0.1, y]], col, 0.55); }
+    if (lv >= 3) for (let i = 0; i < 3; i++) { const f = (t * 2 + i / 3) % 1; sparkle(c, Math.sin(i * 2 + t * 3) * 8, -38 - f * 18, 4 * (1 - f), i % 2 ? GOLD : '#ff8a3d', 1 - f); }
+    c.restore();
+  },
+  heart(c, t, lv) {
+    const col = '#ff5aa8', s = 1 + Math.max(0, Math.sin(t * 4)) * 0.06;
+    c.save(); c.scale(s, s);
+    const p = new Path2D(); p.moveTo(0, 30); p.bezierCurveTo(-44, 0, -28, -36, 0, -16); p.bezierCurveTo(28, -36, 44, 0, 0, 30); p.closePath();
+    neon(c, p, col, 0.2);
+    line(c, [[-24, 0], [-11, 0], [-6, -12], [1, 11], [6, 0], [24, 0]], '#ffffff', 0.7);
+    c.restore();
+  },
+  battery(c, t, lv) {
+    const col = '#7dff9a';
+    const body = new Path2D(); body.roundRect(-17, -26, 34, 56, 6);
+    neon(c, body, col, 0.12); neon(c, poly([[-7, -26], [-7, -32], [7, -32], [7, -26]], false), col, 0);
+    const lit = Math.floor((t * 1.5) % 4);
+    for (let i = 0; i < 3; i++) { c.fillStyle = rgba(col, i < lv ? (i <= lit ? 0.85 : 0.5) : 0.1); c.fillRect(-11, 18 - i * 15, 22, 10); }
+    neon(c, poly([[5, -20], [-9, 2], [0, 2], [-5, 22], [10, -3], [1, -3]]), '#fff35a', 0.5, 0.75);
+  },
+  shield(c, t, lv) {
+    const col = '#36f1ff', V = [[0, -34], [28, -22], [26, 8], [0, 34], [-26, 8], [-28, -22]];
+    neon(c, poly(V), col, 0.16);
+    c.globalAlpha = 0.55; for (const v of V) line(c, [[0, -4], v], '#c8f6ff', 0.4); c.globalAlpha = 1;
+    neon(c, poly([[0, -18], [12, -10], [11, 4], [0, 14], [-11, 4], [-12, -10]]), '#c8f6ff', 0.25, 0.6);
+    const sy = -34 + ((t * 40) % 68); c.save(); c.clip(poly(V)); c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(-30, sy, 60, 5); c.restore();
+  },
+  compass(c, t, lv) {
+    const col = '#ffd23f';
+    neon(c, circ(0, 0, 30), col, 0.1);
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? 24 : 21; line(c, [[Math.cos(a) * 27, Math.sin(a) * 27], [Math.cos(a) * r, Math.sin(a) * r]], col, 0.5); }
+    c.save(); c.rotate(Math.sin(t * 1.3) * 0.35 + 0.5);
+    neon(c, poly([[0, -26], [6, 0], [-6, 0]]), '#fff3b0', 0.85, 0.7);
+    neon(c, poly([[0, 24], [6, 0], [-6, 0]]), col, 0.15, 0.7);
+    c.restore();
+    neon(c, circ(0, 0, 3), '#ffffff', 1, 0.5);
+    // เป้าเล็กบนหน้าปัด (ล่าบอส)
+    c.save(); c.translate(15, -15); line(c, [[-5, 0], [5, 0]], '#ffffff', 0.4); line(c, [[0, -5], [0, 5]], '#ffffff', 0.4); c.restore();
+  },
+  lens(c, t, lv) {
+    const col = '#9f8bff', alt = '#c8f6ff';
+    line(c, [[10, 10], [29, 29]], col, 1.6);
+    neon(c, circ(-6, -6, 23), col, 0.12);
+    neon(c, circ(-6, -6, 17), alt, 0, 0.4);
+    c.save(); c.translate(-6, -6);
+    c.save(); c.rotate(t * 0.5); line(c, [[0, 0], [0, -13]], alt, 0.7); c.restore();
+    c.save(); c.rotate(t * 0.08); line(c, [[0, 0], [8, 0]], alt, 0.7); c.restore();
+    c.restore();
+    sparkle(c, -16, -18, 4, '#ffffff', 0.7 + Math.sin(t * 3) * 0.3);
+  },
+  hourglass(c, t, lv) {
+    const col = '#ffa63d', sand = '#fff35a';
+    const f = (t * 0.25) % 1;
+    line(c, [[-22, -32], [22, -32]], col, 1.1); line(c, [[-22, 32], [22, 32]], col, 1.1);
+    const g = poly([[-16, -28], [16, -28], [3, 0], [16, 28], [-16, 28], [-3, 0]]);
+    neon(c, g, col, 0.08);
+    c.save(); c.clip(g);
+    const ht = 22 * (1 - f); c.fillStyle = rgba(sand, 0.75); c.beginPath(); c.moveTo(-16 * ht / 28, -ht); c.lineTo(16 * ht / 28, -ht); c.lineTo(0, 0); c.fill();
+    const hb = 20 * f; c.beginPath(); c.moveTo(-15, 28); c.lineTo(15, 28); c.lineTo(15 * (1 - hb / 28), 28 - hb); c.lineTo(-15 * (1 - hb / 28), 28 - hb); c.fill();
+    for (let i = 0; i < 4; i++) { const y = ((t * 50 + i * 7) % 26); c.fillRect(-1, y, 2, 3); }
+    c.restore();
+  },
+  lucky(c, t, lv) {
+    const col = '#fff35a';
+    c.save(); c.rotate(Math.sin(t) * 0.15);
+    neon(c, poly(starPts(0, 0, 31, 13, 5)), col, 0.22);
+    neon(c, poly(starPts(0, 0, 14, 6, 5)), '#ffffff', 0.4, 0.5);
+    c.restore();
+    for (let i = 0; i < 3; i++) { const a = t * 0.8 + i * 2.1; sparkle(c, Math.cos(a) * 36, Math.sin(a) * 30, 4 + Math.sin(t * 5 + i) * 2, i ? '#ffffff' : '#36f1ff', 0.9); }
+  },
+  mirror(c, t, lv) {
+    const col = '#c8f6ff', edge = '#c18bff';
+    const M = [[0, -34], [20, -16], [20, 16], [0, 34], [-20, 16], [-20, -16]];
+    neon(c, poly(M), edge, 0.14);
+    neon(c, poly([[0, -26], [14, -12], [14, 12], [0, 26], [-14, 12], [-14, -12]]), col, 0.1, 0.5);
+    c.save(); c.clip(poly(M)); c.globalAlpha = 0.35; line(c, [[-20, 0], [8, -28]], '#ffffff', 0.5); line(c, [[-12, 14], [16, -14]], '#ffffff', 0.35); c.restore();
+    // กระสุนแดงเข้า → สะท้อนเป็นฟ้า
+    const f = (t * 0.7) % 1;
+    if (f < 0.5) { const k = f / 0.5; arrow(c, -40 + k * 22, 28 - k * 16, -0.6, '#ff3b3b'); }
+    else { const k = (f - 0.5) / 0.5; arrow(c, -18 - k * 22, 12 - k * 34, -2.3, '#36f1ff'); }
+  },
+  bag(c, t, lv) {
+    const col = '#5affd1';
+    const p = new Path2D(); p.moveTo(-9, -18); p.bezierCurveTo(-36, -6, -32, 32, 0, 32); p.bezierCurveTo(32, 32, 36, -6, 9, -18); p.closePath();
+    neon(c, p, col, 0.14);
+    neon(c, poly([[-14, -32], [-9, -20], [-3, -30], [0, -22], [3, -30], [9, -20], [14, -32]], false), col, 0, 0.8);
+    line(c, [[-11, -19], [11, -19]], '#fff3b0', 0.8);
+    const b = 1 + Math.sin(t * 3) * 0.05; c.save(); c.translate(0, 8); c.scale(b, b);
+    neon(c, poly([[0, -12], [10, -3], [0, 13], [-10, -3]]), '#36f1ff', 0.5, 0.7); line(c, [[-10, -3], [10, -3]], '#ffffff', 0.4);
+    c.restore();
+  },
+};
+function arrow(c, x, y, a, col) {
+  c.save(); c.translate(x, y); c.rotate(a);
+  c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
+  c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-1, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
+  c.fillStyle = rgba(col, 0.4); c.fillRect(-13, -1.5, 10, 3); c.restore();
+}
+
+// กรอบตามระดับ + ขั้น
+function frame(c, t, lv, rar, r = 50) {
+  const col = RAR[rar][1];
+  const hex = poly(Array.from({ length: 6 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [Math.cos(a) * r, Math.sin(a) * r]; }));
+  const g = c.createRadialGradient(0, 0, 4, 0, 0, r); g.addColorStop(0, rgba(col, 0.16)); g.addColorStop(1, 'rgba(8,6,24,.9)');
+  c.fillStyle = g; c.fill(hex);
+  c.globalAlpha = lv >= 3 ? 1 : 0.65; neon(c, hex, col, 0, 0.7); c.globalAlpha = 1;
+  if (lv >= 2) {
+    c.save(); c.rotate(t * 0.6); c.setLineDash([6, 9]); c.lineWidth = 1.6; c.strokeStyle = rgba(col, 0.7); c.beginPath(); c.arc(0, 0, r + 8, 0, Math.PI * 2); c.stroke(); c.restore();
+  }
+  if (lv >= 3) {
+    for (let i = 0; i < 3; i++) { const a = -t * 1.1 + i * Math.PI * 2 / 3; sparkle(c, Math.cos(a) * (r + 8), Math.sin(a) * (r + 8), 5, GOLD); }
+    neon(c, poly([[-12, -r - 4], [-7, -r - 14], [0, -r - 6], [7, -r - 14], [12, -r - 4]], false), GOLD, 0, 0.6);
+  }
+  // จุดบอกขั้น
+  for (let i = 0; i < 3; i++) { const x = (i - 1) * 11, y = r + 2; c.fillStyle = i < lv ? (lv >= 3 ? GOLD : col) : '#2a2552'; c.beginPath(); c.moveTo(x, y - 4); c.lineTo(x + 4, y); c.lineTo(x, y + 4); c.lineTo(x - 4, y); c.fill(); }
+}
+
+// ---------- ข้อมูลการ์ด ----------
+const T = [
+  { id: 'feather', name: 'ขนนกคืนชีพ', rar: 'legend', look: 'ขนนกเพลิงสีส้มทอง ขั้น 3 มีประกายไฟลอยขึ้นจากปลาย',
+    lv: ['ตายครั้งแรก ฟื้นทันที ไม่เสียชีวิต อมตะ 2 วิ', 'อมตะ 3 วิ', 'อมตะ 4 วิ + คลื่นเพลิงล้างกระสุนทั้งจอ'],
+    chg: 'เพิ่ม "อาวุธไม่ลด" ตอนฟื้น และคลื่นเพลิงที่ขั้น 3 เพราะเป็นตำนานชิ้นเดียว ควรเด่นกว่าชิ้นอื่น' },
+  { id: 'heart', name: 'หัวใจสำรอง', rar: 'common', look: 'หัวใจชมพูนีออน มีเส้นชีพจรวิ่ง เต้นตุบๆ',
+    lv: ['เริ่มเกมชีวิต +1', 'ชีวิต +1 และเกราะ 1 ชั้น', 'ชีวิต +2'] },
+  { id: 'battery', name: 'แบตเตอรี่สำรอง', rar: 'rare', look: 'แบตเขียว ขีดพลังเท่าขั้น สายฟ้าเหลืองตรงกลาง',
+    lv: ['ตายแล้ว 30% อาวุธไม่ลด', '60% อาวุธไม่ลด', 'ตายแล้วอาวุธไม่ลดเลย'] },
+  { id: 'shield', name: 'โล่ผลึก', rar: 'rare', look: 'โล่หกเหลี่ยมเจียระไน มีแสงสแกนวิ่งผ่าน',
+    lv: ['ได้เกราะตอนเริ่มแต่ละรอบ', '+ ได้เกราะตอนเจอบอส', '+ ได้เกราะตอนเริ่มเกม'] },
+  { id: 'compass', name: 'เข็มทิศล่าบอส', rar: 'rare', look: 'เข็มทิศทอง เข็มส่ายหาเป้า มีเป้าเล็งบนหน้าปัด',
+    lv: ['ดาเมจใส่บอส +8%', '+14%', '+20%'] },
+  { id: 'lens', name: 'เลนส์เวลา', rar: 'common', look: 'แว่นขยายม่วง ข้างในเป็นหน้าปัดนาฬิกาเดิน',
+    lv: ['กระสุนศัตรูช้าลง 6%', 'ช้าลง 10%', 'ช้าลง 15%'],
+    chg: 'จาก 5/8/12% → 6/10/15% เดิมเบาจนแทบไม่รู้สึก' },
+  { id: 'hourglass', name: 'นาฬิกาทราย', rar: 'epic', look: 'นาฬิกาทรายส้ม ทรายเหลืองไหลจริง',
+    lv: ['คอมโบหลุดช้าลง + ON AIR นานขึ้น 10%', '20%', '30%'],
+    chg: 'ยกเป็นเอพิก เพราะเพิ่มคะแนนตรงๆ มีผลกับตารางอันดับ' },
+  { id: 'lucky', name: 'ดาวนำโชค', rar: 'common', look: 'ดาว 5 แฉกเหลือง ประกายโคจรรอบ',
+    lv: ['ไอเท็มหล่นบ่อยขึ้น 10% · อมตะ x2', '18%', '25%'] },
+  { id: 'mirror', name: 'กระจกสะท้อน', rar: 'epic', look: 'กระจกเพชรขอบม่วง กระสุนแดงเข้าแล้วเด้งออกเป็นสีฟ้า',
+    lv: ['ทุก 25 วิ กันกระสุนนัดแรก + สะท้อนกลับ', 'ทุก 20 วิ', 'ทุก 15 วิ'] },
+  { id: 'bag', name: 'กระเป๋าคริสตัล', rar: 'common', look: 'ถุงผ้าเขียวมิ้นต์ มีเพชรฟ้าตรงกลาง',
+    lv: ['คริสตัลในรอบ +10% · ดูดไกลขึ้น', '+20%', '+30%'] },
+];
+
+const canvases = [];
+function setup(cv, draw) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.width, h = cv.height;
+  cv.width = w * dpr; cv.height = h * dpr; cv.style.maxWidth = w + 'px'; cv.style.margin = '0 auto';
+  const c = cv.getContext('2d'); canvases.push({ c, w, h, dpr, draw });
+}
+
+const box = document.getElementById('treasures');
+for (const tr of T) {
+  const [rn, rc] = RAR[tr.rar];
+  const el = document.createElement('div'); el.className = 'card';
+  el.innerHTML = `<canvas width="360" height="140"></canvas>
+    <h3>${tr.name} <span class="tag" style="color:${rc}">${rn}</span></h3>
+    <ul class="lv">${tr.lv.map((s, i) => `<li><b>ขั้น ${i + 1}</b><span>${s}</span></li>`).join('')}</ul>
+    <p class="look">หน้าตา: ${tr.look}</p>${tr.chg ? `<p class="chg">${tr.chg}</p>` : ''}`;
+  box.appendChild(el);
+  setup(el.querySelector('canvas'), (c, t) => {
+    for (let lv = 1; lv <= 3; lv++) { c.save(); c.translate(60 + (lv - 1) * 120, 72); c.scale(0.92, 0.92); frame(c, t, lv, tr.rar); ICON[tr.id](c, t + lv, lv); c.restore(); }
+  });
+}
+
+// ---------- วิธีได้รับ ----------
+const SRC = [
+  { pick: true, title: 'หีบดาว (คริสตัล 1,500)', body: 'ของเดิม เพิ่มการันตี 10 หีบได้เอพิกขึ้นไป', why: 'เป็นที่ใช้คริสตัลหลักหลังยานเต็มเลเวล' },
+  { pick: true, title: 'กุญแจดาว จากบอส', body: 'ล้มบอสมีโอกาส 6% ได้กุญแจ 1 ดอก = เปิดหีบฟรี 1 ครั้ง · server สุ่มใน /api/boss แบบเดียวกับเศษยาน', why: 'กันโกงด้วย run_bosses ที่มีอยู่แล้ว · ให้เหตุผลเล่นยาวถึงบอส' },
+  { pick: true, title: 'ฝุ่นดาว แลกเลือกชิ้น', body: 'ได้ชิ้นที่ขั้นเต็มแล้ว → ได้ฝุ่นดาวแทนคืนคริสตัล · ฝุ่น 10 = อัปขั้นชิ้นธรรมดา/หายากที่เลือก · ฝุ่น 25 = ชิ้นเอพิก/ตำนาน', why: 'แก้ปัญหาสุ่มไม่ได้ชิ้นที่อยากได้ (ต้องมีชิ้นนั้นอยู่แล้วอย่างน้อยขั้น 1)' },
+  { pick: true, title: 'รางวัลไปถึงรอบใหม่ครั้งแรก', body: 'ถึงรอบ 3 = กุญแจ 1 + ปลดช่องที่ 2 · รอบ 5 = กุญแจ 2 · รอบ 8 = หีบทอง (การันตีเอพิก) · ได้ครั้งเดียวต่อบัญชี', why: 'server ตรวจรอบด้วยเพดานเวลาที่มีอยู่ (รอบ ≤ 1+วิ/30)' },
+  { pick: false, title: 'หล่นกลางด่าน / ในรูหนอน', body: 'สมบัติหรือกุญแจหล่นจากศัตรู/รูหนอนแบบไอเท็ม', why: 'ไม่แนะนำ: เกมฝั่งเครื่องเป็นคนบอก server โกงง่าย' },
+  { pick: false, title: 'ภารกิจรายวัน', body: 'เช่น ฆ่า 300 ตัว / PERFECT ด่าน CHALLENGE ได้กุญแจ', why: 'ไว้ทีหลัง: ต้องทำระบบภารกิจใหม่ทั้งหมด และตรวจฝั่ง server ยาก' },
+];
+const sb = document.getElementById('sources');
+for (const s of SRC) {
+  const el = document.createElement('div'); el.className = 'card src' + (s.pick ? ' pick' : '');
+  el.innerHTML = `<span class="badge${s.pick ? '' : ' no'}">${s.pick ? 'แนะนำ' : 'ไม่แนะนำ'}</span><h3 style="padding-right:70px">${s.title}</h3><p>${s.body}</p><p class="why">${s.why}</p>`;
+  sb.appendChild(el);
+}
+
+// ---------- หีบ / กุญแจ / ฝุ่นดาว ----------
+function chest(c, t, col, open = 0) {
+  const body = new Path2D(); body.roundRect(-38, -6, 76, 40, 5);
+  neon(c, body, col, 0.14);
+  line(c, [[-38, 8], [38, 8]], col, 0.5);
+  c.save(); c.translate(0, -6); c.rotate(-open * 0.5); c.translate(0, 6);
+  const lid = new Path2D(); lid.moveTo(-38, -6); lid.lineTo(-38, -18); lid.quadraticCurveTo(0, -38, 38, -18); lid.lineTo(38, -6); lid.closePath();
+  neon(c, lid, col, 0.14);
+  c.restore();
+  neon(c, poly(starPts(0, 6, 11, 5, 5)), '#ffffff', 0.5, 0.6);
+  if (open) { const g = c.createRadialGradient(0, -10, 2, 0, -10, 50); g.addColorStop(0, rgba(col, 0.6 * open)); g.addColorStop(1, rgba(col, 0)); c.fillStyle = g; c.fillRect(-60, -70, 120, 80); }
+}
+function key(c, t) {
+  const col = '#36f1ff';
+  c.save(); c.rotate(-0.7 + Math.sin(t * 1.5) * 0.08);
+  neon(c, poly(starPts(0, -20, 18, 8, 5)), col, 0.2);
+  neon(c, circ(0, -20, 5), '#ffffff', 0, 0.5);
+  line(c, [[0, -4], [0, 34]], col, 1);
+  line(c, [[0, 22], [10, 22]], col, 0.9); line(c, [[0, 30], [8, 30]], col, 0.9);
+  c.restore();
+}
+function dust(c, t) {
+  neon(c, circ(0, 0, 26), '#c18bff', 0.08, 0.7);
+  for (let i = 0; i < 9; i++) { const a = t * (0.5 + i * 0.07) + i * 0.7, r = 6 + (i * 5) % 17; sparkle(c, Math.cos(a) * r, Math.sin(a) * r, 2.5 + (i % 3), i % 3 ? '#ffffff' : '#c18bff', 0.6 + 0.4 * Math.sin(t * 4 + i)); }
+}
+function label(c, x, y, s, col = '#e8f3ff', size = 15) { c.fillStyle = col; c.font = `700 ${size}px "Chakra Petch", sans-serif`; c.textAlign = 'center'; c.fillText(s, x, y); }
+
+setup(document.getElementById('cvLoot'), (c, t) => {
+  c.save(); c.translate(80, 90); key(c, t); c.restore(); label(c, 80, 168, 'กุญแจดาว'); label(c, 80, 188, 'จากบอส 6%', '#8f9ac0', 12);
+  c.save(); c.translate(240, 90); dust(c, t); c.restore(); label(c, 240, 168, 'ฝุ่นดาว'); label(c, 240, 188, 'จากชิ้นซ้ำขั้นเต็ม', '#8f9ac0', 12);
+  c.save(); c.translate(400, 90); c.scale(0.9, 0.9); frame(c, t, 3, 'epic'); ICON.hourglass(c, t, 3); c.restore(); label(c, 400, 168, 'เลือกชิ้นได้'); label(c, 400, 188, 'ฝุ่น 10 / 25', '#8f9ac0', 12);
+});
+setup(document.getElementById('cvChest'), (c, t) => {
+  c.save(); c.translate(120, 100); chest(c, t, '#36f1ff', 0); c.restore(); label(c, 120, 168, 'หีบดาว'); label(c, 120, 188, '1,500 คริสตัล / กุญแจ 1', '#8f9ac0', 12);
+  const o = (Math.sin(t * 1.2) + 1) / 2;
+  c.save(); c.translate(350, 100); chest(c, t, GOLD, o);
+  if (o > 0.5) { c.save(); c.translate(0, -48 * o); c.scale(0.45, 0.45); ICON.feather(c, t, 3); c.restore(); }
+  c.restore(); label(c, 350, 168, 'หีบทอง'); label(c, 350, 188, 'การันตีเอพิกขึ้นไป', '#8f9ac0', 12);
+});
+
+// ---------- HUD ในเกม ----------
+const bgStars = Array.from({ length: 70 }, (_, i) => [(i * 137.5) % 480, (i * 89.3) % 420, (i % 3) + 1]);
+setup(document.getElementById('cvHud'), (c, t) => {
+  c.fillStyle = '#05030f'; c.fillRect(0, 0, 480, 420);
+  for (const [x, y, z] of bgStars) { c.fillStyle = `rgba(200,220,255,${0.2 + z * 0.2})`; c.fillRect(x, (y + t * 20 * z) % 420, z, z); }
+  // ช่องสมบัติ
+  const slot = (x, id, rar, ready, cd) => {
+    c.save(); c.translate(x, 34); c.scale(0.34, 0.34);
+    if (!ready) c.globalAlpha = 0.35;
+    frame(c, t, 3, rar, 46); ICON[id](c, t, 3); c.restore();
+    if (cd !== undefined) { c.lineWidth = 3; c.strokeStyle = cd >= 1 ? '#7dff9a' : '#c18bff'; c.beginPath(); c.arc(x, 34, 21, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, cd)); c.stroke(); }
+  };
+  const cyc = (t * 0.2) % 1, cd = Math.min(1, cyc / 0.55);
+  slot(30, 'mirror', 'epic', true, cd);
+  slot(82, 'bag', 'common', true);
+  c.fillStyle = '#e8f3ff'; c.font = '700 14px "Chakra Petch"'; c.textAlign = 'right'; c.fillText('SCORE 128,450', 468, 26); c.fillText('x6 COMBO', 468, 46);
+  // ยาน
+  const px = 240 + Math.sin(t) * 40, py = 330;
+  c.save(); c.translate(px, py); neon(c, poly([[0, -26], [18, 16], [0, 8], [-18, 16]]), '#36f1ff', 0.2); c.restore();
+  // กระสุนแดงเข้า สะท้อนเมื่อกระจกพร้อม
+  if (cd >= 1) {
+    const k = (cyc - 0.55) / 0.45;
+    if (k < 0.5) arrow(c, px + 60 - k * 120, py - 120 + k * 200, 2.1, '#ff3b3b');
+    else {
+      const q = (k - 0.5) * 2; arrow(c, px + q * 60, py - 20 - q * 220, -1.3, '#36f1ff');
+      c.save(); c.translate(px, py - 10); c.globalAlpha = 1 - q; c.scale(0.5 + q * 0.4, 0.5 + q * 0.4); ICON.mirror(c, 0, 3); c.restore();
+      c.globalAlpha = 1 - q; label(c, px, py - 60 - q * 30, 'สะท้อน!', '#c8f6ff', 18); c.globalAlpha = 1;
+    }
+  }
+  // ศัตรู
+  c.save(); c.translate(px + 70 + Math.sin(t * 0.7) * 30, 110); neon(c, poly([[0, 16], [16, -8], [8, -14], [0, -6], [-8, -14], [-16, -8]]), '#ff3b3b', 0.2); c.restore();
+});
+
+// ---------- ลูป ----------
+const t0 = performance.now();
+(function loop() {
+  const t = (performance.now() - t0) / 1000;
+  for (const { c, w, h, dpr, draw } of canvases) { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h); draw(c, t); }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

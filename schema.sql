@@ -56,3 +56,9 @@ CREATE TABLE IF NOT EXISTS run_bosses (
   run_id  TEXT    NOT NULL,
   count   INTEGER NOT NULL DEFAULT 0
 );
+
+-- สมบัติที่ผู้เล่นใส่ตอนทำคะแนนสูงสุด (โชว์ในตารางอันดับ) gear = "feather:3,mirror:2"
+CREATE TABLE IF NOT EXISTS player_gear (
+  id   TEXT PRIMARY KEY,
+  gear TEXT NOT NULL DEFAULT ''
+);

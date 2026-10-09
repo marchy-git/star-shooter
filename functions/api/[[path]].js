@@ -7,11 +7,12 @@
 //   POST /api/upgrade                 อัปเลเวลยานด้วยคริสตัล { ship }
 //   POST /api/spin                    ใช้ตั๋วสุ่มยาน 1 ใบ
 //   POST /api/run                     เริ่มรอบเล่น ได้ runId กลับไป
-//   POST /api/boss                    ล้มบอสในรอบนี้ { runId } → server สุ่มเศษยาน 2%
+//   POST /api/boss                    ล้มบอสในรอบนี้ { runId } → server สุ่มเศษยาน 2% + กุญแจดาว 6%
 //   POST /api/evolve                  แปลงร่างยาน (Lv10 + เศษครบ 5) { ship }
 //   POST /api/shard/sell              ขายเศษยานเป็นคริสตัล { ship, n }
-//   POST /api/chest                   เปิดหีบสมบัติ (ใช้คริสตัล) ได้สมบัติสุ่ม 1 ชิ้น
-//   POST /api/equip                   ใส่สมบัติ { slots: [id, id] }
+//   POST /api/chest                   เปิดหีบสมบัติ { pay: 'coins' | 'key' | 'gold' } ได้สมบัติสุ่ม 1 ชิ้น
+//   POST /api/treasure/up             ใช้ฝุ่นดาวอัปขั้นสมบัติที่เลือก { id }
+//   POST /api/equip                   ใส่สมบัติ { slots: [id, id] } (ห้ามซ้ำ, เอพิก/ตำนานได้ 1 ชิ้น, ช่อง 2 ต้องปลดล็อก)
 //   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
 //   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
@@ -96,9 +97,22 @@ const SHARD_CHANCE = 0.02;          // ล้มบอส 1 ตัว มีโ�
 const SHARD_NEED = 5;               // เศษที่ใช้แปลงร่าง
 const SHARD_TIERS = ['rare', 'epic', 'legendary', 'mythic'];   // ยานธรรมดาไม่มีเศษ
 const SHARD_PRICE = { rare: 80, epic: 180, legendary: 400, mythic: 1000 };
-// สมบัติ (ต้องตรงกับ TREASURES ในเกม)
-const TREASURE_IDS = ['feather', 'heart', 'battery', 'shield', 'compass', 'lens', 'hourglass', 'lucky', 'mirror', 'bag'];
-const TREASURE_MAX = 3, TREASURE_SLOTS = 2, CHEST_PRICE = 1500, CHEST_REFUND = 500;
+// สมบัติ (ต้องตรงกับ TREASURES / TR_* ในเกม)
+const TREASURE_RARITY = {
+  heart: 'common', lens: 'common', lucky: 'common', bag: 'common',
+  battery: 'rare', shield: 'rare', compass: 'rare', hourglass: 'epic', mirror: 'epic', feather: 'legendary',
+};
+const TREASURE_IDS = Object.keys(TREASURE_RARITY);
+const TREASURE_MAX = 3, TREASURE_SLOTS = 2, CHEST_PRICE = 1500;
+const TR_TIERS = ['common', 'rare', 'epic', 'legendary'];
+const TR_HIGH = ['epic', 'legendary'];                              // ใส่พร้อมกันได้ไม่เกิน 1 ชิ้น
+const TR_ODDS = { common: 55, rare: 30, epic: 12, legendary: 3 };   // โอกาสจากหีบ (%)
+const TR_PITY_EPIC = 10, TR_PITY_LEGEND = 30;                       // การันตีของหีบ (นับแยกจากตั๋วสุ่มยาน)
+const TR_DUST = { common: 1, rare: 2, epic: 4, legendary: 8 };      // ได้ชิ้นที่ขั้นเต็มแล้ว → ฝุ่นดาว
+const TR_DUST_COST = { common: 10, rare: 10, epic: 25, legendary: 25 };   // ฝุ่นดาวที่ใช้อัปขั้นชิ้นที่เลือก
+const KEY_CHANCE = 0.06;                                            // ล้มบอส 1 ตัว มีโอกาสได้กุญแจดาว
+const SLOT2_LOOP = 3;                                               // ช่องที่ 2 ปลดล็อกเมื่อถึงรอบนี้ครั้งแรก
+const MILESTONES = { 3: { keys: 1 }, 5: { keys: 2 }, 8: { gold: 1 } };   // ถึงรอบใหม่ครั้งแรก (ครั้งเดียวต่อบัญชี)
 const BAG_BONUS = [0, 0.1, 0.2, 0.3];   // กระเป๋าคริสตัล: คริสตัลที่เก็บได้ในรอบ +% ตามขั้น
 const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIP_TIER[id]].cost / 10) * 10;
 
@@ -131,8 +145,39 @@ function treasureData(d) {
   const nat = v => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
   const treasures = {};
   for (const id of TREASURE_IDS) { const lv = Math.min(TREASURE_MAX, nat(d.treasures && d.treasures[id])); if (lv) treasures[id] = lv; }
-  const equip = [...new Set(Array.isArray(d.equip) ? d.equip : [])].filter(id => treasures[id]).slice(0, TREASURE_SLOTS);
-  return { treasures, equip };
+  const ms = Object.keys(MILESTONES).map(Number).filter(n => Array.isArray(d.ms) && d.ms.includes(n));
+  const t = {
+    treasures, keys: nat(d.keys), gold: nat(d.gold), dust: nat(d.dust), ms,
+    tpity: { e: nat(d.tpity && d.tpity.e), l: nat(d.tpity && d.tpity.l) },
+  };
+  t.equip = cleanEquip(Array.isArray(d.equip) ? d.equip : [], t);
+  return t;
+}
+const slotCount = d => (d.ms.includes(SLOT2_LOOP) ? TREASURE_SLOTS : 1);
+const isHigh = id => TR_HIGH.includes(TREASURE_RARITY[id]);
+// สมบัติที่ใส่ได้จริง: มีอยู่, ไม่ซ้ำ, เอพิก/ตำนานไม่เกิน 1, ไม่เกินช่องที่ปลดล็อก
+function cleanEquip(list, d) {
+  const out = [];
+  for (const id of list) {
+    if (!d.treasures[id] || out.includes(id) || (isHigh(id) && out.some(isHigh))) continue;
+    out.push(id);
+  }
+  return out.slice(0, slotCount(d));
+}
+
+// สุ่มสมบัติจากหีบ: เลือกระดับตามโอกาส (หีบทอง = เอพิกขึ้นไป) แล้วสุ่มชิ้นในระดับนั้น · มีระบบการันตี
+function rollTreasure(d, gold) {
+  let tiers = TR_TIERS;
+  if (d.tpity.l >= TR_PITY_LEGEND - 1) tiers = ['legendary'];
+  else if (gold || d.tpity.e >= TR_PITY_EPIC - 1) tiers = TR_HIGH;
+  let r = randFloat() * tiers.reduce((sum, k) => sum + TR_ODDS[k], 0);
+  let tier = tiers[tiers.length - 1];
+  for (const k of tiers) { r -= TR_ODDS[k]; if (r <= 0) { tier = k; break; } }
+  const rank = TR_TIERS.indexOf(tier);
+  d.tpity.e = rank >= 2 ? 0 : d.tpity.e + 1;
+  d.tpity.l = rank >= 3 ? 0 : d.tpity.l + 1;
+  const pool = TREASURE_IDS.filter(id => TREASURE_RARITY[id] === tier);
+  return pool[Math.floor(randFloat() * pool.length)];
 }
 
 // สุ่มเศษยาน: เลือกระดับตามโอกาสแบบเดียวกับตั๋วสุ่ม (ไม่รวมระดับธรรมดา) แล้วสุ่มยานในระดับนั้น
@@ -338,28 +383,49 @@ async function bossDown(env, request) {
     `INSERT INTO run_bosses (user_id, run_id, count) VALUES (?1, ?2, ?3)
      ON CONFLICT(user_id) DO UPDATE SET run_id = excluded.run_id, count = excluded.count`
   ).bind(u.id, runId, count).run();
-  if (randFloat() >= SHARD_CHANCE) return json({ shard: null });
-  const id = rollShard();
+  const gotShard = randFloat() < SHARD_CHANCE, key = randFloat() < KEY_CHANCE;
+  if (!gotShard && !key) return json({ shard: null, key: false });
   const d = dataOf(u);
-  d.shards[id] = (d.shards[id] || 0) + 1;
+  const id = gotShard ? rollShard() : null;
+  if (id) d.shards[id] = (d.shards[id] || 0) + 1;
+  if (key) d.keys += 1;
   await writeData(env, u.id, d);
-  return json({ shard: id, data: d });
+  return json({ shard: id, key, data: d });
 }
 
 // ----- สมบัติ -----
 async function openChest(env, request) {
   const u = await currentUser(env, request);
   if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const pay = body && ['key', 'gold'].includes(body.pay) ? body.pay : 'coins';
   const d = dataOf(u);
-  if (d.coins < CHEST_PRICE) return json({ error: 'not_enough', need: CHEST_PRICE - d.coins }, 400);
-  d.coins -= CHEST_PRICE;
-  const id = TREASURE_IDS[Math.floor(randFloat() * TREASURE_IDS.length)];
+  if (pay === 'key') { if (d.keys < 1) return json({ error: 'no_key' }, 400); d.keys -= 1; }
+  else if (pay === 'gold') { if (d.gold < 1) return json({ error: 'no_gold' }, 400); d.gold -= 1; }
+  else { if (d.coins < CHEST_PRICE) return json({ error: 'not_enough', need: CHEST_PRICE - d.coins }, 400); d.coins -= CHEST_PRICE; }
+  const id = rollTreasure(d, pay === 'gold');
   const lv = d.treasures[id] || 0;
-  let refund = 0;
-  if (lv >= TREASURE_MAX) { refund = CHEST_REFUND; d.coins += refund; }
+  let dust = 0;
+  if (lv >= TREASURE_MAX) { dust = TR_DUST[TREASURE_RARITY[id]]; d.dust += dust; }
   else d.treasures[id] = lv + 1;
   if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
-  return json({ treasure: id, level: d.treasures[id], isNew: lv === 0, refund, data: d });
+  return json({ treasure: id, level: d.treasures[id], isNew: lv === 0, dust, data: d });
+}
+
+async function treasureUp(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const d = dataOf(u);
+  const id = body && body.id, lv = d.treasures[id] || 0;
+  if (!lv) return json({ error: 'not_owned_tr' }, 400);
+  if (lv >= TREASURE_MAX) return json({ error: 'max_level' }, 400);
+  const cost = TR_DUST_COST[TREASURE_RARITY[id]];
+  if (d.dust < cost) return json({ error: 'no_dust', need: cost - d.dust }, 400);
+  d.dust -= cost;
+  d.treasures[id] = lv + 1;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ treasure: id, level: lv + 1, data: d });
 }
 
 async function equipTreasures(env, request) {
@@ -368,9 +434,10 @@ async function equipTreasures(env, request) {
   const body = await readJson(request);
   const d = dataOf(u);
   const slots = body && Array.isArray(body.slots) ? body.slots : null;
-  if (!slots || slots.length > TREASURE_SLOTS || new Set(slots).size !== slots.length || !slots.every(id => d.treasures[id])) {
-    return json({ error: 'bad_equip' }, 400);
-  }
+  if (!slots || !slots.every(id => d.treasures[id])) return json({ error: 'bad_equip' }, 400);
+  if (new Set(slots).size !== slots.length) return json({ error: 'dup_equip' }, 400);
+  if (slots.filter(isHigh).length > 1) return json({ error: 'one_high' }, 400);
+  if (slots.length > slotCount(d)) return json({ error: 'slot_locked' }, 400);
   d.equip = slots;
   await writeData(env, u.id, d);
   return json({ data: d });
@@ -399,14 +466,16 @@ async function notice(env) {
 async function leaderboard(env, url) {
   const limit = int(url.searchParams.get('limit'), 1, 500) ?? 200;
   const rows = await env.DB.prepare(
-    `SELECT id, name, best, loop, max_combo, ship FROM players
-     WHERE best > 0 ORDER BY best DESC, updated_at ASC LIMIT ?1`
+    `SELECT p.id, p.name, p.best, p.loop, p.max_combo, p.ship, g.gear FROM players p
+     LEFT JOIN player_gear g ON g.id = p.id
+     WHERE p.best > 0 ORDER BY p.best DESC, p.updated_at ASC LIMIT ?1`
   ).bind(limit).all();
   const total = await env.DB.prepare(`SELECT COUNT(*) AS n FROM players WHERE best > 0`).first();
   return json({
     total: total?.n ?? 0,
     entries: (rows.results || []).map(r => ({
       pid: r.id, name: r.name, score: r.best, loop: r.loop, maxCombo: r.max_combo, ship: r.ship,
+      gear: String(r.gear || '').split(',').map(s => s.split(':')).filter(([id]) => TREASURE_RARITY[id]).map(([id, lv]) => [id, Number(lv) || 1]),
     })),
   });
 }
@@ -448,9 +517,24 @@ async function submit(env, request) {
   d.coins += coins + scoreBonus;
   d.tickets += tickets;
   if (score > d.best) d.best = score;
+  // ถึงรอบใหม่ครั้งแรก: กุญแจ / หีบทอง / ปลดช่องสมบัติที่ 2
+  const milestones = [];
+  for (const [at, r] of Object.entries(MILESTONES)) {
+    const n = Number(at);
+    if (loop < n || d.ms.includes(n)) continue;
+    d.ms.push(n);
+    d.keys += r.keys || 0;
+    d.gold += r.gold || 0;
+    milestones.push({ loop: n, keys: r.keys || 0, gold: r.gold || 0, slot: n === SLOT2_LOOP });
+  }
   await writeData(env, u.id, d);
 
   const prev = await env.DB.prepare(`SELECT best FROM players WHERE id = ?1`).bind(u.id).first();
+  // สมบัติที่ใส่ตอนทำคะแนนสูงสุด (โชว์ในตารางอันดับ)
+  if (!prev || score > prev.best) {
+    await env.DB.prepare(`INSERT INTO player_gear (id, gear) VALUES (?1, ?2) ON CONFLICT(id) DO UPDATE SET gear = excluded.gear`)
+      .bind(u.id, d0.equip.map(id => `${id}:${d0.treasures[id]}`).join(',')).run();
+  }
   await env.DB.prepare(
     `INSERT INTO players (id, name, best, loop, max_combo, ship, games, updated_at, last_submit)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?7)
@@ -475,7 +559,7 @@ async function submit(env, request) {
     newBest: !prev || score > prev.best,
     rank: (above?.n ?? 0) + 1,
     total: total?.n ?? 1,
-    reward: { coins, tickets, scoreBonus },
+    reward: { coins, tickets, scoreBonus, milestones },
     data: d,
   });
 }
@@ -503,6 +587,7 @@ export async function onRequest({ request, env }) {
     if (route === 'shard/sell' && m === 'POST') return await sellShard(env, request);
     if (route === 'chest' && m === 'POST') return await openChest(env, request);
     if (route === 'equip' && m === 'POST') return await equipTreasures(env, request);
+    if (route === 'treasure/up' && m === 'POST') return await treasureUp(env, request);
     if (route === 'logout' && m === 'POST') return await logout(env, request);
     return json({ error: 'not_found' }, 404);
   } catch (err) {
