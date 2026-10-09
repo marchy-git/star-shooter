@@ -17,6 +17,9 @@
 //   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
 //   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
+//   GET  /api/ep/records              สถิติสูงสุดของแต่ละด่าน EP + สถิติของเรา
+//   POST /api/ep/draw                 ใช้เศษจิ๊กซอว์สุ่มตาราง 9 ช่องของด่าน { ep }
+//   GET  /api/leaderboard?ep=2        ตารางอันดับของด่าน (ไม่ส่ง = EP1)
 //   GET  /api/pvp/me                  ถ้วย ชนะ แพ้ ของ PvP
 //   POST /api/pvp/create              สร้างห้อง PvP ได้รหัส 4 หลัก
 //   POST /api/pvp/announce            ประกาศเรียกคน { code } (1 ครั้ง / 2 นาที)
@@ -91,6 +94,7 @@ const MAX_LV = 10;
 const SHIP_TIER = {
   bolt: 'common', iron: 'common', magneto: 'rare', falcon: 'rare', comet: 'rare', storm: 'rare',
   phantom: 'epic', prism: 'epic', nova: 'legendary', phoenix: 'mythic',
+  moon: 'cosmic', jupiter: 'cosmic', saturn: 'cosmic', neptune: 'cosmic', horizon: 'cosmic',   // ยานคอสมิก: ได้จากตาราง EP เท่านั้น
 };
 const TIERS = {
   common:    { weight: 49.5, dupe: 150,  cost: 1 },
@@ -98,6 +102,7 @@ const TIERS = {
   epic:      { weight: 14,   dupe: 900,  cost: 1.6 },
   legendary: { weight: 4,    dupe: 2000, cost: 2 },
   mythic:    { weight: 0.5,  dupe: 5000, cost: 2.5 },
+  cosmic:    { weight: 0,    dupe: 0,    cost: 3 },
 };
 const TIER_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 const PITY_EPIC = 10, PITY_LEGEND = 40;
@@ -127,6 +132,36 @@ const KEY_CHANCE = 0.06;                                            // ล้ม
 const MILESTONES = { 3: { keys: 1 }, 5: { keys: 2 }, 8: { gold: 1 } };   // ถึงรอบใหม่ครั้งแรก (ครั้งเดียวต่อบัญชี)
 const BAG_BONUS = [0, 0.1, 0.2, 0.3];   // กระเป๋าคริสตัล: คริสตัลที่เก็บได้ในรอบ +% ตามขั้น
 const NOVA_BONUS = [0, 0.05, 0.1, 0.15]; // หัวใจซูเปอร์โนวา: แต้มท้ายเกม +% ตามขั้น (ขยายเพดานตรวจโกงตาม)
+// ----- EPISODE 5 ด่าน (ต้องตรงกับ EPS ในเกม) -----
+const EP_N = 5;
+const EP_COST = [0, 3, 5, 7, 9, 10];                 // เศษจิ๊กซอว์ต่อการสุ่ม 1 ครั้ง
+const EP_PTS = [0, 1, 1.25, 1.5, 1.8, 2.2];          // ตัวคูณแต้มของด่าน (ขยายเพดานตรวจโกงตาม)
+const EP_SHIP = [null, 'moon', 'jupiter', 'saturn', 'neptune', 'horizon'];
+const EP_SHARD_EVERY = 2_000_000, EP_SHARD_CHANCE = 0.4;   // ในเกมเดียว ทุก 2 ล้านแต้ม ลุ้น 40%
+// ตาราง 9 ช่อง: ขาว ขาว ขาว / ทอง แดง ทอง / ขาว ขาว ขาว · [ชนิด, จำนวน]
+const EP_BOARD = [null,
+  [['coins', 300], ['coins', 300], ['coins', 500], ['gold', 1], ['ship', 1], ['tickets', 5], ['tickets', 1], ['tickets', 1], ['keys', 1]],
+  [['coins', 500], ['coins', 500], ['coins', 800], ['gold', 1], ['ship', 1], ['tickets', 10], ['tickets', 2], ['keys', 1], ['keys', 1]],
+  [['coins', 800], ['coins', 800], ['coins', 1200], ['gold', 2], ['ship', 1], ['tickets', 10], ['tickets', 2], ['tickets', 3], ['keys', 2]],
+  [['coins', 1200], ['coins', 1200], ['coins', 1500], ['gold', 2], ['ship', 1], ['tickets', 15], ['tickets', 3], ['tickets', 3], ['keys', 2]],
+  [['coins', 1500], ['coins', 1500], ['coins', 2000], ['gold', 3], ['ship', 1], ['tickets', 20], ['tickets', 3], ['tickets', 5], ['keys', 3]],
+];
+// ข้อมูล EP ของผู้เล่น: u = ด่านที่ปลดล็อกสูงสุด · s = เศษต่อด่าน · g = ช่องที่เปิดแล้วต่อด่าน · evo = หินอีโว
+function epData(raw) {
+  const e = raw && typeof raw === 'object' ? raw : {};
+  const nat = v => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const out = { u: Math.min(EP_N, Math.max(1, nat(e.u))), s: {}, g: {}, evo: nat(e.evo) };
+  for (let i = 1; i <= EP_N; i++) {
+    const s = nat(e.s && e.s[i]); if (s) out.s[i] = s;
+    const g = Array.isArray(e.g && e.g[i]) ? [...new Set(e.g[i].map(Number).filter(n => Number.isInteger(n) && n >= 0 && n < 9))] : [];
+    if (g.length) out.g[i] = g;
+  }
+  return out;
+}
+async function runEp(env, userId, runId) {
+  const r = await env.DB.prepare(`SELECT ep FROM run_ep WHERE user_id = ?1 AND run_id = ?2`).bind(userId, runId).first();
+  return r ? Math.min(EP_N, Math.max(1, r.ep)) : 1;
+}
 const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIP_TIER[id]].cost / 10) * 10;
 
 const randFloat = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
@@ -150,6 +185,7 @@ function normalizeData(raw) {
     shards: Object.fromEntries(Object.entries(d.shards || {})
       .filter(([k]) => SHARD_TIERS.includes(SHIP_TIER[k])).map(([k, v]) => [k, nat(v)]).filter(([, v]) => v > 0)),
     evo: Object.fromEntries(Object.keys(d.evo || {}).filter(k => SHARD_TIERS.includes(SHIP_TIER[k]) && d.evo[k]).map(k => [k, true])),
+    ep: epData(d.ep),
     ...treasureData(d),
   };
 }
@@ -404,13 +440,15 @@ async function bossDown(env, request) {
      ON CONFLICT(user_id) DO UPDATE SET run_id = excluded.run_id, count = excluded.count`
   ).bind(u.id, runId, count).run();
   const gotShard = randFloat() < SHARD_CHANCE, key = randFloat() < KEY_CHANCE;
-  if (!gotShard && !key) return json({ shard: null, key: false });
-  const d = dataOf(u);
+  const d = dataOf(u), ep = await runEp(env, u.id, runId);
+  const unlock = ep === d.ep.u && ep < EP_N;   // ล้มบอสตัวแรกของด่านล่าสุด → ปลดล็อกด่านถัดไป
+  if (!gotShard && !key && !unlock) return json({ shard: null, key: false });
   const id = gotShard ? rollShard() : null;
   if (id) d.shards[id] = (d.shards[id] || 0) + 1;
   if (key) d.keys += 1;
+  if (unlock) d.ep.u = ep + 1;
   await writeData(env, u.id, d);
-  return json({ shard: id, key, data: d });
+  return json({ shard: id, key, unlocked: unlock ? ep + 1 : null, data: d });
 }
 
 // ----- สมบัติ -----
@@ -478,12 +516,57 @@ async function equipTreasures(env, request) {
 async function startRun(env, request) {
   const u = await currentUser(env, request);
   if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const ep = int(body && body.ep, 1, EP_N) ?? 1;
+  if (ep > dataOf(u).ep.u) return json({ error: 'ep_locked' }, 403);
   const runId = randomHex(12);
-  await env.DB.prepare(
-    `INSERT INTO runs (user_id, run_id, started_at) VALUES (?1, ?2, ?3)
-     ON CONFLICT(user_id) DO UPDATE SET run_id = excluded.run_id, started_at = excluded.started_at`
-  ).bind(u.id, runId, Date.now()).run();
-  return json({ runId });
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO runs (user_id, run_id, started_at) VALUES (?1, ?2, ?3)
+       ON CONFLICT(user_id) DO UPDATE SET run_id = excluded.run_id, started_at = excluded.started_at`
+    ).bind(u.id, runId, Date.now()),
+    env.DB.prepare(`INSERT INTO run_ep (user_id, run_id, ep) VALUES (?1, ?2, ?3) ON CONFLICT(user_id) DO UPDATE SET run_id = excluded.run_id, ep = excluded.ep`)
+      .bind(u.id, runId, ep),
+  ]);
+  return json({ runId, ep });
+}
+
+// ----- EPISODE: สถิติสูงสุดแต่ละด่าน + สุ่มตาราง 9 ช่อง -----
+async function epRecords(env, request) {
+  const u = await currentUser(env, request);
+  const top1 = await env.DB.prepare(`SELECT name, best, ship FROM players WHERE best > 0 ORDER BY best DESC, updated_at ASC LIMIT 1`).first();
+  const { results } = await env.DB.prepare(
+    `SELECT ep, name, best, ship FROM ep_players p WHERE best > 0 AND best = (SELECT MAX(best) FROM ep_players q WHERE q.ep = p.ep) GROUP BY ep`
+  ).all();
+  const rec = { 1: top1 ? { name: top1.name, score: top1.best, ship: top1.ship } : null };
+  for (const r of results || []) rec[r.ep] = { name: r.name, score: r.best, ship: r.ship };
+  const mine = {};
+  if (u) {
+    const a = await env.DB.prepare(`SELECT best FROM players WHERE id = ?1`).bind(u.id).first();
+    mine[1] = a ? a.best : 0;
+    const { results: m } = await env.DB.prepare(`SELECT ep, best FROM ep_players WHERE id = ?1`).bind(u.id).all();
+    for (const r of m || []) mine[r.ep] = r.best;
+  }
+  return json({ records: rec, mine });
+}
+async function epDraw(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const ep = int(body && body.ep, 1, EP_N);
+  if (!ep) return json({ error: 'bad_ep' }, 400);
+  const d = dataOf(u), opened = d.ep.g[ep] || [], have = d.ep.s[ep] || 0;
+  if (opened.length >= 9) return json({ error: 'ep_board_done' }, 409);
+  if (have < EP_COST[ep]) return json({ error: 'ep_need_shards' }, 409);
+  const left = [...Array(9).keys()].filter(i => !opened.includes(i));
+  const slot = left[Math.floor(randFloat() * left.length)];
+  const [type, n] = EP_BOARD[ep][slot];
+  d.ep.s[ep] = have - EP_COST[ep];
+  d.ep.g[ep] = [...opened, slot];
+  if (type === 'ship') { const id = EP_SHIP[ep]; d.chars[id] = Math.max(1, d.chars[id] || 0); }
+  else d[type] += n;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ slot, type, n, ship: type === 'ship' ? EP_SHIP[ep] : null, data: d });
 }
 
 // ----- ประกาศ: deploy.sh ใส่เวลาที่จะ deploy ไว้ เกมดึงไปแสดงแถบเลื่อนนับถอยหลัง -----
@@ -684,6 +767,14 @@ async function pvpLeave(env, request) {
 // ----- คะแนน -----
 async function leaderboard(env, url) {
   const limit = int(url.searchParams.get('limit'), 1, 500) ?? 200;
+  const ep = int(url.searchParams.get('ep'), 1, EP_N) ?? 1;
+  if (ep > 1) {
+    const rows = await env.DB.prepare(
+      `SELECT id, name, best, loop, max_combo, ship FROM ep_players WHERE ep = ?1 AND best > 0 ORDER BY best DESC, updated_at ASC LIMIT ?2`
+    ).bind(ep, limit).all();
+    const total = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ep_players WHERE ep = ?1 AND best > 0`).bind(ep).first();
+    return json({ ep, total: total?.n ?? 0, entries: (rows.results || []).map(r => ({ pid: r.id, name: r.name, score: r.best, loop: r.loop, maxCombo: r.max_combo, ship: r.ship, gear: [] })) });
+  }
   const rows = await env.DB.prepare(
     `SELECT p.id, p.name, p.best, p.loop, p.max_combo, p.ship, g.gear FROM players p
      LEFT JOIN player_gear g ON g.id = p.id
@@ -725,9 +816,9 @@ async function submit(env, request) {
   // รอบที่ไปถึงต้องสัมพันธ์กับเวลาที่เล่นจริง (เกิน = โกงแน่นอน ไม่ให้อะไรเลย)
   if (loop > 1 + Math.floor(sec / LOOP_MIN_SEC)) return json({ error: 'implausible' }, 400);
   // คะแนนเกินเพดาน: ไม่ขึ้นตาราง แต่ยังได้คริสตัล/ตั๋วที่เก็บ (จำกัดตามเวลาอยู่แล้ว) และบันทึกไว้ให้ผู้ดูแลตรวจ
-  const d0 = dataOf(u);
+  const d0 = dataOf(u), ep = await runEp(env, u.id, runId);
   const novaMul = 1 + (d0.equip.includes('nova') ? NOVA_BONUS[d0.treasures.nova] || 0 : 0);
-  const scoreCap = Math.min(SCORE_PER_LOOP * loop + SCORE_LOOP_BASE, 50_000 + sec * SCORE_PER_SEC) * novaMul;
+  const scoreCap = Math.min(SCORE_PER_LOOP * loop + SCORE_LOOP_BASE, 50_000 + sec * SCORE_PER_SEC) * novaMul * EP_PTS[ep];
   const flagged = score > scoreCap;
 
   // รางวัล: ของที่เก็บได้ถูกจำกัดเพดาน, โบนัสจากคะแนน 1 คริสตัลต่อ 1,000 แต้ม
@@ -739,6 +830,16 @@ async function submit(env, request) {
   d.coins += coins + scoreBonus;
   d.tickets += tickets;
   if (score > d.best && !flagged) d.best = score;
+  // จิ๊กซอว์: ทุก 2 ล้านแต้มในเกมนี้ ลุ้น 40% · ตารางด่านนี้เปิดครบแล้ว → ได้หินอีโวแทน
+  const jigsaw = { ep, rolls: 0, shards: 0, evo: 0 };
+  if (!flagged) {
+    jigsaw.rolls = Math.min(30, Math.floor(score / EP_SHARD_EVERY));
+    for (let i = 0; i < jigsaw.rolls; i++) if (randFloat() < EP_SHARD_CHANCE) {
+      if ((d.ep.g[ep] || []).length >= 9) jigsaw.evo++; else jigsaw.shards++;
+    }
+    if (jigsaw.shards) d.ep.s[ep] = (d.ep.s[ep] || 0) + jigsaw.shards;
+    if (jigsaw.evo) d.ep.evo += jigsaw.evo;
+  }
   // ถึงรอบใหม่ครั้งแรก: กุญแจ / หีบทอง
   const milestones = [];
   for (const [at, r] of Object.entries(MILESTONES)) {
@@ -751,6 +852,24 @@ async function submit(env, request) {
   }
   await writeData(env, u.id, d);
 
+  if (ep > 1) {   // ด่าน EP2-5: ตารางอันดับของด่าน
+    const reward = { coins, tickets, scoreBonus, milestones, jigsaw };
+    const pv = await env.DB.prepare(`SELECT best FROM ep_players WHERE id = ?1 AND ep = ?2`).bind(u.id, ep).first();
+    if (!flagged) await env.DB.prepare(
+      `INSERT INTO ep_players (id, ep, name, best, loop, max_combo, ship, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+       ON CONFLICT(id, ep) DO UPDATE SET name = excluded.name, best = MAX(best, excluded.best),
+         loop = CASE WHEN excluded.best > best THEN excluded.loop ELSE loop END, ship = CASE WHEN excluded.best > best THEN excluded.ship ELSE ship END,
+         updated_at = CASE WHEN excluded.best > best THEN excluded.updated_at ELSE updated_at END, max_combo = MAX(max_combo, excluded.max_combo)`
+    ).bind(u.id, ep, u.nickname, score, loop, maxCombo, ship, now).run();
+    else await env.DB.prepare(`INSERT INTO flagged_runs (user_id, name, score, loop, sec, ship, at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`)
+      .bind(u.id, u.nickname + ` (EP${ep})`, score, loop, Math.round(sec), ship, now).run();
+    const mine = await env.DB.prepare(`SELECT best FROM ep_players WHERE id = ?1 AND ep = ?2`).bind(u.id, ep).first();
+    const best = mine ? mine.best : 0;
+    const above = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ep_players WHERE ep = ?1 AND best > ?2`).bind(ep, best).first();
+    const total = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ep_players WHERE ep = ?1 AND best > 0`).bind(ep).first();
+    return json({ pid: u.id, ep, flagged, best, newBest: !flagged && (!pv || score > pv.best), rank: (above?.n ?? 0) + 1, total: total?.n ?? 1, reward, data: d });
+  }
+
   const prev = await env.DB.prepare(`SELECT best FROM players WHERE id = ?1`).bind(u.id).first();
   if (flagged) {
     await env.DB.prepare(`INSERT INTO flagged_runs (user_id, name, score, loop, sec, ship, at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`)
@@ -759,7 +878,7 @@ async function submit(env, request) {
     const above = await env.DB.prepare(`SELECT COUNT(*) AS n FROM players WHERE best > ?1`).bind(best).first();
     const total = await env.DB.prepare(`SELECT COUNT(*) AS n FROM players WHERE best > 0`).first();
     return json({ pid: u.id, flagged: true, best, newBest: false, rank: (above?.n ?? 0) + 1, total: total?.n ?? 1,
-      reward: { coins, tickets, scoreBonus, milestones }, data: d });
+      reward: { coins, tickets, scoreBonus, milestones, jigsaw }, data: d });
   }
   // สมบัติที่ใส่ตอนทำคะแนนสูงสุด (โชว์ในตารางอันดับ)
   if (!prev || score > prev.best) {
@@ -790,7 +909,7 @@ async function submit(env, request) {
     newBest: !prev || score > prev.best,
     rank: (above?.n ?? 0) + 1,
     total: total?.n ?? 1,
-    reward: { coins, tickets, scoreBonus, milestones },
+    reward: { coins, tickets, scoreBonus, milestones, jigsaw },
     data: d,
   });
 }
@@ -821,6 +940,8 @@ export async function onRequest({ request, env }) {
     if (route === 'treasure/up' && m === 'POST') return await treasureUp(env, request);
     if (route === 'treasure/slot' && m === 'POST') return await unlockSlot(env, request);
     if (route === 'logout' && m === 'POST') return await logout(env, request);
+    if (route === 'ep/records' && m === 'GET') return await epRecords(env, request);
+    if (route === 'ep/draw' && m === 'POST') return await epDraw(env, request);
     if (route === 'pvp/me' && m === 'GET') return await pvpMe(env, request);
     if (route === 'pvp/create' && m === 'POST') return await pvpCreate(env, request);
     if (route === 'pvp/announce' && m === 'POST') return await pvpAnnounce(env, request);

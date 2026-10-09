@@ -106,3 +106,24 @@ CREATE TABLE IF NOT EXISTS pvp_stats (
   streak     INTEGER NOT NULL DEFAULT 0,
   updated_at INTEGER NOT NULL
 );
+
+-- EPISODE: ตารางอันดับแยกด่าน EP2-5 (EP1 ใช้ตาราง players เดิม)
+CREATE TABLE IF NOT EXISTS ep_players (
+  id         TEXT    NOT NULL,
+  ep         INTEGER NOT NULL,
+  name       TEXT    NOT NULL,
+  best       INTEGER NOT NULL DEFAULT 0,
+  loop       INTEGER NOT NULL DEFAULT 1,
+  max_combo  INTEGER NOT NULL DEFAULT 0,
+  ship       TEXT,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (id, ep)
+);
+CREATE INDEX IF NOT EXISTS idx_ep_players_best ON ep_players (ep, best DESC, updated_at ASC);
+
+-- รอบเล่นนี้อยู่ด่านไหน (คู่กับ runs)
+CREATE TABLE IF NOT EXISTS run_ep (
+  user_id TEXT PRIMARY KEY,
+  run_id  TEXT    NOT NULL,
+  ep      INTEGER NOT NULL
+);
