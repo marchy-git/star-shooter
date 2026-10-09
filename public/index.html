@@ -286,6 +286,22 @@
     background: rgba(2, 1, 8, .9); overflow: hidden; cursor: pointer;
   }
   .reveal .flash { position: absolute; inset: 0; background: var(--tier); opacity: 0; animation: flash .9s ease-out; pointer-events: none; }
+  #btnSpin10 { font-size: calc(var(--u) * 12); padding: calc(var(--u) * 6) calc(var(--u) * 10); }
+  /* ผลสุ่ม 10 ครั้ง: การ์ด 10 ใบพลิกทีละใบ */
+  .reveal .multi { position: relative; width: calc(var(--u) * 440); display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 10); }
+  .reveal .multi h4 { margin: 0; font-size: calc(var(--u) * 22); color: #ffffff; text-shadow: 0 0 calc(var(--u) * 12) var(--tier); }
+  .reveal .mgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: calc(var(--u) * 8); width: 100%; }
+  .reveal .mc {
+    --tier: #8a9bbd; --tierbg: #141a2c; position: relative; border: 2px solid var(--tier); background: var(--tierbg); border-radius: calc(var(--u) * 10);
+    padding: calc(var(--u) * 6) calc(var(--u) * 2); display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 2);
+    transform: perspective(500px) rotateY(90deg); animation: flipIn .45s cubic-bezier(.2, .9, .3, 1.3) forwards;
+  }
+  .reveal .mc.hi { box-shadow: 0 0 calc(var(--u) * 16) var(--tier); }
+  .reveal .mc img { width: calc(var(--u) * 46); height: calc(var(--u) * 46); animation: none; filter: drop-shadow(0 0 calc(var(--u) * 6) var(--tier)); }
+  .reveal .mc b { font-size: calc(var(--u) * 11); color: #ffffff; white-space: nowrap; }
+  .reveal .mc i { font-style: normal; font-size: calc(var(--u) * 10); color: var(--tier); font-weight: 700; }
+  .reveal .mc .new { position: absolute; top: calc(var(--u) * -8); right: calc(var(--u) * -6); background: #ffd23f; color: #2a1a00; font-size: calc(var(--u) * 9); font-weight: 700; padding: 1px calc(var(--u) * 5); border-radius: 99px; }
+  .reveal .msum { color: var(--muted); font-size: calc(var(--u) * 13); text-align: center; }
   .reveal .beam {
     position: absolute; left: 50%; top: -10%; width: calc(var(--u) * 140); height: 120%;
     background: linear-gradient(transparent, var(--tier), transparent);
@@ -462,6 +478,7 @@
             <div id="ticketCount" class="tickets"></div>
             <div id="spinResult" class="spin-result" hidden></div>
             <button id="btnSpin" class="btn primary" type="button">สุ่ม (ใช้ตั๋ว 1 ใบ)</button>
+            <button id="btnSpin10" class="btn" type="button">สุ่ม 10 ครั้ง (ตั๋ว 10 ใบ)</button>
             <div class="odds" id="odds"></div>
             <div class="pity" id="pity"></div>
           </div>
@@ -1910,6 +1927,7 @@ const App = {
     $('hangarGuest').hidden = logged;
     $('ticketCount').textContent = `ตั๋วสุ่ม ${logged ? fmt(d.tickets) : 0} ใบ`;
     $('btnSpin').disabled = !logged || d.tickets < 1 || this.spinning;
+    $('btnSpin10').disabled = !logged || d.tickets < 10 || this.spinning;
     $('pity').textContent = logged
       ? `อีก ${PITY_EPIC - d.pity.e} ครั้ง การันตีเอพิกขึ้นไป · อีก ${PITY_LEGEND - d.pity.l} ครั้ง การันตีตำนานขึ้นไป`
       : '';
@@ -2068,6 +2086,49 @@ const App = {
     };
     step();
   },
+  // สุ่ม 10 ครั้ง: ข้ามไฟวิ่ง โชว์การ์ด 10 ใบเต็มจอ พลิกทีละใบ (ระดับสูงสุดในชุดได้แสงประจำระดับ)
+  async spin10() {
+    if (!Save.loggedIn) return UI.toast('ล็อกอินก่อนนะ ถึงจะสุ่มได้');
+    if (this.spinning) return;
+    if (Save.data.tickets < 10) return UI.toast(`ตั๋วไม่พอ ต้องใช้ 10 ใบ (มี ${fmt(Save.data.tickets)} ใบ)`);
+    this.spinning = true;
+    this.renderHangar();
+    let res;
+    try { res = await Save.act('/api/spin', { n: 10 }); }
+    catch (e) { this.spinning = false; UI.toast(errText(e)); this.renderHangar(); return; }
+    this.spinning = false;
+    const list = res.results || [];
+    const best = list.reduce((m, r) => (TIER_ORDER.indexOf(SHIPS[r.ship].tier) > TIER_ORDER.indexOf(SHIPS[m.ship].tier) ? r : m), list[0]);
+    const bt = TIERS[SHIPS[best.ship].tier], rank = TIER_ORDER.indexOf(SHIPS[best.ship].tier);
+    const el = $('reveal');
+    el.textContent = '';
+    el.className = 'reveal ' + SHIPS[best.ship].tier;
+    el.style.setProperty('--tier', bt.color);
+    el.style.setProperty('--tierbg', bt.bg);
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+    const box = mk('div', 'multi'), grid = mk('div', 'mgrid');
+    box.append(mk('h4', '', rank >= 2 ? `ได้ระดับ${bt.name}!` : 'ผลสุ่ม 10 ครั้ง'), grid);
+    list.forEach((r, i) => {
+      const s = SHIPS[r.ship], t = TIERS[s.tier];
+      const c = mk('div', 'mc' + (TIER_ORDER.indexOf(s.tier) >= 2 ? ' hi' : ''));
+      c.style.setProperty('--tier', t.color);
+      c.style.setProperty('--tierbg', t.bg);
+      c.style.animationDelay = `${0.15 + i * 0.12}s`;
+      const img = mk('img'); img.alt = ''; img.src = this.game.textures.getBase64(s.key);
+      c.append(img, mk('b', '', s.name), mk('i', '', r.isNew ? t.name : `+${fmt(r.refund)} คริสตัล`));
+      if (r.isNew) c.append(mk('span', 'new', 'ใหม่'));
+      grid.append(c);
+    });
+    const fresh = list.filter(r => r.isNew).length, back = list.reduce((a, r) => a + r.refund, 0);
+    box.append(mk('div', 'msum', `ยานใหม่ ${fresh} ลำ · ได้ซ้ำคืนคริสตัล +${fmt(back)}`));
+    if (rank >= 2) el.append(mk('div', 'flash'));
+    el.append(box, mk('div', 'tap', 'แตะเพื่อปิด'));
+    el.hidden = false;
+    el.onclick = () => { el.hidden = true; };
+    rank >= 2 ? sfx.fanfare() : sfx.power();
+    this.renderHangar(true);
+    this.refreshMenu();
+  },
   showSpinResult(id, isNew, refund) {
     const s = SHIPS[id], t = TIERS[s.tier];
     const box = $('spinResult');
@@ -2200,6 +2261,7 @@ const App = {
     $('btnLogout').onclick = () => this.doLogout();
     $('authSwitch').onclick = () => this.openAuth(this.authMode === 'signup' ? 'login' : 'signup');
     $('btnSpin').onclick = () => this.spin();
+    $('btnSpin10').onclick = () => this.spin10();
     $('btnMute').onclick = () => this.toggleMute();
     $('btnAgain').onclick = () => this.again();
     $('btnHome').onclick = () => this.home();

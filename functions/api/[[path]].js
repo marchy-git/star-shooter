@@ -5,7 +5,7 @@
 //   GET  /api/me                      ข้อมูลบัญชีที่ล็อกอินอยู่
 //   POST /api/ship                    เลือกยานที่ใช้ { ship }
 //   POST /api/upgrade                 อัปเลเวลยานด้วยคริสตัล { ship }
-//   POST /api/spin                    ใช้ตั๋วสุ่มยาน 1 ใบ
+//   POST /api/spin                    ใช้ตั๋วสุ่มยาน { n: 1 | 10 } (ไม่ส่ง = 1 ใบ)
 //   POST /api/run                     เริ่มรอบเล่น ได้ runId กลับไป
 //   POST /api/boss                    ล้มบอสในรอบนี้ { runId } → server สุ่มเศษยาน 2% + กุญแจดาว 6%
 //   POST /api/evolve                  แปลงร่างยาน (Lv10 + เศษครบ 5) { ship }
@@ -330,15 +330,22 @@ async function upgrade(env, request) {
 async function spin(env, request) {
   const u = await currentUser(env, request);
   if (!u) return json({ error: 'unauthorized' }, 401);
+  const body = await readJson(request);
+  const n = body && body.n === 10 ? 10 : 1;
   const d = dataOf(u);
-  if (d.tickets < 1) return json({ error: 'no_ticket' }, 400);
-  const id = rollGacha(d);
-  const isNew = !d.chars[id];
-  const refund = isNew ? 0 : TIERS[SHIP_TIER[id]].dupe;
-  d.tickets -= 1;
-  if (isNew) d.chars[id] = 1; else d.coins += refund;
+  if (d.tickets < n) return json({ error: 'no_ticket' }, 400);
+  // สุ่มทีละใบตามลำดับ (การันตีนับต่อกัน · ได้ลำเดิมซ้ำในชุดเดียวกัน = คริสตัลคืน)
+  const results = [];
+  for (let i = 0; i < n; i++) {
+    const id = rollGacha(d);
+    const isNew = !d.chars[id];
+    const refund = isNew ? 0 : TIERS[SHIP_TIER[id]].dupe;
+    d.tickets -= 1;
+    if (isNew) d.chars[id] = 1; else d.coins += refund;
+    results.push({ ship: id, isNew, refund });
+  }
   if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
-  return json({ ship: id, isNew, refund, data: d });
+  return json({ ...results[0], results, data: d });
 }
 
 // ----- เศษยาน / แปลงร่าง -----
