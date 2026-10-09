@@ -557,6 +557,14 @@ const WEAPONS = {
 };
 
 // coin: [โอกาสหล่น, จำนวนคริสตัล]
+// สิ่งกีดขวาง (ยิงไม่แตก ชน = โดน) ใช้ในด่านก่อนบอส (DANGER ZONE) และรูหนอน · ดีไซน์: design/gimmick-preview.html
+const HAZ_RED = 0xff3b4f, HAZ_RED2 = 0xff7a8a;
+const PRE_MS = 20000;                 // ด่านก่อนบอสยาวกี่ ms (รอบแรก 14 วิ)
+const PRE_GIMMICKS = ['corridor', 'gates', 'curtain', 'zones'];
+const PORTAL_CHANCE = 0.6;            // โอกาสที่รอบนี้จะมีรูหนอน (โผล่หลังเคลียร์ wave 2-4 แบบสุ่ม 1 ครั้ง)
+const PORTAL_STAY_MS = 6000, PORTAL_MS = 20000, PORTAL_GOOD = 0.6;
+const PORTAL_GOOD_GIMMICKS = ['corridor', 'gates', 'zones', 'mines', 'blackhole', 'rocks'];   // โซนโบนัส: ไม่มีกระสุนศัตรู
+const PORTAL_BAD_GIMMICKS = ['gates', 'zones', 'mines', 'blackhole', 'rocks'];
 const ENEMIES = {
   normal:   { key: 'enemy',        hp: 1,  score: 100,  body: [36, 34], coin: [0.25, 1] },
   shooter:  { key: 'enemyShooter', hp: 1,  score: 150,  body: [30, 30], coin: [0.3, 1] },
@@ -565,10 +573,11 @@ const ENEMIES = {
   meteor:   { key: 'rock',         hp: 3,  score: 80,   body: [34, 34], coin: [0.2, 1] },
   cargo:    { key: 'cargo',        hp: 14, score: 1000, body: [80, 30], coin: [1, 10] },
   pillarS:  { key: 'pillarSpawn',  hp: 14, score: 300,  body: [28, 66], coin: [1, 3] },   // เสาฐานทัพ ปล่อยลูกน้อง
+  bonusShip: { key: 'bonusShip',   hp: 999, score: 0,  body: [74, 40], coin: [0, 0] },   // รูหนอนดี: ยานแจกแต้ม ยิงไม่ตาย
   pillarH:  { key: 'pillarHeal',   hp: 10, score: 400,  body: [28, 66], coin: [1, 3] },   // เสาฮีล ฟื้นเลือดบอส
 };
 // ตัวที่ไม่นับว่าต้องฆ่าให้หมดก่อนไป wave ถัดไป
-const OPTIONAL = new Set(['kamikaze', 'meteor', 'cargo', 'pillarS', 'pillarH']);
+const OPTIONAL = new Set(['kamikaze', 'meteor', 'cargo', 'pillarS', 'pillarH', 'bonusShip']);
 
 const BOSSES = [
   { key: 'boss',  name: 'ยานแม่ซาร์ก้า',     hp: 150, body: [120, 70], y: 170, move: 'sway',  spin: 0, mech: 'spawner',
@@ -1854,6 +1863,23 @@ function makeTextures(scene) {
     neon(g, star(18, 18, 16, 5, 4, Math.PI / 4), 0xff3b3b, 0.25);
     core(g, 18, 18, 3);
   });
+  draw('mine', 40, 40, g => {   // ทุ่นระเบิด: วงแดงมีหนาม แกนเหลือง
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.lineStyle(3, HAZ_RED, 1); g.lineBetween(20 + Math.cos(a) * 11, 20 + Math.sin(a) * 11, 20 + Math.cos(a) * 18, 20 + Math.sin(a) * 18); }
+    g.fillStyle(0x000000, 0.9); g.fillCircle(20, 20, 12);
+    g.lineStyle(3, HAZ_RED, 1); g.strokeCircle(20, 20, 11);
+    g.fillStyle(0xffd23f, 1); g.fillCircle(20, 20, 4);
+  });
+  draw('slab', 120, 90, g => {   // แผ่นหินบังกระสุน
+    const pts = P([[14, 30], [40, 6], [86, 10], [114, 36], [104, 74], [60, 86], [18, 70]]);
+    g.fillStyle(0x2a2238, 1); g.fillPoints(pts, true);
+    g.lineStyle(4, 0x8a7aa8, 1); g.strokePoints(pts, true, true);
+    g.lineStyle(2, 0x5a4a78, 1); g.lineBetween(40, 30, 70, 50); g.lineBetween(70, 50, 90, 40);
+  });
+  draw('bonusShip', 84, 48, g => {   // รูหนอนดี: ยานแจกแต้ม ม่วงนีออน
+    neon(g, P([[42, 4], [60, 16], [82, 22], [64, 32], [56, 44], [28, 44], [20, 32], [2, 22], [24, 16]]), 0xc18bff, 0.22);
+    ring(g, 42, 24, 9, 0xfff3b0, 0.4);
+    core(g, 42, 24, 3);
+  });
   draw('rock', 48, 48, g => {
     neon(g, poly(24, 24, [20, 15, 21, 17, 20, 14, 19, 18, 21, 16]), 0x7aa3c8, 0.22);
     g.lineStyle(1.5, 0xbfd8ee, 0.7);
@@ -2305,6 +2331,7 @@ class Game extends Phaser.Scene {
       overdriveUntil: 0, dashUntil: 0, phaseUntil: 0, superMagnetUntil: 0, shieldRegenAt: 0, novaAt: 0, lastGhost: 0,
       iceUntil: 0, bossCD: 0, mechCD: 0, bossMechs: [], mechTurn: 0,
       loop: 1, wave: 0, kills: 0, lastPattern: null,
+      hazard: null, inPre: false, portal: null, portalObj: null, portalPlan: Math.random() < PORTAL_CHANCE ? rand(2, 4) : 0,
       over: false, ended: false, waveActive: false, invulnUntil: 0,
       swayX: 0, ringRot: 0, boss: null, bossPhase: 0, bossTurn: 0, weakGlows: [],
       fireCD: 0, turnCD: 1200, kamiCD: 3000, droneCD: 0, shotCount: 0, missileTick: 0,
@@ -2410,7 +2437,7 @@ class Game extends Phaser.Scene {
     });
     this.physics.add.overlap(this.player, this.enemies, (p, e) => {
       const st = e.getData('state');
-      if (!e.visible || st === 'bonus' || st === 'cargo') return;
+      if (!e.visible || st === 'bonus' || st === 'cargo' || st === 'portalShip') return;
       const solid = e.getData('boss') || e.getData('pillar');
       if (this.time.now < this.dashUntil && !solid) { this.killEnemy(e, true); return; }   // ดาวหางพุ่ง: ชนแล้วแตก
       if (this.time.now < this.starUntil) { if (!solid) this.killEnemy(e, true); return; }   // อมตะ: ชนแล้วศัตรูแตก
@@ -2492,6 +2519,9 @@ class Game extends Phaser.Scene {
     this.updateRival();
     this.lastBoardFetch = this.time.now;
 
+    this.hazGfx = this.add.graphics().setDepth(3);
+    this.portalTint = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(-4);
+    this.portalEdge = this.add.graphics().setDepth(9);
     this.time.delayedCall(500, () => this.nextWave());
   }
 
@@ -2540,6 +2570,8 @@ class Game extends Phaser.Scene {
     this.muteText.setText(sfx.muted ? 'เสียง: ปิด (M)' : 'เสียง: เปิด (M)');
     let w = '';
     if (this.inBonus) w = 'CHALLENGE STAGE';
+    else if (this.inPre) w = 'DANGER ZONE · บอสกำลังมา';
+    else if (this.portal) w = this.portal.good ? 'WARP · โซนโบนัส' : 'WARP · โซนอันตราย';
     else if (this.wave > 0) w = this.wave === WAVES_PER_LOOP ? (this.boss && this.boss.active ? 'BOSS · ' + this.boss.getData('def').name : 'BOSS') : `WAVE ${this.wave}/${WAVES_PER_LOOP}`;
     this.waveText.setText(this.loop > 1 && w ? `รอบ ${this.loop} · ${w}` : w);
     this.lifeIcons.forEach((ic, i) => ic.setVisible(i < this.lives));
@@ -2785,7 +2817,8 @@ class Game extends Phaser.Scene {
 
     if (isBoss) {
       const def = BOSSES[(this.loop - 1) % BOSSES.length];
-      return this.bossWarning(def, () => this.spawnBoss(def));
+      // ก่อนบอสทุกครั้ง: ด่านกีดขวาง DANGER ZONE เป็นสัญญาณว่าบอสกำลังมา
+      return this.startPreStage(() => this.bossWarning(def, () => this.spawnBoss(def)));
     }
 
     this.banner(`WAVE ${this.wave}/${WAVES_PER_LOOP}`, this.loop > 1 ? `รอบ ${this.loop}` : '');
@@ -2825,6 +2858,7 @@ class Game extends Phaser.Scene {
 
   nextLoop() {
     this.loop++;
+    this.portalPlan = Math.random() < PORTAL_CHANCE ? rand(2, 4) : 0;
     this.wave = 0;
     this.updateHud();
     const ti = (this.loop - 1) % THEMES.length;
@@ -3113,15 +3147,357 @@ class Game extends Phaser.Scene {
     this.banner('ฝนอุกกาบาต!', 'หลบหรือยิงทำลาย', { size: 32, y: H * 0.3 });
     this.time.addEvent({
       delay: 260, repeat: 22,
-      callback: () => {
-        if (this.over) return;
-        const s = frand(0.6, 1.3);
-        const e = this.makeEnemy('meteor', { state: 'meteor', spin: frand(-0.004, 0.004) });
-        const hp = Math.ceil(3 * s) + (this.loop - 1);
-        e.setData({ hp, maxHp: hp }).setScale(s).setVisible(true).setPosition(rand(20, W - 20), -40);
-        e.setVelocity(rand(-40, 40), rand(170, 260) + this.loop * 15);
-      },
+      callback: () => { if (!this.over) this.spawnMeteor(); },
     });
+  }
+
+  spawnMeteor() {
+    const s = frand(0.6, 1.3);
+    const e = this.makeEnemy('meteor', { state: 'meteor', spin: frand(-0.004, 0.004) });
+    const hp = Math.ceil(3 * s) + (this.loop - 1);
+    e.setData({ hp, maxHp: hp }).setScale(s).setVisible(true).setPosition(rand(20, W - 20), -40);
+    e.setVelocity(rand(-40, 40), rand(170, 260) + this.loop * 15);
+    return e;
+  }
+
+  // =========================================================
+  //  สิ่งกีดขวาง: ยิงไม่แตก ชน = โดน (เกราะกันได้ อมตะทะลุได้) · ใช้ dt สะสม จึงหยุดตามเกม/หยุดชั่วคราวได้ถูก
+  // =========================================================
+  startHazard(kind, ms) {
+    const d = Math.min(1, (this.loop - 1) / 5);   // ความยาก 0..1 ตามรอบ
+    const hz = { kind, d, ms, t: 0, next: 0, items: [], done: false };
+    if (kind === 'corridor') {
+      hz.speed = 0.14 + d * 0.06;
+      hz.half = 95 - d * 30;
+      hz.seg = 170;
+      hz.dist = 0;
+      hz.len = hz.speed * ms - H - 120;   // ช่วงที่มีกำแพง (กำแพงหมดก่อนเวลาจบ)
+      hz.targets = [W / 2, W / 2];
+      for (let k = 0; k < 200; k++) hz.targets.push(rand(Math.ceil(hz.half + 24), Math.floor(W - hz.half - 24)));
+    }
+    if (kind === 'blackhole') {
+      hz.side = Math.random() < 0.5 ? -1 : 1;
+      hz.hx = hz.side < 0 ? 34 : W - 34; hz.hy = H * 0.45;
+      hz.parts = this.add.particles(0, 0, 'spark', {
+        x: { min: 0, max: W }, y: { min: 0, max: H }, lifespan: 900, scale: { start: 0.7, end: 0 },
+        tint: [HAZ_RED, 0xb46bff], blendMode: 'ADD', frequency: 30, moveToX: { onEmit: () => hz.hx }, moveToY: { onEmit: () => hz.hy },
+      }).setDepth(2);
+    }
+    this.hazard = hz;
+    return hz;
+  }
+
+  clearHazard() {
+    const hz = this.hazard;
+    if (!hz) return;
+    hz.items.forEach(o => o.obj && o.obj.destroy());
+    if (hz.parts) hz.parts.destroy();
+    this.hazGfx.clear();
+    this.hazard = null;
+  }
+
+  // แตะสิ่งกีดขวาง: ใช้ playerHit ปกติ (มีอมตะชั่วคราวหลังโดนอยู่แล้ว จึงไม่โดนรัว)
+  hazardTouch() { if (!this.over && this.player.active) this.playerHit(); }
+
+  corridorCenter(hz, sw) {
+    const k = Math.floor(sw / hz.seg), f = (sw % hz.seg) / hz.seg;
+    const a = hz.targets[k % hz.targets.length], b = hz.targets[(k + 1) % hz.targets.length];
+    const t = f < 0.55 ? 0 : (f - 0.55) / 0.45;   // 55% ตรง 45% เลี้ยว (ทางขั้นบันได)
+    return a + (b - a) * t * t * (3 - 2 * t);
+  }
+
+  updateHazard(time, dt) {
+    const hz = this.hazard, g = this.hazGfx;
+    if (!hz) return;
+    hz.t += dt;
+    hz.next -= dt;
+    g.clear();
+    const p = this.player, px = p.x, py = p.y, d = hz.d;
+    const spawnEvery = ms => { if (hz.next <= 0 && hz.t < hz.ms - 2500) { hz.next = ms; return true; } return false; };
+    const blockBullets = test => { for (const b of this.bullets.getChildren()) if (b.active && !b.homing && test(b)) b.disableBody(true, true); };
+
+    if (hz.kind === 'corridor') {
+      hz.dist += dt * hz.speed;
+      const sw = y => hz.dist + (H - y);                 // ระยะโลกของแถวบนจอ
+      const inWall = s => s >= H && s <= H + hz.len;
+      const rows = [];
+      for (let y = H; y >= -10; y -= 8) { const s0 = sw(y); if (inWall(s0)) rows.push([y, this.corridorCenter(hz, s0)]); }
+      g.fillStyle(HAZ_RED, 0.16);
+      for (const [y, c] of rows) { g.fillRect(0, y - 4, c - hz.half, 8); g.fillRect(c + hz.half, y - 4, W - c - hz.half, 8); }
+      for (const side of [-1, 1]) for (const [w, a] of [[9, 0.25], [3, 1]]) {
+        g.lineStyle(w, a < 1 ? HAZ_RED : HAZ_RED2, a);
+        g.beginPath(); rows.forEach(([y, c], k) => (k ? g.lineTo(c + side * hz.half, y) : g.moveTo(c + side * hz.half, y))); g.strokePath();
+      }
+      const sp = sw(py);
+      if (inWall(sp) && Math.abs(px - this.corridorCenter(hz, sp)) > hz.half - 14) this.hazardTouch();
+      blockBullets(b => { const s0 = sw(b.y); return inWall(s0) && Math.abs(b.x - this.corridorCenter(hz, s0)) > hz.half; });
+    }
+
+    if (hz.kind === 'gates') {
+      if (spawnEvery(1500 - d * 400)) hz.items.push({ y: 22, gap: rand(60, W - 60), w: 92 - d * 22, warn: 700 });
+      for (const o of hz.items) {
+        if (o.warn > 0) {
+          o.warn -= dt;
+          if (Math.floor(o.warn / 110) % 2) { g.lineStyle(2, HAZ_RED, 0.9); g.lineBetween(0, o.y, W, o.y); g.fillStyle(HAZ_RED, 0.25).fillRect(o.gap - o.w / 2, o.y - 3, o.w, 6); }
+          continue;
+        }
+        o.y += dt * (0.17 + d * 0.08);
+        for (const [a, b] of [[0, o.gap - o.w / 2], [o.gap + o.w / 2, W]]) {
+          g.fillStyle(HAZ_RED, 0.25).fillRect(a, o.y - 8, b - a, 16);
+          g.fillStyle(HAZ_RED2, 1).fillRect(a, o.y - 2.5, b - a, 5);
+        }
+        g.fillStyle(0xffffff, 1).fillCircle(o.gap - o.w / 2, o.y, 4.5).fillCircle(o.gap + o.w / 2, o.y, 4.5);
+        if (Math.abs(py - o.y) < 12 && Math.abs(px - o.gap) > o.w / 2 - 10) this.hazardTouch();
+      }
+      blockBullets(b => hz.items.some(o => o.warn <= 0 && Math.abs(b.y - o.y) < 10 && Math.abs(b.x - o.gap) > o.w / 2));
+      hz.items = hz.items.filter(o => o.y < H + 30);
+    }
+
+    if (hz.kind === 'curtain') {   // แถวกระสุนศัตรูจริง (หัวลูกศร) เว้นช่องให้ลอด
+      if (spawnEvery(1250 - d * 350)) {
+        const gap = rand(60, W - 60), half = 40 - d * 6;
+        for (let x = 12; x < W; x += 24) if (Math.abs(x - gap) > half) this.enemyShoot(x, -20, Math.PI / 2, 150 + d * 70);
+      }
+    }
+
+    if (hz.kind === 'zones') {   // แถบเตือนกะพริบแรงขึ้นเรื่อยๆ 1 วิ แล้วลำแสงถล่ม
+      const cols = 5, cw = W / cols;
+      if (spawnEvery(1800 - d * 400)) {
+        const n = 2 + (d > 0.5 ? 1 : 0);
+        hz.items.push({ picks: Phaser.Utils.Array.Shuffle([0, 1, 2, 3, 4]).slice(0, n), t: 0 });
+      }
+      for (const o of hz.items) {
+        o.t += dt;
+        for (const c of o.picks) {
+          const x = c * cw;
+          if (o.t < 1000) {
+            const blink = 0.5 + 0.5 * Math.sin(o.t / 50 * (1 + o.t / 600));
+            g.fillStyle(HAZ_RED, 0.08 + blink * 0.16).fillRect(x + 2, 0, cw - 4, H);
+            g.lineStyle(2, HAZ_RED, 0.5 + blink * 0.5).strokeRect(x + 2, 0, cw - 4, H);
+          } else if (o.t < 1500) {
+            const k = 1 - (o.t - 1000) / 500;
+            g.fillStyle(HAZ_RED, 0.15 + 0.35 * k).fillRect(x, 0, cw, H);
+            g.fillStyle(0xffffff, 0.85 * k).fillRect(x + cw / 2 - 5, 0, 10, H);
+            if (o.t < 1350 && Math.floor(px / cw) === c) this.hazardTouch();
+          }
+        }
+      }
+      hz.items = hz.items.filter(o => o.t < 1500);
+    }
+
+    if (hz.kind === 'mines') {   // ยิงไม่แตก (กระสุนกระเด็นออก) ลอยเข้าหายานช้าๆ ต้องหลบ
+      if (spawnEvery(850 - d * 300)) {
+        const m = this.add.image(rand(24, W - 24), -24, 'mine').setDepth(3).setScale(0.9);
+        hz.items.push({ obj: m, vy: 0.05 + d * 0.03 });
+      }
+      for (const o of hz.items) {
+        o.vy = Math.min(0.06 + d * 0.03, o.vy + dt * 0.00012);
+        o.obj.y += o.vy * dt;
+        if (o.obj.y < py - 60) o.obj.x += Phaser.Math.Clamp(px - o.obj.x, -1, 1) * dt * (0.02 + d * 0.02);   // เอนเข้าหายาน
+        o.obj.rotation += dt * 0.002;
+        o.obj.setTint(Math.floor(time / 200) % 2 ? 0xffffff : 0xffb3bd);
+        if (Phaser.Math.Distance.Between(px, py, o.obj.x, o.obj.y) < 28) { this.hazardTouch(); this.explode(o.obj.x, o.obj.y, 1, 'cargo'); o.obj.destroy(); o.gone = true; }
+      }
+      blockBullets(b => { const o = hz.items.find(o => !o.gone && Math.abs(o.obj.x - b.x) < 18 && Math.abs(o.obj.y - b.y) < 18); if (o) { o.obj.x += b.x < o.obj.x ? 1.5 : -1.5; this.grazeSparks.explode(1, b.x, b.y); } return !!o; });
+      hz.items = hz.items.filter(o => { if (!o.gone && o.obj.y > H + 30) { o.obj.destroy(); return false; } return !o.gone; });
+    }
+
+    if (hz.kind === 'blackhole') {   // ดูดยานเข้าหา ต้องขับฝืน
+      const hx = hz.side < 0 ? 34 : W - 34, hy = H * 0.45 + Math.sin(hz.t / 1400) * H * 0.12;
+      hz.hx = hx; hz.hy = hy;   // อนุภาคถูกดูดเข้าหาตำแหน่งปัจจุบันของหลุม
+      for (let k = 0; k < 4; k++) {
+        g.lineStyle(3, k % 2 ? HAZ_RED : 0xb46bff, 0.6);
+        g.beginPath();
+        for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.2) {
+          const r = 20 + k * 14 + Math.sin(a * 3 + time / 200) * 3, aa = a + time / (300 + k * 80);
+          const x = hx + Math.cos(aa) * r, y = hy + Math.sin(aa) * r;
+          a ? g.lineTo(x, y) : g.moveTo(x, y);
+        }
+        g.strokePath();
+      }
+      g.fillStyle(0x000000, 1).fillCircle(hx, hy, 16);
+      g.lineStyle(2, 0xffffff, 0.8).strokeCircle(hx, hy, 16);
+      const dist = Phaser.Math.Distance.Between(px, py, hx, hy);
+      const pull = (0.09 + d * 0.05) * dt * Math.min(1.6, 260 / Math.max(80, dist));
+      const a = Math.atan2(hy - py, hx - px);
+      p.x = Phaser.Math.Clamp(px + Math.cos(a) * pull, 24, W - 24);
+      p.y = Phaser.Math.Clamp(py + Math.sin(a) * pull * 0.5, H * 0.3, H - 40);
+      if (dist < 30) this.hazardTouch();
+    }
+
+    if (hz.kind === 'rocks') {   // แผ่นหินลอยผ่าน บังกระสุนเรา ชน = โดน
+      if (spawnEvery(1700 - d * 450)) {
+        const sc = frand(0.6, 0.95);
+        hz.items.push({ obj: this.add.image(rand(50, W - 50), -60, 'slab').setDepth(3).setScale(sc), sc, vy: 0.08 + d * 0.05 });
+      }
+      for (const o of hz.items) {
+        o.obj.y += o.vy * dt;
+        if (Math.abs(px - o.obj.x) < 46 * o.sc && Math.abs(py - o.obj.y) < 34 * o.sc) this.hazardTouch();
+      }
+      blockBullets(b => hz.items.some(o => Math.abs(o.obj.x - b.x) < 50 * o.sc && Math.abs(o.obj.y - b.y) < 36 * o.sc));
+      hz.items = hz.items.filter(o => { if (o.obj.y > H + 70) { o.obj.destroy(); return false; } return true; });
+    }
+
+    if (hz.t >= hz.ms && !hz.done) { hz.done = true; if (hz.onDone) hz.onDone(); }
+  }
+
+  // ----- ด่านก่อนบอส (DANGER ZONE) -----
+  startPreStage(done) {
+    this.inPre = true;
+    this.waveActive = false;
+    const kind = Phaser.Utils.Array.GetRandom(PRE_GIMMICKS);
+    const ms = this.easy ? 14000 : PRE_MS;
+    const name = { corridor: 'ทางเดินกำแพงพลังงาน', gates: 'ประตูเลเซอร์', curtain: 'ม่านกระสุน', zones: 'เขตเตือนภัยถล่ม' }[kind];
+    this.banner('DANGER ZONE', `บอสกำลังมา! ${name} · หลบให้รอด`, { size: 50 });
+    this.cameras.main.shake(300, 0.006);
+    sfx.alarm();
+    this.updateHud();
+    this.time.delayedCall(1200, () => {
+      if (this.over) return;
+      const hz = this.startHazard(kind, ms);
+      hz.onDone = () => {
+        this.clearHazard();
+        this.inPre = false;
+        this.addScore(3000 * this.loop);
+        this.popText(this.player.x, this.player.y - 70, `ผ่าน DANGER ZONE +${fmt(3000 * this.loop)}`, '#ffd23f', 16);
+        this.updateHud();
+        this.time.delayedCall(800, () => { if (!this.over) done(); });
+      };
+    });
+  }
+
+  // ----- รูหนอน -----
+  spawnPortal() {
+    if (this.over) return;
+    const x = rand(90, W - 90), y = H * 0.36;
+    const parts = [0, 1, 2].map(i => this.add.image(x, y, 'ring').setBlendMode('ADD').setDepth(4).setScale(0.6 + i * 0.25));
+    const core = this.add.image(x, y, 'evoGlow').setBlendMode('ADD').setDepth(4).setScale(1.6);
+    const label = txt(this, x, y - 70, 'WARP ?', 18, '#ffffff', { stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(10);
+    const sparkle = this.add.particles(x, y, 'spark', {
+      speed: { min: 20, max: 90 }, lifespan: 700, scale: { start: 0.8, end: 0 },
+      tint: [0xffffff, 0x36f1ff, 0xc18bff, 0xfff35a], blendMode: 'ADD', frequency: 40,
+    }).setDepth(4);
+    this.portalObj = { x, y, parts, core, label, sparkle, t: 0 };
+    this.banner('รูหนอนปรากฏ!', 'บินเข้าไป ลุ้นโซนโบนัสหรือโซนอันตราย', { size: 34, y: H * 0.22 });
+    sfx.letter(3);
+  }
+
+  updatePortalObj(dt) {
+    const o = this.portalObj;
+    if (!o) return;
+    o.t += dt;
+    o.parts.forEach((r, i) => {
+      r.rotation += dt * 0.002 * (i % 2 ? -1 : 1) * (1 + i * 0.5);
+      r.setTint(hueColor(o.t * 0.15 + i * 120)).setAlpha(0.6 + 0.4 * Math.sin(o.t / 150 + i));
+    });
+    o.core.setScale(1.4 + Math.sin(o.t / 120) * 0.25).setTint(hueColor(o.t * 0.2));
+    const left = PORTAL_STAY_MS - o.t;
+    if (left < 1500) o.parts.concat([o.core]).forEach(r => r.setVisible(Math.floor(left / 120) % 2 === 0));
+    if (this.player.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, o.x, o.y) < 46) return this.enterPortal();
+    if (left <= 0) { this.removePortalObj(); this.time.delayedCall(300, () => this.nextWave()); }
+  }
+
+  removePortalObj() {
+    const o = this.portalObj;
+    if (!o) return;
+    o.parts.forEach(r => r.destroy());
+    o.core.destroy(); o.label.destroy(); o.sparkle.destroy();
+    this.portalObj = null;
+  }
+
+  enterPortal(force) {   // force = true/false ใช้ทดสอบ (เล่นจริงสุ่มตาม PORTAL_GOOD)
+    const good = force ?? Math.random() < PORTAL_GOOD;
+    const { x, y } = this.portalObj;
+    this.removePortalObj();
+    this.cameras.main.flash(500, good ? 200 : 255, good ? 140 : 120, good ? 255 : 60);
+    for (let i = 0; i < 8; i++) {
+      const r = this.add.image(x, y, 'ring').setBlendMode('ADD').setDepth(6).setTint(good ? 0xc18bff : 0xff7a3d).setScale(0.2);
+      this.tweens.add({ targets: r, scale: 12, alpha: 0, duration: 800, delay: i * 60, onComplete: () => r.destroy() });
+    }
+    sfx.onair();
+    this.portal = { good, hit: false, gain: 0, t: 0, ships: [], kami: 0, meteor: 0 };
+    this.portalTint.setFillStyle(good ? 0x8a3dff : 0xff5a1f, 0).setVisible(true);
+    this.tweens.add({ targets: this.portalTint, fillAlpha: good ? 0.22 : 0.26, duration: 500 });
+    const kind = Phaser.Utils.Array.GetRandom(good ? PORTAL_GOOD_GIMMICKS : PORTAL_BAD_GIMMICKS);
+    if (good) {
+      this.banner('WARP: โซนโบนัส!', 'ยิงยานม่วงเก็บแต้ม · ไม่ชนอะไรเลย = แต้ม x2', { size: 40, rainbow: true });
+      for (let i = 0; i < 2; i++) {
+        const e = this.makeEnemy('bonusShip', { state: 'portalShip' }).setVisible(true).setPosition(i ? W * 0.7 : W * 0.3, -40);
+        this.portal.ships.push(e);
+        this.tweens.add({ targets: e, y: 110 + i * 70, duration: 900, ease: 'Sine.easeOut' });
+      }
+    } else {
+      this.banner('WARP: โซนอันตราย!', 'ฝนอุกกาบาต + ศัตรูบุก · รอดออกไปได้รางวัล', { size: 40 });
+      sfx.alarm();
+    }
+    this.updateHud();
+    this.time.delayedCall(1000, () => {
+      if (this.over || !this.portal) return;
+      const hz = this.startHazard(kind, PORTAL_MS);
+      hz.onDone = () => this.exitPortal();
+    });
+  }
+
+  updatePortalRun(time, dt) {
+    const pt = this.portal;
+    if (!pt) return;
+    pt.t += dt;
+    // ขอบจอเรืองแสงตามธีม
+    const pulse = 0.5 + 0.5 * Math.sin(time / 140);
+    this.portalEdge.clear().lineStyle(14, pt.good ? 0xc18bff : 0xff5a1f, 0.12 + pulse * 0.14).strokeRect(7, 7, W - 14, H - 14);
+    if (pt.good) {   // ยานโบนัสลอยเป็นเลข 8 ด้านบน
+      pt.ships.forEach((e, i) => {
+        if (!e.active || pt.t < 1000) return;
+        const a = time / 1300 + i * Math.PI;
+        e.x = W / 2 + Math.sin(a) * (W * 0.33);
+        e.y = 120 + i * 60 + Math.sin(a * 2) * 40;
+      });
+    } else if (this.hazard) {   // โซนอันตราย: อุกกาบาตตลอด + ศัตรูพุ่งเข้าใส่
+      pt.meteor -= dt; pt.kami -= dt;
+      if (pt.meteor <= 0) { pt.meteor = 520 - this.hazard.d * 180; this.spawnMeteor(); }
+      if (pt.kami <= 0) { pt.kami = 2000 - this.hazard.d * 600; this.spawnKamikaze(); }
+    }
+  }
+
+  hitBonusShip(b, e) {
+    if (b.pierce) { if (b.hitSet.has(e)) return; b.hitSet.add(e); } else b.disableBody(true, true);
+    const pts = 5 * this.loop;   // แต้มต่อนัด (ไม่คูณคอมโบ) · รอบ 3 อยู่ครบ 20 วิ ได้ราว 25k ไม่ชนเลย x2
+    this.portal && (this.portal.gain += pts);
+    this.addScore(pts);
+    this.registerHit();
+    e.setTintFill(0xffffff);
+    this.time.delayedCall(50, () => { if (e.active) e.clearTint(); });
+    if (Math.random() < 0.08) this.popText(e.x + rand(-20, 20), e.y, '+' + fmt(pts), '#e0c8ff', 13);
+    this.grazeSparks.explode(2, b.x, b.y);
+  }
+
+  exitPortal() {
+    const pt = this.portal;
+    if (!pt) return;
+    this.clearHazard();
+    for (const e of this.enemies.getChildren().slice()) {
+      const st = e.getData('state');
+      if (e.active && (st === 'portalShip' || st === 'meteor' || st === 'kamikaze')) e.destroy();
+    }
+    this.ebullets.getChildren().forEach(b => b.active && b.disableBody(true, true));
+    this.tweens.add({ targets: this.portalTint, fillAlpha: 0, duration: 600, onComplete: () => this.portalTint.setVisible(false) });
+    this.portalEdge.clear();
+    this.cameras.main.flash(400, 255, 255, 255);
+    if (pt.good) {
+      if (!pt.hit) {
+        this.addScore(pt.gain);
+        this.banner('PERFECT WARP!! x2', `ไม่ชนเลย · โบนัส ${fmt(pt.gain)} x2 = ${fmt(pt.gain * 2)}`, { rainbow: true, size: 40 });
+        sfx.fanfare();
+      } else this.banner('ออกจากรูหนอน', `โบนัส +${fmt(pt.gain)} (ชนแล้ว ไม่ได้ x2)`, { size: 34 });
+    } else {
+      this.banner('รอดจากโซนอันตราย!', 'ได้คริสตัลโบนัส', { size: 36 });
+      this.dropCoins(this.player.x, this.player.y - 120, 15 + this.loop * 3);
+      if (Math.random() < 0.3) this.dropPowerup(this.player.x, this.player.y - 160, 'ticket');
+      sfx.fanfare();
+    }
+    this.portal = null;
+    this.updateHud();
+    this.time.delayedCall(1600, () => { if (!this.over) this.nextWave(); });
   }
 
   cargoShip() {
@@ -3398,6 +3774,7 @@ class Game extends Phaser.Scene {
   // =========================================================
   hitEnemy(b, e) {
     if (!b.active || !e.active || !e.visible) return;
+    if (e.getData('type') === 'bonusShip') return this.hitBonusShip(b, e);
     // ศัตรูที่ยังไม่เข้าจอยิงไม่โดน: กันเลเซอร์ยาว (Lv สูง) ยิงแตกตั้งแต่ขอบ/นอกจอ จนด่าน CHALLENGE ดูเหมือนไม่มีมอน
     if (!e.getData('boss') && (e.y < 16 || e.x < 8 || e.x > W - 8)) return;
     // ด่าน CHALLENGE: โผล่มาแล้วยิงไม่เข้าช่วงสั้นๆ ให้เห็นขบวนก่อน
@@ -3982,7 +4359,7 @@ class Game extends Phaser.Scene {
         const dmg = Math.max(1, Math.round(e.getData('maxHp') * this.sk.boss));
         this.popText(e.x, e.y - 40, `-${dmg} (${Math.round(this.sk.boss * 100)}%)`, '#ff4fd8', 20);
         this.damage(e, dmg);
-      } else if (e.getData('state') !== 'sucked') {
+      } else if (e.getData('state') !== 'sucked' && e.getData('state') !== 'portalShip') {
         this.killEnemy(e, true);
       }
     }
@@ -4125,6 +4502,7 @@ class Game extends Phaser.Scene {
   // ศัตรูถูกดูดเข้าลำแสงแล้วแตก
   suck(e) {
     const st = e.getData('state');
+    if (st === 'portalShip') return;
     if (!e.active || !e.visible || e.getData('boss') || e.getData('pillar') || st === 'sucked' || st === 'cargo') return;
     e.setData('state', 'sucked');
     if (e.body) { e.body.setVelocity(0, 0); e.body.setAcceleration(0, 0); }
@@ -4246,6 +4624,7 @@ class Game extends Phaser.Scene {
 
   playerHit() {
     if (this.over || this.time.now < this.invulnUntil) return;
+    if (this.portal && !this.portal.hit) { this.portal.hit = true; if (this.portal.good) this.popText(this.player.x, this.player.y - 80, 'ชนแล้ว! อด x2', '#ff8a8a', 15); }
     if (this.shield) {
       this.shield = Math.max(0, this.shield - 1);
       this.sparks.explode(24, this.player.x, this.player.y);
@@ -4436,7 +4815,7 @@ class Game extends Phaser.Scene {
     this.scroll(dt * (this.fever ? 4 : 1));
     const pv = this.player.visible && !this.over;
 
-    music.setMode(this.over ? null : this.warning ? null : this.onair ? 'onair' : this.fever ? 'fever' : this.inBonus ? 'bonus'
+    music.setMode(this.over ? null : this.warning ? null : this.onair ? 'onair' : this.portal ? (this.portal.good ? 'bonus' : 'boss') : this.inPre ? 'boss' : this.fever ? 'fever' : this.inBonus ? 'bonus'
       : (this.boss && this.boss.active) ? 'boss' : 'normal');
 
     if (!this.over) {
@@ -4502,7 +4881,7 @@ class Game extends Phaser.Scene {
         }
       }
 
-      if (this.combo > 0) {
+      if (this.combo > 0 && !this.hazard) {   // ระหว่างด่านกีดขวาง/รูหนอน คอมโบไม่หลุดเอง
         this.comboTimer -= dt;
         if (this.comboTimer <= 0) this.breakCombo();
       }
@@ -4673,6 +5052,7 @@ class Game extends Phaser.Scene {
 
     this.updateTierFx(time, dt, pv);
     this.updateBeam(time, pv);
+    if (!this.over) { this.updateHazard(time, dt); this.updatePortalObj(dt); this.updatePortalRun(time, dt); }
 
     // เกราะ
     this.bubble.setVisible(!!this.shield && pv);
@@ -4718,7 +5098,8 @@ class Game extends Phaser.Scene {
         this.waveActive = false;
         if (Math.random() < WAVE_TICKET_CHANCE) this.dropPowerup(rand(80, W - 80), -20, 'ticket');   // ตั๋วสุ่ม: เฉลี่ยราว 1.2 ใบต่อรอบ (รวมบอส)
         if (this.easy) this.dropPowerup(rand(120, W - 120), -40, this.missingMod());     // รอบแรก: เคลียร์ wave ได้อาวุธฟรี
-        this.time.delayedCall(500, () => this.nextWave());
+        if (this.portalPlan === this.wave) { this.portalPlan = 0; this.time.delayedCall(500, () => this.spawnPortal()); }
+        else this.time.delayedCall(500, () => this.nextWave());
       }
     }
   }
