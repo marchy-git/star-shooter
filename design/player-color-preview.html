@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player Shot Colors</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #05030f; color: #e8f3ff; font-family: "Chakra Petch", system-ui, sans-serif; }
+  #wrap { max-width: 1000px; margin: 0 auto; }
+  canvas { display: block; width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<div id="wrap"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+<script>
+// พรีวิวชุดสีกระสุนฝั่งผู้เล่น ให้ไม่ชนกับกระสุนศัตรู (หัวลูกศรแดง) · เปิดไฟล์ตรงๆ ได้ ไม่ได้ deploy
+const W = 1000, ROW = 175, TOP = 120;
+const FONT = '"Chakra Petch", system-ui, sans-serif';
+// laser = สีเลเซอร์, plasma = กระสุนยานมิธิค/ตื่นพลังระดับมิธิค, hue = ช่วงสีรุ้งตอน FEVER (องศา), evo = สีกระสุนร่าง 2 ของลำที่เดิมเป็นแดง
+const SETS = [
+  { name: 'แบบปัจจุบัน', laser: 0xff3df2, plasma: 0xff7a5a, hue: [0, 360], note: 'เลเซอร์ชมพู · มิธิคแดง · FEVER มีแดง' },
+  { name: '1. ฟ้าไฟฟ้า', laser: 0x3d8bff, plasma: 0x9d7dff, hue: [150, 280], note: 'เลเซอร์น้ำเงินไฟฟ้า · มิธิคม่วง · FEVER โทนฟ้า-ม่วง' },
+  { name: '2. ม่วงนีออน', laser: 0xa66bff, plasma: 0xd6b8ff, hue: [180, 300], note: 'เลเซอร์ม่วง · มิธิคม่วงขาว · FEVER ฟ้า-ม่วง' },
+  { name: '3. เขียวมะนาว', laser: 0xb6ff3c, plasma: 0x5affc8, hue: [60, 200], note: 'เลเซอร์เขียวมะนาว · มิธิคเขียวมรกต · FEVER เหลือง-เขียว-ฟ้า' },
+  { name: '4. ทองสว่าง', laser: 0xffd23f, plasma: 0xfff3b0, hue: [40, 200], note: 'เลเซอร์ทอง · มิธิคขาวทอง · FEVER ทอง-เขียว-ฟ้า' },
+  { name: '5. ขาวแกนฟ้า', laser: 0xbff6ff, plasma: 0xe8fbff, hue: [160, 260], note: 'เลเซอร์ขาวเรืองฟ้า · มิธิคขาว · FEVER ฟ้าอ่อน' },
+];
+const COLS = ['กระสุนกระจาย', 'เลเซอร์ทะลุ', 'จรวดนำวิถี', 'ยานมิธิค (พลาสมา)', 'ช่วง FEVER'];
+
+function makeTextures(scene) {
+  const draw = (key, w, h, fn) => { const g = scene.make.graphics({ x: 0, y: 0, add: false }); fn(g); g.generateTexture(key, w, h); g.destroy(); };
+  const P = arr => arr.map(([x, y]) => ({ x, y }));
+  const bolt = (key, w, h, color) => draw(key, w, h, g => { g.fillStyle(color, 0.35); g.fillRoundedRect(0, 0, w, h, w / 2 - 0.5); g.fillStyle(0xffffff, 1); g.fillRoundedRect(w / 2 - 1, 2, 2, h - 4, 1); });
+  bolt('bullet', 8, 22, 0x36f1ff);
+  bolt('bulletG', 8, 16, 0x7dff6a);
+  bolt('bulletW', 8, 22, 0xffffff);   // ใช้ย้อมสี (พลาสมา/FEVER)
+  SETS.forEach((s, i) => bolt('laser' + i, 8, 44, s.laser));
+  draw('missile', 10, 24, g => { g.lineStyle(2, 0x7dff6a, 1); g.strokePoints(P([[5, 1], [9, 9], [7, 20], [3, 20], [1, 9]]), true, true); g.fillStyle(0x7dff6a, 0.3); g.fillPoints(P([[5, 1], [9, 9], [7, 20], [3, 20], [1, 9]]), true); });
+  // กระสุนศัตรูแบบใหม่ (หัวลูกศร) เหมือนในเกม
+  draw('ebullet', 22, 44, g => {
+    for (let i = 0; i < 7; i++) { g.fillStyle(0xff4f6a, 0.06 + i * 0.05); g.fillEllipse(11, 3 + i * 2.6, 5 + i * 0.9, 7); }
+    g.fillStyle(0x000000, 0.85); g.fillPoints(P([[11, 35], [20, 22], [11, 10], [2, 22]]), true);
+    g.fillStyle(0xff3b4f, 1); g.fillPoints(P([[11, 33], [18, 22], [11, 12], [4, 22]]), true);
+    g.fillStyle(0xffc2cc, 1); g.fillPoints(P([[11, 28], [14, 22], [11, 16], [8, 22]]), true);
+    g.fillStyle(0xffffff, 1); g.fillCircle(11, 22, 2.4);
+  });
+  draw('ship', 64, 64, g => {
+    const pts = P([[32, 6], [54, 52], [32, 42], [10, 52]]);
+    g.lineStyle(5, 0x36f1ff, 0.3); g.strokePoints(pts, true, true);
+    g.fillStyle(0x36f1ff, 0.16); g.fillPoints(pts, true);
+    g.lineStyle(2.5, 0x36f1ff, 1); g.strokePoints(pts, true, true);
+    g.fillStyle(0xffffff, 1); g.fillCircle(32, 30, 3);
+  });
+}
+const hueColor = (deg) => Phaser.Display.Color.HSVToRGB(((deg % 360) + 360) % 360 / 360, 0.75, 1).color;
+
+class Preview extends Phaser.Scene {
+  constructor() { super('p'); }
+  create() {
+    makeTextures(this);
+    this.add.text(W / 2, 34, 'สีกระสุนฝั่งเรา · เลี่ยงสีแดงของศัตรู', { fontFamily: FONT, fontSize: 34, fontStyle: '700', color: '#ffffff' }).setOrigin(0.5);
+    this.add.text(W / 2, 72, 'หัวลูกศรแดง = กระสุนศัตรู · ทุกชุดแก้ร่าง 2 ด้วย: ฟีนิกซ์→ทอง แม็กเนโต→ฟ้า พายุ→เหลือง', { fontFamily: FONT, fontSize: 16, color: '#a9b9d6' }).setOrigin(0.5);
+    const pw = (W - 190) / COLS.length;
+    COLS.forEach((c, i) => this.add.text(190 + i * pw + pw / 2, TOP - 8, c, { fontFamily: FONT, fontSize: 13, color: '#c3d3ee' }).setOrigin(0.5, 1));
+    SETS.forEach((st, r) => {
+      const y0 = TOP + r * ROW;
+      this.add.text(12, y0 + 24, st.name, { fontFamily: FONT, fontSize: 19, fontStyle: '700', color: r ? '#ffffff' : '#8a9bbd' });
+      this.add.text(12, y0 + 58, st.note, { fontFamily: FONT, fontSize: 12, color: '#a9b9d6', wordWrap: { width: 170 } });
+      COLS.forEach((c, i) => this.panel(st, r, i, 190 + i * pw, y0, pw - 6, ROW - 8));
+    });
+  }
+
+  panel(st, r, col, x0, y0, w, h) {
+    const g = this.add.graphics();
+    g.fillStyle(col === 4 ? 0x1a0830 : r % 2 ? 0x170503 : 0x07041a, 1).fillRect(x0, y0, w, h);
+    for (let x = x0; x < x0 + w; x += 22) { g.lineStyle(1, 0x5b2fbf, 0.3); g.lineBetween(x, y0, x, y0 + h); }
+    for (let y = y0; y < y0 + h; y += 22) { g.lineStyle(1, 0x5b2fbf, 0.3); g.lineBetween(x0, y, x0 + w, y); }
+    const mask = this.make.graphics({ add: false }); mask.fillRect(x0, y0, w, h);
+    const box = this.add.container(0, 0).setMask(mask.createGeometryMask());
+    const ship = this.add.image(x0 + w / 2, y0 + h - 26, 'ship').setScale(0.6); box.add(ship);
+    this.tweens.add({ targets: ship, x: { from: x0 + w * 0.35, to: x0 + w * 0.65 }, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    // กระสุนศัตรูตกลงมาสวนทาง
+    this.time.addEvent({ delay: 380, loop: true, callback: () => {
+      const ex = x0 + Phaser.Math.Between(12, w - 12), ang = Math.PI / 2 + Phaser.Math.FloatBetween(-0.3, 0.3);
+      const o = this.add.image(ex, y0 - 10, 'ebullet').setScale(0.85); o.rotation = ang - Math.PI / 2; box.add(o);
+      this.tweens.add({ targets: o, x: ex + Math.cos(ang) * (h + 30), y: y0 - 10 + Math.sin(ang) * (h + 30), duration: 1700, onComplete: () => o.destroy() });
+    } });
+    let n = 0;
+    this.time.addEvent({ delay: 120, loop: true, callback: () => {
+      n++;
+      const shots = [];
+      if (col === 0) for (const ox of [-12, 0, 12]) shots.push(['bullet', ox, 0, null, 'NORMAL']);
+      if (col === 1) for (const ox of [-7, 7]) shots.push(['laser' + r, ox, 0, null, 'NORMAL']);
+      if (col === 2) { shots.push(['bulletG', 0, 0, null, 'NORMAL']); if (n % 2) for (const sd of [-1, 1]) shots.push(['missile', sd * 10, sd * 90, null, 'NORMAL']); }
+      if (col === 3) for (const ox of [-10, 10]) shots.push(['bulletW', ox, 0, st.plasma, 'ADD']);
+      if (col === 4) for (const [k, ox] of [-14, -5, 5, 14].entries()) { const [a, b] = st.hue; shots.push(['bulletW', ox, 0, hueColor(a + ((n * 37 + k * 50) % (b - a))), 'ADD']); }
+      for (const [key, ox, vx, tint, blend] of shots) {
+        const b = this.add.image(ship.x + ox, ship.y - 20, key).setBlendMode(blend); box.add(b);
+        if (tint !== null) b.setTint(tint);
+        if (vx) b.rotation = Math.atan2(-500, vx) + Math.PI / 2;
+        this.tweens.add({ targets: b, y: y0 - 30, x: b.x + vx * 0.35, duration: 380, onComplete: () => b.destroy() });
+      }
+    } });
+  }
+}
+window.game = new Phaser.Game({ type: Phaser.AUTO, parent: 'wrap', width: W, height: TOP + SETS.length * ROW, backgroundColor: '#05030f', scene: Preview });
+</script>
+</body>
+</html>
