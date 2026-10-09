@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boss Mechanics</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #05030f; --card: #0d0a22; --line: #2a2552; --text: #e8f3ff; --dim: #8f9ac0; --good: #7dff9a; --gold: #ffd23f; --warn: #ffb84d; --bad: #ff6b81; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Chakra Petch", system-ui, sans-serif; }
+  body { background: radial-gradient(1200px 600px at 50% -200px, #1b1046 0%, var(--bg) 70%) fixed; }
+  #wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { margin: 0 0 4px; font-size: 30px; text-shadow: 0 0 12px #ff3b3b77; }
+  h2 { margin: 36px 0 6px; font-size: 22px; color: #36f1ff; }
+  .sub { color: var(--dim); margin: 0 0 16px; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .card.pick { border-color: #ffd23f88; box-shadow: 0 0 22px #ffd23f1a; }
+  .card h3 { margin: 2px 2px 0; font-size: 19px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tag { font-size: 12px; padding: 2px 9px; border-radius: 99px; font-weight: 700; }
+  .tag.star { background: var(--gold); color: #2a1a00; }
+  .tag.eff { border: 1px solid currentColor; }
+  canvas { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: #04020c; }
+  dl { margin: 0; display: grid; grid-template-columns: 78px 1fr; gap: 4px 8px; font-size: 13.5px; line-height: 1.5; }
+  dt { color: var(--dim); }
+  dd { margin: 0; color: #d6def5; }
+  .tbl { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--dim); font-weight: 500; }
+  .note { background: #12102b; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.7; color: #cdd6f4; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>กลไกบอสใหม่</h1>
+  <p class="sub">หน้าพรีวิวให้เลือกก่อนใส่เกม (ไม่ได้ deploy) · ภาพเคลื่อนไหวคือตัวอย่างจังหวะการเล่นจริง ยานเราบินเองให้ดู<br>
+  หลักคิด: ให้รางวัลคนที่ <b>เข้าไปสู้</b> (ยิงเป้า เล็งช่อง) แทนการหลบกำแพงกระสุนอย่างเดียว · ⭐ = แนะนำ</p>
+  <div class="grid" id="cards"></div>
+
+  <h2>ไม่ให้ซ้ำแต่ละรอบ: สับกองกลไก</h2>
+  <p class="sub">แต่ละรอบหยิบกลไกจากกองที่ยังไม่ได้ใช้ (เหมือนสับไพ่) ใช้ครบทุกใบแล้วค่อยสับใหม่ · รอบ 4 ขึ้นไปหยิบ 2 ใบ · บอสยังวน 3 ตัวเหมือนเดิม แต่จับคู่กลไกต่างกันทุกรอบ</p>
+  <div class="tbl"><table id="bag"></table></div>
+  <div class="note">
+    <b>กลไกเดิมยังอยู่ในกอง</b> (ปักเสาฐานทัพ · เสาฮีล · วงน้ำแข็ง) รวมกับของใหม่เป็น 9 ใบ → เล่นถึงรอบ 6 จะเจอกลไกไม่ซ้ำกันเลย<br>
+    <b>ทุกกลไกมีช่วงเตือนก่อนเสมอ</b> (วงกะพริบ / เส้นประ / ตัวเลขนับถอยหลัง) และใช้ร่วมกับจังหวะ "ยิง → พัก" ที่จะปรับ ทำให้กระสุนบนจอไม่เกิน ~60 นัด
+  </div>
+</div>
+
+<script>
+const GOLD = '#ffd23f', RED = '#ff3b3b', CYAN = '#36f1ff', PURPLE = '#c18bff';
+const DW = 360, DH = 300;
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const poly = (pts, close = true) => { const p = new Path2D(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); if (close) p.closePath(); return p; };
+const circ = (x, y, r) => { const p = new Path2D(); p.arc(x, y, r, 0, Math.PI * 2); return p; };
+function neon(c, p, col, fill = 0.16, k = 1) {
+  if (fill) { c.fillStyle = rgba(col, fill); c.fill(p); }
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  for (const [w, a] of [[8, 0.12], [5, 0.3], [2.4, 1]]) { c.lineWidth = w * k; c.strokeStyle = rgba(col, a); c.stroke(p); }
+}
+const line = (c, pts, col, k = 1) => neon(c, poly(pts, false), col, 0, k);
+function sparkle(c, x, y, r, col, a = 1) {
+  c.save(); c.globalAlpha *= Math.max(0, Math.min(1, a)); c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
+  c.beginPath(); c.moveTo(x, y - r); c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r); c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r); c.fill(); c.restore();
+}
+function arrow(c, x, y, a, col) {
+  c.save(); c.translate(x, y); c.rotate(a); c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
+  c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-1, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
+  c.fillStyle = rgba(col, 0.4); c.fillRect(-13, -1.5, 10, 3); c.restore();
+}
+function label(c, x, y, s, col = '#e8f3ff', size = 13, align = 'center') { c.fillStyle = col; c.font = `700 ${size}px "Chakra Petch", sans-serif`; c.textAlign = align; c.fillText(s, x, y); }
+function bg(c, t) {
+  c.fillStyle = '#05030f'; c.fillRect(0, 0, DW, DH);
+  for (let i = 0; i < 50; i++) { const z = (i % 3) + 1; c.fillStyle = `rgba(200,220,255,${0.15 + z * 0.15})`; c.fillRect((i * 137.5) % DW, ((i * 89.3) + t * 18 * z) % DH, z, z); }
+}
+function ship(c, x, y, a = 1, thrust = false) {
+  c.save(); c.globalAlpha = a; c.translate(x, y);
+  if (thrust) { c.fillStyle = rgba('#ff9a3c', 0.7); c.beginPath(); c.moveTo(-5, 10); c.lineTo(0, 22 + Math.random() * 6); c.lineTo(5, 10); c.fill(); }
+  neon(c, poly([[0, -16], [12, 11], [0, 5], [-12, 11]]), CYAN, 0.2, 0.75); c.restore();
+}
+function boss(c, x, y, s = 1, col = '#ff4fd8', glow = 0) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  if (glow) { const g = c.createRadialGradient(0, 0, 10, 0, 0, 70); g.addColorStop(0, rgba(GOLD, 0.5 * glow)); g.addColorStop(1, rgba(GOLD, 0)); c.fillStyle = g; c.fillRect(-80, -80, 160, 160); }
+  neon(c, poly([[-46, -10], [-26, -26], [26, -26], [46, -10], [34, 14], [12, 24], [-12, 24], [-34, 14]]), col, 0.16);
+  neon(c, circ(0, 2, 12), '#ffffff', 0.25, 0.6);
+  c.restore();
+}
+function hpBar(c, x, y, w, r, col = '#ff4fd8') { c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x - w / 2, y, w, 5); c.fillStyle = col; c.fillRect(x - w / 2, y, w * Math.max(0, r), 5); }
+function pshot(c, x, y) { c.fillStyle = '#bfe9ff'; c.shadowColor = CYAN; c.shadowBlur = 6; c.fillRect(x - 1.5, y - 7, 3, 10); c.shadowBlur = 0; }
+const pops = [];
+function pop(st, x, y, s, col) { st.pops.push({ x, y, s, col, t: 0 }); }
+function drawPops(c, st, dt) { for (const p of st.pops) { p.t += dt; c.save(); c.globalAlpha = Math.max(0, 1 - p.t / 0.8); label(c, p.x, p.y - p.t * 30, p.s, p.col, 12); c.restore(); } st.pops = st.pops.filter(p => p.t < 0.8); }
+function moveTo(st, tx, dt, sp = 170) { const d = tx - st.x; st.x += Math.sign(d) * Math.min(Math.abs(d), sp * dt); }
+
+// ---------- 1. ดาวเทียมโคจร ----------
+function demoOrbit(c, t, st, dt) {
+  bg(c, t);
+  if (!st.init) Object.assign(st, { init: 1, x: 180, a: 0, drones: [0, 1, 2].map(i => ({ off: i * 2.094, hp: 4, alive: true })), pb: [], eb: [], fire: 0, dfire: 0, boost: 0, reset: 0, pops: [] });
+  st.a += dt * 1.1;
+  const bx = 180, by = 78, pos = d => [bx + Math.cos(st.a + d.off) * 70, by + Math.sin(st.a + d.off) * 38];
+  const alive = st.drones.filter(d => d.alive);
+  // ดาวเทียมยิงออกตามทิศ (เฉพาะด้านล่าง)
+  st.dfire -= dt;
+  if (st.dfire <= 0) { st.dfire = 1.1; for (const d of alive) { const ang = st.a + d.off; if (Math.sin(ang) > -0.2) { const [x, y] = pos(d); st.eb.push({ x, y, vx: Math.cos(ang) * 95, vy: Math.max(40, Math.sin(ang) * 95) }); } } }
+  // ยานเล็งดาวเทียมลูกที่ใกล้ที่สุด / ถ้าหมดแล้วไปใต้บอส
+  const tgt = alive.length ? pos(alive.reduce((m, d) => Math.abs(pos(d)[0] - st.x) < Math.abs(pos(m)[0] - st.x) ? d : m)) : [bx, by];
+  moveTo(st, tgt[0], dt, 150);
+  st.fire -= dt; if (st.fire <= 0) { st.fire = 0.16; st.pb.push({ x: st.x, y: 255 }); }
+  for (const b of st.pb) {
+    b.y -= 420 * dt;
+    for (const d of alive) { const [x, y] = pos(d); if (Math.hypot(b.x - x, b.y - y) < 13 && !b.dead) { b.dead = true; d.hp--; sparkle(c, x, y, 7, '#fff'); if (d.hp <= 0) { d.alive = false; pop(st, x, y, 'แตก!', '#7dff9a'); if (!st.drones.some(q => q.alive)) { st.boost = t + 5; pop(st, bx, by - 40, 'บอสรับดาเมจ x2!', GOLD); } } } }
+    if (!b.dead && b.y < by + 24 && Math.abs(b.x - bx) < 40) { b.dead = true; if (Math.random() < 0.3) pop(st, bx + (Math.random() - 0.5) * 50, by, t < st.boost ? '24' : '12', t < st.boost ? GOLD : '#fff'); }
+  }
+  st.pb = st.pb.filter(b => !b.dead && b.y > -10);
+  if (st.boost && t > st.boost + 1.5) { st.drones.forEach(d => { d.alive = true; d.hp = 4; }); st.boost = 0; }
+  boss(c, bx, by, 1, '#ff4fd8', t < st.boost ? 0.8 + Math.sin(t * 10) * 0.2 : 0);
+  // วงโคจร
+  c.save(); c.setLineDash([3, 6]); c.strokeStyle = rgba(PURPLE, 0.35); c.beginPath(); c.ellipse(bx, by, 70, 38, 0, 0, Math.PI * 2); c.stroke(); c.restore();
+  for (const d of st.drones) if (d.alive) { const [x, y] = pos(d); neon(c, circ(x, y, 9), PURPLE, 0.3, 0.7); hpBar(c, x, y + 13, 18, d.hp / 4, PURPLE); }
+  for (const b of st.eb) { b.x += b.vx * dt; b.y += b.vy * dt; arrow(c, b.x, b.y, Math.atan2(b.vy, b.vx), RED); }
+  st.eb = st.eb.filter(b => b.y < DH + 20 && b.x > -20 && b.x < DW + 20);
+  st.pb.forEach(b => pshot(c, b.x, b.y));
+  ship(c, st.x, 262);
+  drawPops(c, st, dt);
+  label(c, 10, 20, alive.length ? `ดาวเทียมเหลือ ${alive.length}/3` : `บอสรับดาเมจ x2 · ${Math.max(0, st.boost - t).toFixed(1)} วิ`, alive.length ? '#e0c8ff' : GOLD, 13, 'left');
+}
+
+// ---------- 2. โล่หมุนมีช่อง ----------
+function demoShield(c, t, st, dt) {
+  bg(c, t);
+  if (!st.init) Object.assign(st, { init: 1, x: 180, th: 0, pb: [], eb: [], fire: 0, bfire: 1, hits: 0, blocks: 0, pops: [] });
+  const bx = 180, by = 90, R = 54, GAP = 0.95;
+  st.th += dt * 1.3;
+  const gapC = st.th % (Math.PI * 2);
+  moveTo(st, 180 + Math.sin(t * 0.7) * 40, dt, 80);
+  st.fire -= dt; if (st.fire <= 0) { st.fire = 0.13; st.pb.push({ x: st.x, y: 255 }); }
+  for (const b of st.pb) {
+    b.y -= 430 * dt;
+    const d = Math.hypot(b.x - bx, b.y - by);
+    if (!b.through && !b.dead && d < R + 3) {
+      let ang = Math.atan2(b.y - by, b.x - bx), diff = Math.abs(((ang - gapC) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+      if (diff < GAP / 2) b.through = true;
+      else { b.dead = true; sparkle(c, b.x, b.y, 6, PURPLE); st.blocks++; }
+    }
+    if (b.through && !b.dead && d < 16) { b.dead = true; st.hits++; pop(st, bx + (Math.random() - 0.5) * 20, by - 20, 'ลอดช่อง! 18', GOLD); }
+  }
+  st.pb = st.pb.filter(b => !b.dead && b.y > -10);
+  // บอสยิงช้าๆ ระหว่างกางโล่ (น้อยกว่าปกติ)
+  st.bfire -= dt; if (st.bfire <= 0) { st.bfire = 1.6; const a = Math.atan2(262 - by, st.x - bx); st.eb.push({ x: bx, y: by, vx: Math.cos(a) * 110, vy: Math.sin(a) * 110 }); }
+  boss(c, bx, by);
+  // โล่: วงเกือบเต็ม เว้นช่องหมุน
+  c.save(); c.shadowColor = PURPLE; c.shadowBlur = 12;
+  for (const [w, a] of [[10, 0.15], [6, 0.35], [3, 1]]) { c.lineWidth = w; c.strokeStyle = rgba(PURPLE, a); c.beginPath(); c.arc(bx, by, R, gapC + GAP / 2, gapC + Math.PI * 2 - GAP / 2); c.stroke(); }
+  c.restore();
+  sparkle(c, bx + Math.cos(gapC) * R, by + Math.sin(gapC) * R, 6, GOLD, 0.6 + Math.sin(t * 8) * 0.4);
+  for (const b of st.eb) { b.x += b.vx * dt; b.y += b.vy * dt; arrow(c, b.x, b.y, Math.atan2(b.vy, b.vx), RED); }
+  st.eb = st.eb.filter(b => b.y < DH + 20);
+  st.pb.forEach(b => pshot(c, b.x, b.y));
+  ship(c, st.x, 262);
+  drawPops(c, st, dt);
+  label(c, 10, 20, `ลอดช่อง ${st.hits} · โดนโล่กัน ${st.blocks}`, '#e0c8ff', 13, 'left');
+  label(c, DW - 10, 20, 'ช่วงโล่: บอสยิงน้อยลง', '#8f9ac0', 12, 'right');
+}
+
+// ---------- 3. ทุ่นระเบิดเวลา ----------
+function demoBombs(c, t, st, dt) {
+  bg(c, t);
+  const cyc = 8, f = t % cyc, round = Math.floor(t / cyc);
+  if (st.round !== round) Object.assign(st, { round, x: 180, pb: [], eb: [], fire: 0, pops: st.pops || [], bombs: [[70, 175], [180, 205], [290, 160]].map(([x, y]) => ({ x, y, hp: 5, alive: true, boom: false })) });
+  const bx = 180, by = 70;
+  boss(c, bx, by);
+  const land = 1.0, fuse = 3.8;
+  const live = st.bombs.filter(b => b.alive);
+  // ยานยิงทุ่นซ้ายก่อน แล้วตรงกลาง · ลูกขวาไม่ทัน → ระเบิด แล้วหลบออกห่าง
+  const order = [0, 1].map(i => st.bombs[i]).filter(b => b.alive);
+  const target = f > land && order.length ? order[0].x : st.bombs[2].alive ? 60 : 180;
+  moveTo(st, target, dt, 190);
+  if (f > land && order.length && Math.abs(st.x - order[0].x) < 8) { st.fire -= dt; if (st.fire <= 0) { st.fire = 0.12; st.pb.push({ x: st.x, y: 255 }); } }
+  for (const p of st.pb) {
+    p.y -= 430 * dt;
+    for (const b of live) if (f > land && !p.dead && Math.hypot(p.x - b.x, p.y - b.y) < 15) { p.dead = true; b.hp--; sparkle(c, b.x, b.y, 6, '#fff'); if (b.hp <= 0) { b.alive = false; pop(st, b.x, b.y, 'ปลดได้!', '#7dff9a'); } }
+  }
+  st.pb = st.pb.filter(p => !p.dead && p.y > -10);
+  for (const b of st.bombs) {
+    if (!b.alive) continue;
+    const k = Math.min(1, f / land), x = bx + (b.x - bx) * k, y = by + (b.y - by) * k;
+    const left = land + fuse - f;
+    if (left <= 0 && !b.boom) { b.boom = true; b.alive = false; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; st.eb.push({ x: b.x, y: b.y, vx: Math.cos(a) * 80, vy: Math.sin(a) * 80 }); } pop(st, b.x, b.y - 10, 'ตูม!', RED); continue; }
+    const blink = left < 1.2 && Math.floor(t * 8) % 2;
+    neon(c, circ(x, y, 13), blink ? RED : '#ff9a3c', 0.25, 0.8);
+    if (f > land) { label(c, x, y + 5, Math.ceil(left), '#ffffff', 14); hpBar(c, x, y + 18, 24, b.hp / 5, '#ff9a3c'); }
+  }
+  for (const b of st.eb) { b.x += b.vx * dt; b.y += b.vy * dt; arrow(c, b.x, b.y, Math.atan2(b.vy, b.vx), RED); }
+  st.eb = st.eb.filter(b => b.y < DH + 20 && b.y > -20 && b.x > -20 && b.x < DW + 20);
+  st.pb.forEach(p => pshot(c, p.x, p.y));
+  ship(c, st.x, 262);
+  drawPops(c, st, dt);
+  label(c, 10, 20, 'ยิงทุ่นแตกก่อนนับถึง 0 · ไม่ทัน = ระเบิดเป็นวงกระสุน', '#ffd0a0', 12, 'left');
+}
+
+// ---------- 4. ลำแสงกวาด ----------
+function demoSweep(c, t, st, dt) {
+  bg(c, t);
+  const cyc = 5, f = t % cyc, round = Math.floor(t / cyc);
+  if (st.round !== round) Object.assign(st, { round, gap: [90, 260, 150, 290, 70][round % 5], x: st.x || 180, pops: st.pops || [], passed: false });
+  const bx = 180, by = 70, GW = 64;
+  boss(c, bx, by);
+  if (f > 0.4) moveTo(st, st.gap, dt, 160);
+  if (f < 1.3) {
+    const a = 0.4 + Math.sin(t * 14) * 0.3;
+    c.save(); c.setLineDash([8, 6]); c.strokeStyle = rgba(RED, a); c.lineWidth = 2; c.beginPath(); c.moveTo(0, 112); c.lineTo(st.gap - GW / 2, 112); c.moveTo(st.gap + GW / 2, 112); c.lineTo(DW, 112); c.stroke(); c.restore();
+    c.fillStyle = rgba('#7dff9a', 0.12); c.fillRect(st.gap - GW / 2, 112, GW, DH);
+    label(c, st.gap, 140, 'ช่องปลอดภัย', '#7dff9a', 12);
+  } else if (f < 3.8) {
+    const y = 112 + (f - 1.3) / 2.5 * 200;
+    for (const [x0, x1] of [[0, st.gap - GW / 2], [st.gap + GW / 2, DW]]) {
+      c.fillStyle = rgba(RED, 0.35); c.fillRect(x0, y - 9, x1 - x0, 18);
+      c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(x0, y - 2, x1 - x0, 4);
+    }
+    if (!st.passed && y > 262) { st.passed = true; pop(st, st.x, 240, 'รอด!', '#7dff9a'); }
+  }
+  ship(c, st.x, 262);
+  drawPops(c, st, dt);
+  label(c, 10, 20, 'ลำแสงแนวนอนกวาดลงมา · ลอดช่องที่เตือนไว้', '#ffb3b3', 12, 'left');
+}
+
+// ---------- 5. แยกร่าง ----------
+function demoSplit(c, t, st, dt) {
+  bg(c, t);
+  const cyc = 9, f = t % cyc, round = Math.floor(t / cyc), fail = round % 2 === 1;
+  if (st.round !== round) Object.assign(st, { round, x: 180, pb: [], fire: 0, pops: st.pops || [], A: 1, B: 1, deadA: 0, revived: false, won: false });
+  if (f < 1) { boss(c, 180, 80); hpBar(c, 180, 112, 90, 0.5); label(c, 180, 136, 'เลือดเหลือครึ่ง...', '#ffd0f0', 12); ship(c, 180, 262); return; }
+  const k = Math.min(1, (f - 1) / 0.6), ax = 180 - 80 * k, bxx = 180 + 80 * k;
+  // ยิงตัว A ก่อน แล้วไป B (รอบ fail ไปช้า)
+  const onA = st.A > 0;
+  moveTo(st, onA ? ax : bxx, dt, fail && !onA ? 50 : 180);
+  st.fire -= dt; if (st.fire <= 0 && f > 1.6) { st.fire = 0.14; st.pb.push({ x: st.x, y: 255 }); }
+  for (const p of st.pb) {
+    p.y -= 430 * dt;
+    if (!p.dead && p.y < 100) {
+      if (st.A > 0 && Math.abs(p.x - ax) < 26) { p.dead = true; st.A -= 0.045; if (st.A <= 0) { st.deadA = f; pop(st, ax, 80, 'ตัวแรกตาย!', '#7dff9a'); } }
+      else if (st.B > 0 && st.A <= 0 && Math.abs(p.x - bxx) < 26) { p.dead = true; st.B -= 0.045; if (st.B <= 0) { st.won = true; pop(st, bxx, 80, 'ล้มบอส!', GOLD); } }
+    }
+  }
+  st.pb = st.pb.filter(p => !p.dead && p.y > -10);
+  const left = st.deadA ? 5 - (f - st.deadA) * (fail ? 1.6 : 1) : 5;
+  if (st.deadA && left <= 0 && st.B > 0 && !st.revived) { st.revived = true; st.A = 0.5; st.deadA = 0; pop(st, ax, 80, 'ฟื้น!', RED); }
+  if (st.A > 0) { boss(c, ax, 80, 0.6, '#ff4fd8'); hpBar(c, ax, 100, 50, st.A); }
+  if (st.B > 0) { boss(c, bxx, 80, 0.6, '#ff8a3c'); hpBar(c, bxx, 100, 50, st.B, '#ff8a3c'); if (st.deadA) label(c, bxx, 124, `ฆ่าให้ทันใน ${Math.max(0, left).toFixed(1)} วิ`, left < 2 ? RED : GOLD, 12); }
+  st.pb.forEach(p => pshot(c, p.x, p.y));
+  ship(c, st.x, 262);
+  drawPops(c, st, dt);
+  label(c, 10, 20, fail ? 'ตัวอย่าง: ช้าไป ตัวแรกฟื้น' : 'ตัวอย่าง: ทันเวลา', fail ? '#ffb3b3' : '#7dff9a', 12, 'left');
+}
+
+// ---------- 6. หลุมแรงโน้มถ่วง ----------
+function demoGravity(c, t, st, dt) {
+  bg(c, t);
+  const cyc = 6, f = t % cyc, on = f > 1 && f < 4.5;
+  if (!st.init) Object.assign(st, { init: 1, x: 180, y: 262, parts: [], pops: [] });
+  const bx = 180, by = 80;
+  if (f > 0.3 && f < 1) { c.save(); c.globalAlpha = Math.floor(t * 10) % 2 ? 0.8 : 0.3; neon(c, circ(bx, by, 60), PURPLE, 0.05, 0.6); c.restore(); label(c, bx, 160, 'เตือน: แรงดูด!', '#e0c8ff', 13); }
+  if (on) {
+    c.save(); c.translate(bx, by);
+    for (let i = 0; i < 3; i++) { c.beginPath(); for (let k = 0; k < 40; k++) { const a = k * 0.25 + i * 2.1 - t * 3, r = 8 + k * 2.4; const x = Math.cos(a) * r, y = Math.sin(a) * r * 0.7; k ? c.lineTo(x, y) : c.moveTo(x, y); } c.strokeStyle = rgba(PURPLE, 0.45); c.lineWidth = 2; c.stroke(); }
+    c.restore();
+    if (Math.random() < 0.6) st.parts.push({ x: Math.random() * DW, y: 150 + Math.random() * 150 });
+    // ดูดยานขึ้น ยานบินสวน (ไฟท้ายติด)
+    const pull = 70, thrust = 60 + Math.sin(t * 3) * 25;
+    st.y += (thrust - pull) * dt; st.y = Math.max(205, Math.min(262, st.y));
+    st.x += (bx - st.x) * 0.15 * dt;
+  } else st.y += (262 - st.y) * Math.min(1, dt * 2);
+  for (const p of st.parts) { const a = Math.atan2(by - p.y, bx - p.x); p.x += Math.cos(a) * 160 * dt; p.y += Math.sin(a) * 160 * dt; c.fillStyle = rgba('#e0c8ff', 0.7); c.fillRect(p.x, p.y, 2, 2); }
+  st.parts = st.parts.filter(p => Math.hypot(p.x - bx, p.y - by) > 20);
+  boss(c, bx, by, 1, '#ff4fd8');
+  if (on) for (let i = 0; i < 3; i++) arrow(c, st.x + (i - 1) * 22, st.y - 30 - ((t * 60 + i * 10) % 20), -Math.PI / 2, PURPLE);
+  ship(c, st.x, st.y, 1, on);
+  label(c, 10, 20, on ? `ดูดเข้า ${(4.5 - f).toFixed(1)} วิ · บินสวน อย่าให้ชนบอส` : 'หลุมแรงโน้มถ่วง', '#e0c8ff', 12, 'left');
+}
+
+const MECH = [
+  { name: 'ดาวเทียมโคจร', pick: 1, eff: ['กลาง', '#ffb84d'], demo: demoOrbit,
+    play: 'ดาวเทียม 2–4 ลูกหมุนรอบบอส ยิงออกตามทิศที่หันอยู่',
+    counter: 'ยิงดาวเทียมแตกครบ → บอสรับดาเมจ x2 นาน 5 วิ แล้วดาวเทียมกลับมาใหม่',
+    scale: 'เฟส 2: 3 ลูก · เฟส 3: 4 ลูก หมุนเร็วขึ้น' },
+  { name: 'โล่หมุนมีช่อง', pick: 1, eff: ['กลาง', '#ffb84d'], demo: demoShield,
+    play: 'บอสกางโล่วงกลม 6 วิ มีช่องเปิดหมุนรอบตัว กระสุนเราโดนโล่ = ถูกกัน',
+    counter: 'จับจังหวะยิงลอดช่อง (ดาวทองบอกตำแหน่งช่อง) · ช่วงนี้บอสยิงน้อยลง เป็นเกมเล็ง ไม่ใช่เกมหลบ',
+    scale: 'ช่องแคบลงและหมุนเร็วขึ้นตามเฟส' },
+  { name: 'ทุ่นระเบิดเวลา', pick: 1, eff: ['ง่าย', '#7dff9a'], demo: demoBombs,
+    play: 'บอสทิ้งทุ่น 3 ลูกกลางจอ นับถอยหลัง 4 วิ',
+    counter: 'ยิงทุ่นแตกก่อนหมดเวลา · ไม่ทันจะระเบิดเป็นวงกระสุนช้า 10 นัด (หลบได้)',
+    scale: 'เฟส 3: 4 ลูก เวลาสั้นลง 3 วิ' },
+  { name: 'ลำแสงกวาด', pick: 0, eff: ['ง่าย', '#7dff9a'], demo: demoSweep,
+    play: 'เส้นประเตือน 1.2 วิ แล้วลำแสงแนวนอนกวาดจากบนลงล่างทั้งจอ',
+    counter: 'ไปอยู่ในช่องสีเขียวที่เว้นไว้ก่อนลำแสงมาถึง',
+    scale: 'ช่องแคบลง · เฟส 3 กวาด 2 รอบ ช่องคนละที่' },
+  { name: 'แยกร่าง', pick: 0, eff: ['ยาก', '#ff6b81'], demo: demoSplit,
+    play: 'เลือดเหลือครึ่ง บอสแตกเป็น 2 ตัวเล็ก (ครั้งเดียวต่อบอส)',
+    counter: 'ฆ่าตัวที่สองให้ทันใน 5 วิหลังตัวแรกตาย ไม่ทัน = ตัวแรกฟื้นเลือดครึ่ง',
+    scale: 'ใช้กับรอบ 3 ขึ้นไป · ต้องแก้ระบบเลือดบอส/HUD/การนับล้มบอส จึงใช้เวลาทำมากสุด' },
+  { name: 'หลุมแรงโน้มถ่วง', pick: 0, eff: ['ง่าย', '#7dff9a'], demo: demoGravity,
+    play: 'เตือนวงกะพริบ แล้วบอสดูดยานเข้าหาเบาๆ 3.5 วิ',
+    counter: 'บินสวนแรงดูด อย่าให้ชนตัวบอส · ใช้ระบบหลุมดำใน DANGER ZONE ที่มีอยู่แล้ว',
+    scale: 'แรงดูดเพิ่มตามเฟส · มีกระสุนน้อยมากระหว่างดูด' },
+];
+
+const canvases = [];
+const box = document.getElementById('cards');
+for (const m of MECH) {
+  const el = document.createElement('div'); el.className = 'card' + (m.pick ? ' pick' : '');
+  el.innerHTML = `<canvas></canvas><h3>${m.name} ${m.pick ? '<span class="tag star">⭐ แนะนำ</span>' : ''}<span class="tag eff" style="color:${m.eff[1]}">ทำ${m.eff[0]}</span></h3>
+    <dl><dt>เล่นยังไง</dt><dd>${m.play}</dd><dt>วิธีรับมือ</dt><dd>${m.counter}</dd><dt>ยากขึ้น</dt><dd>${m.scale}</dd></dl>`;
+  box.appendChild(el);
+  const cv = el.querySelector('canvas'), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = DW * dpr; cv.height = DH * dpr;
+  canvases.push({ c: cv.getContext('2d'), dpr, demo: m.demo, st: {}, last: 0 });
+}
+
+// ตัวอย่างการสับกองกลไก (ตายตัวเพื่อให้อ่านง่าย)
+const BOSS = ['ยานแม่ซาร์ก้า', 'ป้อมปราการเหล็ก', 'ดาวพิฆาต'];
+const BAG = [['ปักเสาฐานทัพ'], ['ทุ่นระเบิดเวลา'], ['ดาวเทียมโคจร'], ['วงน้ำแข็ง', 'โล่หมุนมีช่อง'], ['เสาฮีล', 'ลำแสงกวาด'], ['หลุมแรงโน้มถ่วง', 'แยกร่าง']];
+const OLD = ['ปักเสาฐานทัพ', 'เสาฮีล', 'วงน้ำแข็ง'];
+document.getElementById('bag').innerHTML = '<tr><th>รอบ</th><th>บอส</th><th>กลไก</th><th>ตอนนี้ (เดิม)</th></tr>' +
+  BAG.map((ms, i) => `<tr><td>${i + 1}</td><td>${BOSS[i % 3]}</td><td>${ms.map(x => OLD.includes(x) ? x : `<b style="color:#ffd23f">${x}</b>`).join(' + ')}</td><td style="color:#8f9ac0">${i < 3 ? OLD[i] : OLD[i % 3] + ' + ' + OLD[(i + 1) % 3]}</td></tr>`).join('');
+
+const t0 = performance.now();
+(function loop() {
+  const t = (performance.now() - t0) / 1000;
+  for (const o of canvases) {
+    const dt = Math.min(0.05, t - (o.last || t)); o.last = t;
+    o.c.setTransform(o.dpr, 0, 0, o.dpr, 0, 0);
+    o.demo(o.c, t, o.st, dt);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
