@@ -63,7 +63,7 @@ docker compose run --rm tool d1 execute star-shooter --local --file=schema.sql
 
 ### ตั้งค่าครั้งแรก
 1. Cloudflare dashboard → My Profile → API Tokens → Create Custom Token ให้สิทธิ์ระดับ Account: **Cloudflare Pages: Edit** และ **D1: Edit**
-2. ก๊อป `.env.example` เป็น `.env` ใส่ `CLOUDFLARE_API_TOKEN` และ `CLOUDFLARE_ACCOUNT_ID` (ไฟล์นี้ห้ามขึ้น Git)
+2. สร้างไฟล์ `.env` ข้างๆ `docker-compose.yml` ใส่ 2 บรรทัด `CLOUDFLARE_API_TOKEN=...` และ `CLOUDFLARE_ACCOUNT_ID=...` (Account ID ดูได้ที่หน้า Workers & Pages · ไฟล์นี้ห้ามขึ้น Git มีใน `.gitignore` แล้ว)
 3. สร้างฐานข้อมูล แล้วใส่ `database_id` ที่ได้ลงใน `wrangler.toml`:
    ```bash
    docker compose run --rm tool d1 create star-shooter
