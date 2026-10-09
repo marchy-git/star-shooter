@@ -774,20 +774,25 @@ const SET_PIECES = {
   },
 
   arms: {
-    name: 'เข็มนาฬิกามรณะ', hint: 'ลำแสงหมุนรอบบอส · บินวนหลบตามเข็ม',
+    name: 'เข็มนาฬิกามรณะ', hint: 'ไปอยู่หลังลำแสงก่อนมันกวาด แล้วตามหลังไป',
     start(sp) {
       sp.n = sp.phase >= 3 ? 3 : 2;
-      sp.warn = 1300;
-      // หมุนรวมไม่เกินที่ช่องด้านล่างยังอยู่ในจอ: ช่องเริ่มเฉียงข้างหนึ่ง หมุนไปอีกข้าง (ไม่ต้องข้ามลำแสง)
-      const turn = sp.n === 3 ? 1.0 : 1.6, dir = Math.random() < 0.5 ? 1 : -1;
-      sp.dur = sp.n === 3 ? 3200 : this.easy ? 5000 : 4500;
-      sp.spd = dir * turn / sp.dur;
-      sp.a0 = Math.PI / 2 - dir * turn / 2 - Math.PI / sp.n;
+      sp.warn = 1500;
+      // ลำแสงยิงจากจุดตายตัวกลางจอบน (บอสส่ายไปมาไม่ทำให้ที่หลบแคบลง)
+      // ลำแสงหลักเริ่มเฉียงลงข้างหนึ่ง แล้วกวาดผ่านด้านล่างไปอีกข้าง · อยู่ "หลัง" ลำแสง = รอด (ไม่ต้องข้าม)
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      sp.px = W / 2;
+      sp.py = this.boss.y + 20;
+      sp.dur = this.easy ? 5500 : 4500;
+      sp.spd = dir * 2.0 / sp.dur;
+      sp.a0 = Math.PI / 2 - dir * 1.0;
     },
     update(sp, e, dt, g) {
       if (e > sp.warn + sp.dur) return true;
-      const b = this.boss, p = this.player, act = e >= sp.warn;
+      const b = { x: sp.px, y: sp.py }, p = this.player, act = e >= sp.warn;
       const ang = sp.a0 + (act ? (e - sp.warn) * sp.spd : 0);
+      g.fillStyle(0xff3b3b, 0.35).fillCircle(b.x, b.y, 22);
+      g.fillStyle(0xffffff, 0.95).fillCircle(b.x, b.y, 9 + Math.sin(e / 80) * 2);
       for (let i = 0; i < sp.n; i++) {
         const a = ang + i * Math.PI * 2 / sp.n, vx = Math.cos(a), vy = Math.sin(a), x2 = b.x + vx * 1300, y2 = b.y + vy * 1300;
         if (!act) { g.lineStyle(2, 0xff3b3b, Math.floor(e / 120) % 2 ? 0.9 : 0.3).lineBetween(b.x, b.y, x2, y2); continue; }
@@ -870,16 +875,21 @@ const SET_PIECES = {
       sp.warn = 900;
       sp.spd = 0.22;
       sp.gw = this.easy ? 0.6 : 0.45;
-      // ช่องของวงถัดไปห่างจากวงก่อนไม่เกิน 0.7 เรเดียน (ไปทันเสมอ)
-      let gap = Math.PI / 2 + frand(-0.6, 0.6);
+      // คลื่นออกจากจุดตายตัวกลางจอบน (บอสส่ายแล้ววงไม่เลื่อน) · ช่องชี้ลงไม่เกิน ±0.45 เรเดียน ให้อยู่ในจอเสมอ
+      // ช่องของวงถัดไปห่างจากวงก่อนไม่เกิน 0.5 เรเดียน (ไปทันเสมอ)
+      sp.cx = W / 2;
+      sp.cy = this.boss.y + 20;
+      let gap = Math.PI / 2 + frand(-0.45, 0.45);
       sp.rings = [0, 1, 2].map(i => {
-        if (i) gap = Phaser.Math.Clamp(gap + frand(-0.7, 0.7), Math.PI / 2 - 0.9, Math.PI / 2 + 0.9);
+        if (i) gap = Phaser.Math.Clamp(gap + frand(-0.5, 0.5), Math.PI / 2 - 0.45, Math.PI / 2 + 0.45);
         return { t: sp.warn + i * (this.easy ? 1800 : 1500), gap };
       });
     },
     update(sp, e, dt, g) {
-      const b = this.boss, p = this.player;
+      const b = { x: sp.cx, y: sp.cy }, p = this.player;
       let alive = false;
+      g.fillStyle(0xff3b3b, 0.35).fillCircle(b.x, b.y, 22);
+      g.fillStyle(0xffffff, 0.95).fillCircle(b.x, b.y, 9 + Math.sin(e / 80) * 2);
       for (const r of sp.rings) {
         const le = e - r.t;
         if (le < 0) {
