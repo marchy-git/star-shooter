@@ -22,7 +22,7 @@
   .phones { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: flex-start; }
   .phone-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .phone-cap { color: var(--dim); font-size: 13px; }
-  .phone { width: 360px; max-width: calc(100vw - 32px); height: 760px; border-radius: 34px; border: 2px solid #2d2d5e; background: #070518;
+  .phone { width: 360px; max-width: calc(100vw - 32px); height: 680px; border-radius: 34px; border: 2px solid #2d2d5e; background: #070518;
     overflow: hidden; position: relative; box-shadow: 0 0 0 6px #0c0a20, 0 20px 60px rgba(0,0,0,.6); }
   .scroll { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; }
   .scroll::-webkit-scrollbar { display: none; }
@@ -84,7 +84,20 @@
   .ph .t { font-weight: 700; }
   .ph .n { font-size: 13px; color: var(--dim); }
   .ph .n b { color: var(--text); font-size: 16px; }
-  .puzzle { display: block; width: 236px; height: 236px; margin: 0 auto; border-radius: 14px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 12px 0; }
+  .split .panel { margin: 0; padding: 9px 8px 8px; display: flex; flex-direction: column; }
+  .split .ph { margin-bottom: 6px; }
+  .split .ph .t { font-size: 13px; }
+  .split .ph .n { font-size: 11px; }
+  .split .ph .n b { font-size: 14px; }
+  .puzzle { display: block; width: 100%; aspect-ratio: 1; border-radius: 10px; margin: auto 0; }
+  .act { margin: 8px 12px 0; }
+  .sub-lbl { font-size: 10.5px; color: var(--dim); text-align: center; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #stageScroll { display: flex; flex-direction: column; }
+  #stageScroll .play { margin-top: auto; flex: none; }
+  #stageScroll > * { flex-shrink: 0; }
+  #stagePhone .stage-hero { height: 150px; flex: none; }
+  .demo { display: flex; gap: 8px; width: 360px; max-width: calc(100vw - 32px); }
   .drop-line { font-size: 12px; color: var(--dim); text-align: center; margin: 8px 0 2px; line-height: 1.5; }
   .btns { display: flex; gap: 8px; margin-top: 10px; }
   .btn { flex: 1; border: 0; border-radius: 12px; padding: 11px 8px; font: 700 14px "Chakra Petch", sans-serif; cursor: pointer; color: #05030f; background: #c9d3f0; }
@@ -92,24 +105,24 @@
   .btn.go { background: linear-gradient(180deg, #fff3b0, #ffd23f 50%, #e0a800); box-shadow: 0 0 18px rgba(255,210,63,.55); animation: pulse 1s infinite alternate; }
   .btn:disabled { opacity: .35; cursor: default; animation: none; box-shadow: none; }
   @keyframes pulse { to { box-shadow: 0 0 30px rgba(255,210,63,.9); } }
-  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-  .slot { position: relative; aspect-ratio: 1 / .92; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    font-size: 11px; text-align: center; border: 1.5px solid; transition: transform .1s; }
-  .slot img { width: 46px; height: 46px; }
-  .slot .q { font-weight: 700; font-size: 12px; }
+  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: auto 0; }
+  .slot { position: relative; aspect-ratio: 1; border-radius: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+    font-size: 10px; text-align: center; border: 1.5px solid; transition: transform .1s; }
+  .slot img { width: 27px; height: 27px; }
+  .slot .q { font-weight: 700; font-size: 10px; line-height: 1.1; }
   .slot.white { border-color: #9fb0d4; background: linear-gradient(160deg, #2a3350, #141a2c); }
   .slot.gold  { border-color: #ffd23f; background: linear-gradient(160deg, #7a5a00, #2e1d00); }
   .slot.red   { border-color: #ff3b3b; background: radial-gradient(circle at 50% 40%, #6a0d0d, #1e0303); box-shadow: 0 0 16px rgba(255,59,59,.45) inset, 0 0 12px rgba(255,59,59,.4); }
-  .slot.red img { width: 58px; height: 58px; }
-  .slot .pct { position: absolute; top: 3px; right: 6px; font-size: 9px; color: rgba(255,255,255,.55); }
+  .slot.red img { width: 40px; height: 40px; }
+  .slot .pct { position: absolute; top: 1px; right: 3px; font-size: 7.5px; color: rgba(255,255,255,.5); }
   .slot.hl { transform: scale(1.06); box-shadow: 0 0 0 3px #fff, 0 0 24px #fff; z-index: 2; }
-  .slot.got::after { content: 'ได้แล้ว'; position: absolute; inset: 0; border-radius: 10px; background: rgba(5,3,15,.72); display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 13px; color: #7dff6a; letter-spacing: 1px; }
-  .status { margin-top: 10px; border-radius: 12px; padding: 9px 11px; font-size: 12px; line-height: 1.5; }
+  .slot.got::after { content: '✓'; position: absolute; inset: 0; border-radius: 8px; background: rgba(5,3,15,.74); display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 22px; color: #7dff6a; }
+  .status { margin: 8px 12px 0; border-radius: 12px; padding: 8px 11px; font-size: 11.5px; line-height: 1.5; }
   .status.ok { background: rgba(54,241,255,.08); border: 1px solid rgba(54,241,255,.3); }
   .status.done { background: rgba(193,139,255,.12); border: 1px solid #c18bff; }
   .status.done b { color: #e2c8ff; }
-  .play { margin: 6px 12px 20px; width: calc(100% - 24px); padding: 14px; font-size: 17px; }
+  .play { margin: 8px 12px 14px; width: calc(100% - 24px); padding: 13px; font-size: 17px; }
   .toast { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); background: rgba(10,8,30,.95); border: 1px solid var(--gold); border-radius: 12px;
     padding: 8px 14px; font-size: 13px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
   .toast.on { opacity: 1; }
@@ -183,32 +196,35 @@
     </div>
     <div class="phone-col">
       <div class="phone" id="stagePhone"><div class="scroll" id="stageScroll">
-        <div class="stage-hero"><canvas id="heroCv" width="720" height="256"></canvas>
+        <div class="stage-hero"><canvas id="heroCv" width="720" height="300"></canvas>
           <div class="topbar"><span class="t"><span class="back">‹</span><span id="stTitle"></span></span><span class="wallet"><span id="stShardChip"></span></span></div>
           <div class="sub" id="stSub"></div>
         </div>
         <div class="rec-panel" id="recPanel"></div>
-        <div class="panel">
-          <div class="ph"><span class="t">จิ๊กซอว์ยานคอสมิก</span><span class="n" id="pzCount"></span></div>
-          <canvas class="puzzle" id="pzCv" width="320" height="320"></canvas>
-          <div class="drop-line" id="dropLine"></div>
-          <div class="btns">
-            <button class="btn ghost" id="addBtn">+1 เศษ (จำลอง)</button>
-            <button class="btn go" id="drawBtn">สุ่ม!</button>
+        <div class="split">
+          <div class="panel">
+            <div class="ph"><span class="t">จิ๊กซอว์</span><span class="n" id="pzCount"></span></div>
+            <canvas class="puzzle" id="pzCv" width="320" height="320"></canvas>
+            <div class="sub-lbl" id="pzName"></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><span class="t">ตารางรางวัล</span><span class="n" id="boardCount"></span></div>
+            <div class="board" id="board"></div>
+            <div class="sub-lbl"><span style="color:#c9d3f0">■</span> 6 <span style="color:#ffd23f">■</span> 2 <span style="color:#ff3b3b">■</span> 1 · ไม่ซ้ำ</div>
           </div>
         </div>
-        <div class="panel">
-          <div class="ph"><span class="t">ตารางรางวัล</span><span class="n" id="boardCount"></span></div>
-          <div class="board" id="board"></div>
-          <div class="status" id="status"></div>
-          <div class="btns"><button class="btn ghost" id="resetBtn">รีเซ็ตด่านนี้</button><button class="btn ghost" id="fillBtn">จำลอง: เปิดเกือบครบ</button></div>
+        <div class="status" id="status"></div>
+        <div class="btns act">
+          <button class="btn ghost" id="addBtn">+1 เศษ (จำลอง)</button>
+          <button class="btn go" id="drawBtn">สุ่ม!</button>
         </div>
         <button class="btn go play" id="playBtn">เริ่มเล่น</button>
       </div>
         <div class="toast" id="toast"></div>
         <div class="reveal" id="reveal"><div class="big">COSMIC SHIP</div><canvas id="revCv" width="600" height="600"></canvas><div class="nm" id="revName"></div><div class="tap">ยานคอสมิก · สุ่มจากตั๋วไม่ได้ · แตะเพื่อปิด</div></div>
       </div>
-      <div class="phone-cap">② หน้าด่าน: จิ๊กซอว์ + ตารางสุ่ม 9 ช่อง</div>
+      <div class="demo"><button class="btn ghost" id="resetBtn">รีเซ็ตด่านนี้</button><button class="btn ghost" id="fillBtn">จำลอง: เปิดเกือบครบ</button></div>
+      <div class="phone-cap">② หน้าด่าน: จบในจอเดียว · จิ๊กซอว์ซ้าย ตารางขวา (ปุ่มด้านบนใช้ทดสอบ ไม่อยู่ในเกม)</div>
     </div>
   </div>
 
@@ -689,10 +705,10 @@ function renderList() {
 function renderStage() {
   const ep = EPS[cur], st = state[cur], done = st.got.size >= 9;
   $('stagePhone').style.setProperty('--ep', ep.color);
-  const hc = $('heroCv').getContext('2d'); hc.clearRect(0, 0, 720, 256);
-  hc.fillStyle = lg(hc, 0, 0, 0, 256, [[0, rgba(ep.color, 0.25)], [1, '#070518']]); hc.fillRect(0, 0, 720, 256); stars(hc, 720, 256, ep.n * 5, 120);
+  const hc = $('heroCv').getContext('2d'); hc.clearRect(0, 0, 720, 300);
+  hc.fillStyle = lg(hc, 0, 0, 0, 300, [[0, rgba(ep.color, 0.25)], [1, '#070518']]); hc.fillRect(0, 0, 720, 300); stars(hc, 720, 300, ep.n * 5, 120);
   hc.save(); hc.translate(400, -30); PLANET[ep.planet](hc, 380, 380, 0); hc.restore();
-  hc.fillStyle = lg(hc, 0, 0, 720, 0, [[0, 'rgba(7,5,24,.85)'], [0.6, 'rgba(7,5,24,0)']]); hc.fillRect(0, 0, 720, 256);
+  hc.fillStyle = lg(hc, 0, 0, 720, 0, [[0, 'rgba(7,5,24,.85)'], [0.6, 'rgba(7,5,24,0)']]); hc.fillRect(0, 0, 720, 300);
   $('stTitle').textContent = `EP${ep.n} ${ep.name}`;
   $('stSub').textContent = `${ep.en} · ศัตรูเลือด ${ep.hp} · แต้ม ${ep.pts}`;
   // สถิติสูงสุดของด่าน + สถิติของเรา
@@ -711,10 +727,8 @@ function renderStage() {
   $('stShardChip').textContent = done ? `💠 หินอีโว ${st.evo}` : `🧩 ${st.shards}`;
   const open = Math.min(st.shards, ep.cost);
   renderPuzzle($('pzCv'), ep, open, anim, done);
-  $('pzCount').innerHTML = done ? 'ครบทั้งตารางแล้ว' : `เศษ <b>${st.shards}</b> / ${ep.cost}`;
-  $('dropLine').innerHTML = done
-    ? 'จิ๊กซอว์ด่านนี้ <b style="color:#e2c8ff">ไม่ดรอปแล้ว</b> · ลุ้นได้หินอีโวแทน'
-    : `ในเกมเดียว แตะ <b>2 ล้าน · 4 ล้าน · 6 ล้าน…</b> ลุ้น 40% ได้ 1 เศษ`;
+  $('pzCount').innerHTML = done ? 'ครบแล้ว' : `<b>${st.shards}</b> / ${ep.cost}`;
+  $('pzName').innerHTML = `<b style="color:#ff6b6b">★</b> ${SHIPS[ep.ship].name}`;
   $('addBtn').textContent = done ? '+1 หินอีโว (จำลอง)' : '+1 เศษ (จำลอง)';
   $('drawBtn').textContent = `สุ่ม! (ใช้ ${ep.cost} เศษ)`;
   $('drawBtn').disabled = busy || done || st.shards < ep.cost;
@@ -724,15 +738,15 @@ function renderStage() {
   const left = 9 - st.got.size, b = $('board'); b.innerHTML = '';
   boardOf(ep).forEach(([tier, type, val], i) => {
     const s = document.createElement('div'); s.className = `slot ${tier}` + (st.got.has(i) ? ' got' : ''); s.dataset.i = i;
-    if (type === 'ship') s.innerHTML = `<img src="${ICON['ship_' + val]}"><span class="q">${SHIPS[val].name}</span>`;
-    else s.innerHTML = `<img src="${ICON[type]}"><span class="q">${ICON_NAME[type]} ×${fmt(val)}</span>`;
+    if (type === 'ship') { s.innerHTML = `<img src="${ICON['ship_' + val]}">`; s.title = SHIPS[val].name; }
+    else { s.innerHTML = `<img src="${ICON[type]}"><span class="q">×${fmt(val)}</span>`; s.title = `${ICON_NAME[type]} ×${fmt(val)}`; }
     if (!st.got.has(i)) s.innerHTML += `<span class="pct">${(100 / left).toFixed(1)}%</span>`;
     b.append(s);
   });
-  $('boardCount').textContent = `เหลือ ${left} ช่อง`;
+  $('boardCount').textContent = `เหลือ ${left}`;
   const sEl = $('status');
-  if (done) { sEl.className = 'status done'; sEl.innerHTML = `<b>เปิดครบ 9 ช่องแล้ว!</b> เศษจิ๊กซอว์ EP${ep.n} จะไม่ดรอปอีก<br>ทำแต้มถึง 2/4/6 ล้าน จะลุ้นได้ <b>หินอีโว</b> แทน (ใช้ปลดขั้น 4 ของสมบัติ)`; }
-  else { sEl.className = 'status ok'; sEl.innerHTML = `เศษจิ๊กซอว์ยังดรอปอยู่ · เหลือ ${left} ช่อง${st.got.has(4) ? '' : ' · <b style="color:#ff6b6b">ยานคอสมิกยังอยู่ในตาราง</b>'}<br><span style="color:var(--dim)">เปิดครบ 9 ช่องแล้ว เศษจะหยุดดรอป และได้หินอีโวแทน</span>`; }
+  if (done) { sEl.className = 'status done'; sEl.innerHTML = `<b>เปิดครบ 9 ช่องแล้ว!</b> เศษ EP${ep.n} ไม่ดรอปอีก<br>แตะ 2/4/6 ล้านแต้ม ลุ้นได้ <b>หินอีโว</b> แทน`; }
+  else { sEl.className = 'status ok'; sEl.innerHTML = `🧩 ในเกมเดียว แตะ <b>2 / 4 / 6 ล้าน…</b> ลุ้น 40% ได้ 1 เศษ${st.got.has(4) ? '' : '<br><b style="color:#ff6b6b">ยานคอสมิกยังอยู่ในตาราง</b> · <span style="color:var(--dim)">ครบ 9 ช่องเศษจะหยุดดรอป</span>'}`; }
 }
 function toast(msg) { const t = $('toast'); t.innerHTML = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 1800); }
 
