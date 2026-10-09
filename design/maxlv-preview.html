@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Max Level Weapons</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #05030f; color: #e8f3ff; font-family: "Chakra Petch", system-ui, sans-serif; }
+  #wrap { max-width: 1000px; margin: 0 auto; }
+  canvas { display: block; width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<div id="wrap"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+<script>
+// พรีวิวอาวุธเลเวลตัน: เลเซอร์ Lv10 เป็นลำแสงใหญ่แบบ ON AIR · จรวดติดตามเลเวลเต็มเปลี่ยนสี (เปิดไฟล์ตรงๆ ได้ ไม่ได้ deploy)
+const W = 1000, H = 1330, PH = 470, TOP1 = 160, TOP2 = TOP1 + PH + 130;
+const FONT = '"Chakra Petch", system-ui, sans-serif';
+const hue = h => Phaser.Display.Color.HSVToRGB((((h % 360) + 360) % 360) / 360, 0.7, 1).color;
+const coolHue = h => hue(180 + (((h % 120) + 120) % 120));   // ฟ้า-ม่วง ไม่มีแดง
+
+const BEAMS = [
+  { name: 'ปัจจุบัน Lv10', note: 'เลเซอร์ทองหลายลำ' },
+  { name: 'A. ลำแสง ON AIR', note: 'ลำใหญ่ต่อเนื่อง สีวนฟ้า-ม่วง ขอบเรืองแสง แกนขาว' },
+  { name: 'B. ลำแสงคู่บิดเกลียว', note: 'สองลำพันกันเป็นเกลียว + แกนกลาง' },
+  { name: 'C. ลำแสงชาร์จเป็นจังหวะ', note: 'ลำใหญ่ + วงแหวนพลังวิ่งขึ้นเป็นจังหวะ' },
+];
+const MISSILES = [
+  { name: 'ปัจจุบัน (เขียว)', c: 0x7dff6a, trail: [0x7dff6a] },
+  { name: '1. ทองพลาสมา', c: 0xffd23f, trail: [0xffd23f, 0xfff3b0] },
+  { name: '2. ฟ้าขาวไฟฟ้า', c: 0x9ff3ff, trail: [0x36f1ff, 0xffffff] },
+  { name: '3. ม่วงนีออนรุ้ง', c: 0xc18bff, trail: [0xa66bff, 0x36f1ff, 0xffffff] },
+];
+
+function makeTextures(scene) {
+  const draw = (key, w, h, fn) => { const g = scene.make.graphics({ x: 0, y: 0, add: false }); fn(g); g.generateTexture(key, w, h); g.destroy(); };
+  const P = arr => arr.map(([x, y]) => ({ x, y }));
+  draw('ship', 64, 64, g => {
+    const pts = P([[32, 6], [54, 52], [32, 42], [10, 52]]);
+    g.lineStyle(5, 0x36f1ff, 0.3); g.strokePoints(pts, true, true);
+    g.fillStyle(0x36f1ff, 0.16); g.fillPoints(pts, true);
+    g.lineStyle(2.5, 0x36f1ff, 1); g.strokePoints(pts, true, true);
+    g.fillStyle(0xffffff, 1); g.fillCircle(32, 30, 3);
+  });
+  draw('laser', 8, 44, g => { g.fillStyle(0xffffff, 0.35); g.fillRoundedRect(0, 0, 8, 44, 3.5); g.fillStyle(0xffffff, 1); g.fillRoundedRect(3, 2, 2, 40, 1); });
+  draw('missileW', 12, 26, g => {   // จรวดสีขาว ไว้ย้อมสี
+    g.fillStyle(0xffffff, 0.3); g.fillPoints(P([[6, 1], [11, 10], [8, 22], [4, 22], [1, 10]]), true);
+    g.lineStyle(2, 0xffffff, 1); g.strokePoints(P([[6, 1], [11, 10], [8, 22], [4, 22], [1, 10]]), true, true);
+  });
+  draw('enemy', 40, 40, g => {
+    const pts = P([[20, 4], [36, 20], [20, 36], [4, 20]]);
+    g.lineStyle(5, 0xff4f8b, 0.3); g.strokePoints(pts, true, true);
+    g.lineStyle(2.5, 0xff4f8b, 1); g.strokePoints(pts, true, true);
+    g.fillStyle(0xffffff, 1); g.fillCircle(20, 20, 3);
+  });
+  draw('ebullet', 22, 44, g => {
+    for (let i = 0; i < 7; i++) { g.fillStyle(0xff4f6a, 0.06 + i * 0.05); g.fillEllipse(11, 3 + i * 2.6, 5 + i * 0.9, 7); }
+    g.fillStyle(0x000000, 0.85); g.fillPoints(P([[11, 35], [20, 22], [11, 10], [2, 22]]), true);
+    g.fillStyle(0xff3b4f, 1); g.fillPoints(P([[11, 33], [18, 22], [11, 12], [4, 22]]), true);
+    g.fillStyle(0xffffff, 1); g.fillCircle(11, 22, 2.4);
+  });
+  draw('spark', 8, 8, g => { g.fillStyle(0xffffff, 1); g.fillCircle(4, 4, 3); });
+  draw('ring', 64, 64, g => { g.lineStyle(4, 0xffffff, 0.9); g.strokeCircle(32, 32, 28); });
+}
+
+class Preview extends Phaser.Scene {
+  constructor() { super('p'); }
+  create() {
+    makeTextures(this);
+    this.add.text(W / 2, 34, 'อาวุธเลเวลตัน (พรีวิว)', { fontFamily: FONT, fontSize: 36, fontStyle: '700', color: '#ffffff' }).setOrigin(0.5);
+    this.add.text(W / 2, 74, 'แถวบน: เลเซอร์ Lv10 → ลำแสงใหญ่ · แถวล่าง: จรวดติดตามเลเวลเต็ม → เปลี่ยนสี', { fontFamily: FONT, fontSize: 17, color: '#a9b9d6' }).setOrigin(0.5);
+    const pw = W / BEAMS.length;
+    BEAMS.forEach((b, i) => this.beamPanel(b, i, i * pw + 4, TOP1, pw - 8, PH));
+    this.add.text(W / 2, TOP2 - 80, 'จรวดติดตามเลเวลเต็ม', { fontFamily: FONT, fontSize: 24, fontStyle: '700', color: '#ffffff' }).setOrigin(0.5);
+    const mw = W / MISSILES.length;
+    MISSILES.forEach((m, i) => this.missilePanel(m, i, i * mw + 4, TOP2, mw - 8, H - TOP2 - 10));
+  }
+
+  base(x0, y0, w, h, title, note) {
+    const g = this.add.graphics();
+    g.fillStyle(0x07041a, 1).fillRect(x0, y0, w, h);
+    for (let x = x0; x < x0 + w; x += 24) { g.lineStyle(1, 0x5b2fbf, 0.3); g.lineBetween(x, y0, x, y0 + h); }
+    for (let y = y0; y < y0 + h; y += 24) { g.lineStyle(1, 0x5b2fbf, 0.3); g.lineBetween(x0, y, x0 + w, y); }
+    const mask = this.make.graphics({ add: false }); mask.fillRect(x0, y0, w, h);
+    const box = this.add.container(0, 0).setMask(mask.createGeometryMask());
+    this.add.text(x0 + w / 2, y0 - 26, title, { fontFamily: FONT, fontSize: 17, fontStyle: '700', color: '#ffffff' }).setOrigin(0.5, 1);
+    this.add.text(x0 + w / 2, y0 - 6, note, { fontFamily: FONT, fontSize: 12, color: '#a9b9d6', align: 'center', wordWrap: { width: w } }).setOrigin(0.5, 1);
+    const ship = this.add.image(x0 + w / 2, y0 + h - 40, 'ship').setScale(0.8); box.add(ship);
+    this.tweens.add({ targets: ship, x: { from: x0 + w * 0.35, to: x0 + w * 0.65 }, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    // ศัตรูลอยผ่าน + กระสุนศัตรู
+    this.time.addEvent({ delay: 520, loop: true, callback: () => {
+      const e = this.add.image(x0 + Phaser.Math.Between(20, w - 20), y0 - 20, 'enemy').setScale(0.8); box.add(e);
+      e.hp = 3;
+      this.enemies.push({ e, x0, w, box });
+      this.tweens.add({ targets: e, y: y0 + h * 0.55, duration: 2600, onComplete: () => { e.destroy(); } });
+      const ex = x0 + Phaser.Math.Between(20, w - 20);
+      const b = this.add.image(ex, y0 - 10, 'ebullet').setScale(0.85); box.add(b);
+      this.tweens.add({ targets: b, y: y0 + h + 20, duration: 1900, onComplete: () => b.destroy() });
+    } });
+    return { box, ship };
+  }
+
+  beamPanel(st, i, x0, y0, w, h) {
+    this.enemies = this.enemies || [];
+    const { box, ship } = this.base(x0, y0, w, h, st.name, st.note);
+    if (i === 0) {   // ปัจจุบัน: เลเซอร์ทองหลายลำ
+      this.time.addEvent({ delay: 120, loop: true, callback: () => {
+        for (const [ox, vx] of [[-21, 0], [-7, 0], [7, 0], [21, 0], [-26, -130], [26, 130]]) {
+          const b = this.add.image(ship.x + ox, ship.y - 40, 'laser').setTint(0xffe3a0).setScale(1.5); box.add(b);
+          if (vx) b.rotation = Math.atan2(-1080, vx) + Math.PI / 2;
+          this.tweens.add({ targets: b, y: y0 - 40, x: b.x + vx * 0.45, duration: 450, onComplete: () => b.destroy() });
+        }
+      } });
+      return;
+    }
+    const g = this.add.graphics().setBlendMode('ADD'); box.add(g);
+    const sparks = this.add.particles(0, 0, 'spark', { speed: { min: 60, max: 200 }, lifespan: 300, scale: { start: 1, end: 0 }, tint: [0xffffff, 0x36f1ff, 0xa66bff], blendMode: 'ADD', emitting: false }); box.add(sparks);
+    const rings = [];
+    this.events.on('update', (time) => {
+      const bx = ship.x, top = y0, bot = ship.y - 30;
+      g.clear();
+      const pulse = Math.sin(time / 90);
+      if (i === 1) {
+        const bw = 64 + pulse * 8, hu = time * 0.3;
+        g.fillStyle(coolHue(hu), 0.14).fillRect(bx - bw * 0.85, top, bw * 1.7, bot - top);
+        g.fillStyle(coolHue(hu + 40), 0.26).fillRect(bx - bw / 2, top, bw, bot - top);
+        g.fillStyle(0xffffff, 0.4).fillRect(bx - bw * 0.2, top, bw * 0.4, bot - top);
+        g.fillStyle(0xffffff, 0.95).fillRect(bx - 3, top, 6, bot - top);
+        g.lineStyle(3, coolHue(hu + 80), 0.9); g.lineBetween(bx - bw / 2, top, bx - bw / 2, bot); g.lineBetween(bx + bw / 2, top, bx + bw / 2, bot);
+        g.fillStyle(0xffffff, 0.6).fillCircle(bx, bot, 14 + pulse * 3);
+      } else if (i === 2) {
+        g.fillStyle(0xa66bff, 0.16).fillRect(bx - 40, top, 80, bot - top);
+        for (let y = top; y < bot; y += 6) {
+          const k = (y - top) / 40 - time / 120;
+          const dx = Math.sin(k) * 18;
+          g.fillStyle(0x36f1ff, 0.75).fillCircle(bx + dx, y, 6);
+          g.fillStyle(0xc18bff, 0.75).fillCircle(bx - dx, y, 6);
+        }
+        g.fillStyle(0xffffff, 0.9).fillRect(bx - 2.5, top, 5, bot - top);
+        g.fillStyle(0xffffff, 0.6).fillCircle(bx, bot, 13);
+      } else {
+        const bw = 58 + Math.max(0, Math.sin(time / 260)) * 18;
+        g.fillStyle(0x7d6bff, 0.18).fillRect(bx - bw * 0.8, top, bw * 1.6, bot - top);
+        g.fillStyle(0xa66bff, 0.35).fillRect(bx - bw / 2, top, bw, bot - top);
+        g.fillStyle(0xe8e0ff, 0.55).fillRect(bx - bw * 0.18, top, bw * 0.36, bot - top);
+        g.fillStyle(0xffffff, 1).fillRect(bx - 2.5, top, 5, bot - top);
+        g.lineStyle(2, 0xbff6ff, 0.9); g.lineBetween(bx - bw / 2, top, bx - bw / 2, bot); g.lineBetween(bx + bw / 2, top, bx + bw / 2, bot);
+        if (!rings.last || time - rings.last > 260) {
+          rings.last = time;
+          const r = this.add.image(bx, bot, 'ring').setBlendMode('ADD').setTint(0xbff6ff).setScale(1.2, 0.35); box.add(r);
+          this.tweens.add({ targets: r, y: top, alpha: 0, duration: 650, onUpdate: () => { r.x = ship.x; }, onComplete: () => r.destroy() });
+        }
+      }
+      // ศัตรูที่อยู่ในลำแสงโดนเผา
+      for (const o of this.enemies) {
+        if (o.box !== box || !o.e.active) continue;
+        if (Math.abs(o.e.x - bx) < 40 && o.e.y < bot) {
+          if (Math.random() < 0.25) sparks.explode(3, o.e.x, o.e.y);
+          if (Math.random() < 0.03) { sparks.explode(18, o.e.x, o.e.y); o.e.destroy(); }
+        }
+      }
+    });
+  }
+
+  missilePanel(st, i, x0, y0, w, h) {
+    this.enemies = this.enemies || [];
+    const { box, ship } = this.base(x0, y0, w, h, st.name, '');
+    let tick = 0;
+    this.time.addEvent({ delay: 260, loop: true, callback: () => {
+      tick++;
+      for (const side of [-1, 1]) {
+        const m = this.add.image(ship.x + side * 20, ship.y - 6, i ? 'missileW' : 'missileW').setTint(st.c).setBlendMode(i ? 'ADD' : 'NORMAL').setScale(i ? 1.25 : 1); box.add(m);
+        const tx = x0 + Phaser.Math.Between(20, w - 20), ty = y0 + Phaser.Math.Between(30, h * 0.45);
+        const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(m.x, m.y), new Phaser.Math.Vector2(m.x + side * 90, m.y - 80), new Phaser.Math.Vector2(tx, ty));
+        const pt = new Phaser.Math.Vector2(), tan = new Phaser.Math.Vector2();
+        const trail = i ? this.add.particles(0, 0, 'spark', { follow: m, lifespan: 300, scale: { start: 0.8, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: st.trail, blendMode: 'ADD', frequency: 25 }) : null;
+        if (trail) box.add(trail);
+        this.tweens.addCounter({ from: 0, to: 1, duration: 700, onUpdate: tw => {
+          const t = tw.getValue(); curve.getPoint(t, pt); curve.getTangent(t, tan);
+          m.setPosition(pt.x, pt.y); m.rotation = Math.atan2(tan.y, tan.x) + Math.PI / 2;
+        }, onComplete: () => {
+          const r = this.add.image(m.x, m.y, 'ring').setTint(st.c).setBlendMode('ADD').setScale(0.2); box.add(r);
+          this.tweens.add({ targets: r, scale: i ? 0.9 : 0.5, alpha: 0, duration: 280, onComplete: () => r.destroy() });
+          m.destroy(); if (trail) this.time.delayedCall(300, () => trail.destroy());
+        } });
+      }
+    } });
+  }
+}
+window.game = new Phaser.Game({ type: Phaser.AUTO, parent: 'wrap', width: W, height: H, backgroundColor: '#05030f', scene: Preview });
+</script>
+</body>
+</html>
