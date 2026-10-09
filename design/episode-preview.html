@@ -50,6 +50,25 @@
     background: radial-gradient(circle, #6a0d0d, #1e0303); box-shadow: 0 0 10px rgba(255,59,59,.5); }
   .ep-ship i { position: absolute; inset: 2px; background: center/100% no-repeat; }
   .ep-ship.unknown i { filter: brightness(0) drop-shadow(0 0 2px #ff3b3b); }
+  .ep-rec { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; }
+  .ep-rec b { color: #ffd23f; font-size: 12px; }
+  .ep-rec span { overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .ep-rec.none { color: #7dff6a; }
+  .rec-panel { margin: 10px 12px 0; border-radius: 16px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center;
+    background: linear-gradient(110deg, rgba(255,210,63,.16), rgba(255,210,63,.03) 70%); border: 1px solid rgba(255,210,63,.45); }
+  .rec-panel .crown { grid-row: span 2; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px;
+    background: radial-gradient(circle, rgba(255,210,63,.35), rgba(255,210,63,.05)); box-shadow: 0 0 14px rgba(255,210,63,.35); }
+  .rec-panel .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .rec-panel .lbl { font-size: 10px; letter-spacing: 2px; color: #ffd23f; }
+  .rec-panel .sc { font-size: 20px; font-weight: 700; color: #fff; text-shadow: 0 0 12px rgba(255,210,63,.6); }
+  .rec-panel .who { font-size: 13px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .rec-panel .who img { width: 22px; height: 22px; flex: none; }
+  .rec-panel .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rec-panel .when { font-size: 10px; color: var(--dim); margin-left: auto; flex: none; }
+  .rec-panel .mine { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); border-top: 1px dashed rgba(255,255,255,.12); padding-top: 6px; margin-top: 2px; }
+  .rec-panel .mine b { color: var(--text); }
+  .rec-panel.none { background: rgba(125,255,106,.06); border-color: rgba(125,255,106,.4); }
+  .rec-panel.none .crown { background: rgba(125,255,106,.12); box-shadow: none; }
   .ep-lock { position: absolute; inset: 0; border-radius: 18px; background: rgba(5,3,15,.7); display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 2px; font-size: 12px; color: var(--dim); text-align: center; padding: 0 30px; }
   .ep-lock .k { font-size: 22px; }
@@ -168,6 +187,7 @@
           <div class="topbar"><span class="t"><span class="back">‹</span><span id="stTitle"></span></span><span class="wallet"><span id="stShardChip"></span></span></div>
           <div class="sub" id="stSub"></div>
         </div>
+        <div class="rec-panel" id="recPanel"></div>
         <div class="panel">
           <div class="ph"><span class="t">จิ๊กซอว์ยานคอสมิก</span><span class="n" id="pzCount"></span></div>
           <canvas class="puzzle" id="pzCv" width="320" height="320"></canvas>
@@ -504,15 +524,15 @@ const PLANET = {
 // ---------------------------------------------------------------- ข้อมูลด่าน / ยาน
 const ICON_NAME = { crystal: 'คริสตัล', ticket: 'ตั๋ว', key: 'กุญแจดาว', gold: 'หีบทอง', evo: 'หินอีโว' };
 const EPS = [
-  { n: 1, name: 'วงแหวนดาวเสาร์', en: 'SATURN RINGS', color: '#ffd23f', planet: 'saturn', stone: [104, 88, 64], cost: 3, hp: '×1', pts: '×1', bullet: 'ปกติ', ship: 'saturn',
+  { n: 1, name: 'วงแหวนดาวเสาร์', en: 'SATURN RINGS', color: '#ffd23f', planet: 'saturn', stone: [104, 88, 64], cost: 3, hp: '×1', pts: '×1', bullet: 'ปกติ', ship: 'saturn', rec: { score: 18420560, name: 'ดาวตกไม่หยุด', ship: 'phoenix', when: '2 วันก่อน' }, mine: 6210300,
     white: [['crystal', 300], ['crystal', 300], ['crystal', 500], ['ticket', 1], ['ticket', 1], ['key', 1]], gold: [['gold', 1], ['ticket', 5]] },
-  { n: 2, name: 'พายุยักษ์พฤหัส', en: 'JUPITER STORM', color: '#ff9a3c', planet: 'jupiter', stone: [104, 72, 52], cost: 5, hp: '×1.3', pts: '×1.25', bullet: '+10%', ship: 'jupiter',
+  { n: 2, name: 'พายุยักษ์พฤหัส', en: 'JUPITER STORM', color: '#ff9a3c', planet: 'jupiter', stone: [104, 72, 52], cost: 5, hp: '×1.3', pts: '×1.25', bullet: '+10%', ship: 'jupiter', rec: { score: 9875140, name: 'NovaKing', ship: 'nova', when: 'เมื่อวาน' }, mine: 2105880,
     white: [['crystal', 500], ['crystal', 500], ['crystal', 800], ['ticket', 2], ['key', 1], ['key', 1]], gold: [['gold', 1], ['ticket', 10]] },
-  { n: 3, name: 'ทะเลคริสตัลเนปจูน', en: 'NEPTUNE ABYSS', color: '#36a8ff', planet: 'neptune', stone: [56, 74, 100], cost: 7, hp: '×1.6', pts: '×1.5', bullet: '+20%', ship: 'neptune',
+  { n: 3, name: 'ทะเลคริสตัลเนปจูน', en: 'NEPTUNE ABYSS', color: '#36a8ff', planet: 'neptune', stone: [56, 74, 100], cost: 7, hp: '×1.6', pts: '×1.5', bullet: '+20%', ship: 'neptune', rec: { score: 4302900, name: 'แมวอวกาศ', ship: 'storm', when: '5 ชม.ก่อน' }, mine: 0,
     white: [['crystal', 800], ['crystal', 800], ['crystal', 1200], ['ticket', 2], ['ticket', 3], ['key', 2]], gold: [['gold', 2], ['ticket', 10]] },
-  { n: 4, name: 'ขอบหลุมดำ', en: 'BLACK HOLE RIM', color: '#b46bff', planet: 'blackhole', stone: [70, 58, 96], cost: 9, hp: '×2', pts: '×1.8', bullet: '+30%', ship: 'horizon',
+  { n: 4, name: 'ขอบหลุมดำ', en: 'BLACK HOLE RIM', color: '#b46bff', planet: 'blackhole', stone: [70, 58, 96], cost: 9, hp: '×2', pts: '×1.8', bullet: '+30%', ship: 'horizon', rec: { score: 1250480, name: 'PhantomX', ship: 'phantom', when: 'วันนี้' }, mine: 0,
     white: [['crystal', 1200], ['crystal', 1200], ['crystal', 1500], ['ticket', 3], ['ticket', 3], ['key', 2]], gold: [['gold', 2], ['ticket', 15]] },
-  { n: 5, name: 'ใจกลางดวงอาทิตย์', en: 'SOLAR CORE', color: '#ffb800', planet: 'sun', stone: [110, 76, 44], cost: 10, hp: '×2.5', pts: '×2.2', bullet: '+40%', ship: 'helios',
+  { n: 5, name: 'ใจกลางดวงอาทิตย์', en: 'SOLAR CORE', color: '#ffb800', planet: 'sun', stone: [110, 76, 44], cost: 10, hp: '×2.5', pts: '×2.2', bullet: '+40%', ship: 'helios', rec: null, mine: 0,
     white: [['crystal', 1500], ['crystal', 1500], ['crystal', 2000], ['ticket', 3], ['ticket', 5], ['key', 3]], gold: [['gold', 3], ['ticket', 20]] },
 ];
 const SHIPS = {
@@ -544,7 +564,7 @@ const SHIPS = {
 };
 
 // ---------------------------------------------------------------- ไอคอนรางวัล (วาดครั้งเดียว เก็บเป็น dataURL)
-const ICON = {};
+const ICON = {}, SHIP_ICON = {};
 function makeIcons() {
   const mk = fn => { const cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d'); c.translate(48, 48); fn(c); return cv.toDataURL(); };
   ICON.crystal = mk(c => { c.shadowColor = '#36f1ff'; c.shadowBlur = 14; path(c, [[0, -36], [24, -8], [0, 36], [-24, -8]]); c.fillStyle = lg(c, -24, -36, 24, 36, [[0, '#ffffff'], [0.4, '#36f1ff'], [1, '#0a4a7a']]); c.fill();
@@ -561,6 +581,10 @@ function makeIcons() {
   ICON.evo = mk(c => { c.shadowColor = '#c18bff'; c.shadowBlur = 16; const pts = []; for (let i = 0; i < 6; i++) { const a = i * TAU / 6 - Math.PI / 2; pts.push([Math.cos(a) * 32, Math.sin(a) * 32]); }
     path(c, pts); c.fillStyle = lg(c, -30, -30, 30, 30, [[0, '#ffffff'], [0.4, '#c18bff'], [1, '#3a1a6a']]); c.fill(); c.shadowBlur = 0; c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 2;
     c.beginPath(); for (const p of pts) { c.moveTo(0, 0); c.lineTo(p[0], p[1]); } c.stroke(); });
+  // ไอคอนยานที่เจ้าของสถิติใช้ (ยานในเกมปัจจุบัน · สีตามระดับ)
+  for (const [id, col] of [['phoenix', '#ff3b3b'], ['nova', '#ffd23f'], ['storm', '#36f1ff'], ['phantom', '#c18bff']])
+    SHIP_ICON[id] = mk(c => { c.shadowColor = col; c.shadowBlur = 12; c.strokeStyle = col; c.lineWidth = 5; c.fillStyle = rgba(col, 0.25);
+      path(c, [[0, -36], [12, -8], [34, 18], [12, 14], [0, 26], [-12, 14], [-34, 18], [-12, -8]]); c.fill(); c.stroke(); });
   for (const id in SHIPS) { const cv = document.createElement('canvas'); cv.width = cv.height = 160; drawShipTo(cv, id, 0.6); ICON['ship_' + id] = cv.toDataURL(); }
 }
 
@@ -653,7 +677,8 @@ function renderList() {
     const own = st.got.has(4);
     card.innerHTML = `<div class="ep-info"><span class="ep-tag">EP${ep.n}</span><div class="ep-name">${ep.name}</div><div class="ep-en">${ep.en}</div>
       <div class="ep-bar"><i style="width:${st.got.size / 9 * 100}%"></i></div>
-      <div class="ep-meta"><span>เปิดแล้ว ${st.got.size}/9</span><span>สุ่มละ ${ep.cost} เศษ</span></div></div>
+      <div class="ep-meta"><span>เปิดแล้ว ${st.got.size}/9</span><span>สุ่มละ ${ep.cost} เศษ</span></div>
+      ${ep.rec ? `<div class="ep-rec">👑 <b>${fmt(ep.rec.score)}</b><span>${ep.rec.name}</span></div>` : '<div class="ep-rec none">👑 ยังไม่มีสถิติ · เป็นคนแรก!</div>'}</div>
       <div class="ep-ship ${own ? '' : 'unknown'}" title="ยานคอสมิกของด่าน"><i style="background-image:url(${ICON['ship_' + ep.ship]})"></i></div>`;
     card.prepend(cv);
     if (LOCKED[i]) { const l = document.createElement('div'); l.className = 'ep-lock'; l.innerHTML = `<span class="k">🔒</span>ชนะบอสตัวแรกของ EP${ep.n - 1} เพื่อปลดล็อก<br><span style="font-size:10px">(พรีวิว: แตะดูได้)</span>`; card.append(l); }
@@ -670,6 +695,19 @@ function renderStage() {
   hc.fillStyle = lg(hc, 0, 0, 720, 0, [[0, 'rgba(7,5,24,.85)'], [0.6, 'rgba(7,5,24,0)']]); hc.fillRect(0, 0, 720, 256);
   $('stTitle').textContent = `EP${ep.n} ${ep.name}`;
   $('stSub').textContent = `${ep.en} · ศัตรูเลือด ${ep.hp} · แต้ม ${ep.pts}`;
+  // สถิติสูงสุดของด่าน + สถิติของเรา
+  const rp = $('recPanel'), mine = ep.mine ? fmt(ep.mine) : 'ยังไม่เคยเล่น';
+  if (ep.rec) {
+    const gap = ep.mine ? `ห่าง ${fmt(ep.rec.score - ep.mine)}` : '';
+    rp.className = 'rec-panel';
+    rp.innerHTML = `<div class="crown">👑</div><div class="top"><span class="lbl">BEST RECORD · EP${ep.n}</span><span class="sc">${fmt(ep.rec.score)}</span></div>
+      <div class="who"><img src="${SHIP_ICON[ep.rec.ship]}" alt=""><span>${ep.rec.name}</span><span class="when">${ep.rec.when}</span></div>
+      <div class="mine"><span>สถิติของคุณ <b>${mine}</b></span><span>${gap}</span></div>`;
+  } else {
+    rp.className = 'rec-panel none';
+    rp.innerHTML = `<div class="crown">👑</div><div class="top"><span class="lbl" style="color:#7dff6a">BEST RECORD · EP${ep.n}</span><span class="sc" style="text-shadow:none">—</span></div>
+      <div class="who"><span style="white-space:normal">ยังไม่มีใครทำสถิติ · เล่นก่อนได้มงกุฎก่อน!</span></div>`;
+  }
   $('stShardChip').textContent = done ? `💠 หินอีโว ${st.evo}` : `🧩 ${st.shards}`;
   const open = Math.min(st.shards, ep.cost);
   renderPuzzle($('pzCv'), ep, open, anim, done);
