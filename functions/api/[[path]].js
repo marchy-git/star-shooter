@@ -13,7 +13,7 @@
 //   POST /api/chest                   เปิดหีบสมบัติ { pay: 'coins' | 'key' | 'gold' } ได้สมบัติสุ่ม 1 ชิ้น
 //   POST /api/treasure/up             ใช้คริสตัลอัปขั้นสมบัติ { id }
 //   POST /api/treasure/slot           ปลดล็อกช่องสมบัติที่ 2 (คริสตัล 5,000)
-//   POST /api/equip                   ใส่สมบัติ { slots: [id, id] } (ห้ามซ้ำ, เอพิกขึ้นไปได้ 1 ชิ้น, ช่อง 2 ต้องปลดล็อก)
+//   POST /api/equip                   ใส่สมบัติ { slots: [id, id] } (ห้ามซ้ำ, ระดับไหนก็ได้, ช่อง 2 ต้องปลดล็อก)
 //   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
 //   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
@@ -108,13 +108,13 @@ const TREASURE_RARITY = {
 const TREASURE_IDS = Object.keys(TREASURE_RARITY);
 const TREASURE_MAX = 3, TREASURE_SLOTS = 2, CHEST_PRICE = 1500, SLOT2_PRICE = 5000;
 const TR_TIERS = ['common', 'rare', 'epic', 'legendary', 'mythic'];
-const TR_HIGH = ['epic', 'legendary', 'mythic'];                    // ใส่พร้อมกันได้ไม่เกิน 1 ชิ้น
+const TR_HIGH = ['epic', 'legendary', 'mythic'];                    // ระดับที่การันตีเอพิกให้
 const TR_ODDS = { common: 55, rare: 30, epic: 11.5, legendary: 3, mythic: 0.5 };   // โอกาสจากหีบ (%)
 const TR_GOLD_ODDS = { epic: 75, legendary: 20, mythic: 5 };        // หีบทอง: เอพิกขึ้นไปเท่านั้น
 const TR_PITY_EPIC = 10, TR_PITY_LEGEND = 30;                       // การันตีของหีบ (นับแยกจากตั๋วสุ่มยาน)
 const TR_DUPE = { common: 100, rare: 200, epic: 400, legendary: 800, mythic: 1600 };   // ได้ชิ้นที่มีแล้ว → คริสตัลคืน
 const TR_UP_COST = {                                                // คริสตัลที่ใช้อัปขั้น 1→2, 2→3
-  common: [3000, 6000], rare: [3900, 7800], epic: [4800, 9600], legendary: [6000, 12000], mythic: [7500, 15000],
+  common: [2000, 4000], rare: [2500, 5000], epic: [3000, 6000], legendary: [4000, 8000], mythic: [5000, 10000],
 };
 const KEY_CHANCE = 0.06;                                            // ล้มบอส 1 ตัว มีโอกาสได้กุญแจดาว
 const MILESTONES = { 3: { keys: 1 }, 5: { keys: 2 }, 8: { gold: 1 } };   // ถึงรอบใหม่ครั้งแรก (ครั้งเดียวต่อบัญชี)
@@ -159,12 +159,11 @@ function treasureData(d) {
   return t;
 }
 const slotCount = d => (d.slot2 ? TREASURE_SLOTS : 1);
-const isHigh = id => TR_HIGH.includes(TREASURE_RARITY[id]);
 // สมบัติที่ใส่ได้จริง: มีอยู่, ไม่ซ้ำ, เอพิก/ตำนานไม่เกิน 1, ไม่เกินช่องที่ปลดล็อก
 function cleanEquip(list, d) {
   const out = [];
   for (const id of list) {
-    if (!d.treasures[id] || out.includes(id) || (isHigh(id) && out.some(isHigh))) continue;
+    if (!d.treasures[id] || out.includes(id)) continue;
     out.push(id);
   }
   return out.slice(0, slotCount(d));
@@ -461,7 +460,6 @@ async function equipTreasures(env, request) {
   const slots = body && Array.isArray(body.slots) ? body.slots : null;
   if (!slots || !slots.every(id => d.treasures[id])) return json({ error: 'bad_equip' }, 400);
   if (new Set(slots).size !== slots.length) return json({ error: 'dup_equip' }, 400);
-  if (slots.filter(isHigh).length > 1) return json({ error: 'one_high' }, 400);
   if (slots.length > slotCount(d)) return json({ error: 'slot_locked' }, 400);
   d.equip = slots;
   await writeData(env, u.id, d);

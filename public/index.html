@@ -1076,15 +1076,14 @@ const TR_GOLD_ODDS = { epic: 75, legendary: 20, mythic: 5 };        // หีบ
 const TR_PITY_EPIC = 10, TR_PITY_LEGEND = 30;                       // การันตีของหีบ
 const TR_DUPE = { common: 100, rare: 200, epic: 400, legendary: 800, mythic: 1600 };   // ได้ชิ้นที่มีแล้ว → คริสตัลคืน
 const TR_UP_COST = {                                                // คริสตัลที่ใช้อัปขั้น 1→2, 2→3
-  common: [3000, 6000], rare: [3900, 7800], epic: [4800, 9600], legendary: [6000, 12000], mythic: [7500, 15000],
+  common: [2000, 4000], rare: [2500, 5000], epic: [3000, 6000], legendary: [4000, 8000], mythic: [5000, 10000],
 };
 const trSlots = d => (d.slot2 ? TREASURE_SLOTS : 1);
-const trHigh = id => ['epic', 'legendary', 'mythic'].includes(TREASURES[id].rarity);   // ใส่พร้อมกันได้ 1 ชิ้น
 // สมบัติที่ใส่ได้จริง: มีอยู่, ห้ามซ้ำ, เอพิก/ตำนานไม่เกิน 1, ไม่เกินช่องที่ปลดล็อก (เหมือน cleanEquip ใน API)
 function trClean(list, d) {
   const out = [];
   for (const id of list) {
-    if (!TREASURES[id] || !d.treasures[id] || out.includes(id) || (trHigh(id) && out.some(trHigh))) continue;
+    if (!TREASURES[id] || !d.treasures[id] || out.includes(id)) continue;
     out.push(id);
   }
   return out.slice(0, trSlots(d));
@@ -2110,7 +2109,7 @@ const App = {
       } else { el.className = 'tr-slot'; el.textContent = `ช่อง ${i + 1} ว่าง · แตะสมบัติด้านล่างเพื่อใส่`; el.disabled = true; }
       slots.append(el);
     }
-    $('trNote').textContent = 'ห้ามใส่ชิ้นซ้ำกัน · เอพิกขึ้นไปใส่ได้ครั้งละ 1 ชิ้น · อัปขั้นด้วยคริสตัล (สูงสุด 3)';
+    $('trNote').textContent = 'ใส่ระดับไหนก็ได้ (ห้ามชิ้นซ้ำ) · อัปขั้นด้วยคริสตัล (สูงสุด 3)';
 
     // ปุ่มเปิดหีบ 3 แบบ
     const chests = $('trChests');
@@ -2165,7 +2164,7 @@ const App = {
       grid.append(el);
     }
   },
-  // ใส่/ถอด: ห้ามซ้ำ, เอพิก/ตำนานสลับแทนชิ้นเดิม, ช่องเต็มถอดชิ้นที่ใส่ก่อนออก
+  // ใส่/ถอด: ห้ามซ้ำ, ช่องเต็มถอดชิ้นที่ใส่ก่อนออก
   async toggleEquip(id) {
     if (!Save.loggedIn || this.chesting) return;
     const d = Save.data, cur = d.equip.slice(), n = trSlots(d);
@@ -2173,9 +2172,7 @@ const App = {
     if (cur.includes(id)) next = cur.filter(x => x !== id);
     else {
       next = cur;
-      const high = next.find(x => trHigh(id) && trHigh(x));
-      if (high) { next = next.filter(x => x !== high); msg = `เอพิกขึ้นไปใส่ได้ 1 ชิ้น ถอด${TREASURES[high].name}ออกให้แล้ว`; }
-      if (next.length >= n) { msg = msg || `ช่องเต็ม ถอด${TREASURES[next[0]].name}ออกให้แล้ว`; next = next.slice(next.length - n + 1); }
+      if (next.length >= n) { msg = `ช่องเต็ม ถอด${TREASURES[next[0]].name}ออกให้แล้ว`; next = next.slice(next.length - n + 1); }
       next = [...next, id];
     }
     this.chesting = true;
