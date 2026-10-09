@@ -616,9 +616,10 @@ const PRE_MS = 15000;                 // ด่านก่อนบอสยา
 const PRE_MS_EASY = 9000;
 const PRE_GIMMICKS = ['corridor', 'gates', 'curtain', 'zones'];
 const PORTAL_CHANCE = 0.6;            // โอกาสที่รอบนี้จะมีรูหนอน (โผล่หลังเคลียร์ wave 2-4 แบบสุ่ม 1 ครั้ง)
-const PORTAL_STAY_MS = 6000, PORTAL_MS = 20000, PORTAL_GOOD = 0.6;
-const PORTAL_GOOD_GIMMICKS = ['corridor', 'gates', 'zones', 'mines', 'blackhole', 'rocks'];   // โซนโบนัส: ไม่มีกระสุนศัตรู
-const PORTAL_BAD_GIMMICKS = ['gates', 'zones', 'mines', 'blackhole', 'rocks'];
+// รูหนอน: ดี = FRENZY มอนบุกเต็มจอ ไม่มีสิ่งกีดขวาง ของหล่นเพียบ · ไม่ดี = สิ่งกีดขวางเร็วกว่าปกติ + มอนบุก รอดได้รางวัลใหญ่
+const PORTAL_STAY_MS = 6000, PORTAL_MS = 15000, PORTAL_GOOD = 0.6;
+const PORTAL_HAZ_BOOST = 0.5;   // โซนอันตราย: ความยากสิ่งกีดขวาง (0..1 ตามรอบ) + ค่านี้
+const PORTAL_BAD_GIMMICKS = ['gates', 'zones', 'mines', 'blackhole', 'rocks'];   // โซนอันตราย
 const ENEMIES = {
   normal:   { key: 'enemy',        hp: 1,  score: 100,  body: [36, 34], coin: [0.25, 1] },
   shooter:  { key: 'enemyShooter', hp: 1,  score: 150,  body: [30, 30], coin: [0.3, 1] },
@@ -627,13 +628,12 @@ const ENEMIES = {
   meteor:   { key: 'rock',         hp: 3,  score: 80,   body: [34, 34], coin: [0.2, 1] },
   cargo:    { key: 'cargo',        hp: 14, score: 1000, body: [80, 30], coin: [1, 10] },
   pillarS:  { key: 'pillarSpawn',  hp: 14, score: 300,  body: [28, 66], coin: [1, 3] },   // เสาฐานทัพ ปล่อยลูกน้อง
-  bonusShip: { key: 'bonusShip',   hp: 999, score: 0,  body: [74, 40], coin: [0, 0] },   // รูหนอนดี: ยานแจกแต้ม ยิงไม่ตาย
   pillarH:  { key: 'pillarHeal',   hp: 10, score: 400,  body: [28, 66], coin: [1, 3] },   // เสาฮีล ฟื้นเลือดบอส
   orbDrone: { key: 'orbDrone',     hp: 3,  score: 250,  body: [26, 26], coin: [0.5, 2] },  // ดาวเทียมโคจรรอบบอส
   bomb:     { key: 'bombMine',     hp: 4,  score: 200,  body: [30, 30], coin: [0.3, 1] },  // ทุ่นระเบิดเวลา
 };
 // ตัวที่ไม่นับว่าต้องฆ่าให้หมดก่อนไป wave ถัดไป
-const OPTIONAL = new Set(['kamikaze', 'meteor', 'cargo', 'pillarS', 'pillarH', 'bonusShip', 'orbDrone', 'bomb']);
+const OPTIONAL = new Set(['kamikaze', 'meteor', 'cargo', 'pillarS', 'pillarH', 'orbDrone', 'bomb']);
 
 const BOSSES = [
   { key: 'boss',  name: 'ยานแม่ซาร์ก้า',     hp: 150, body: [120, 70], y: 170, move: 'sway',  spin: 0, mech: 'spawner',
@@ -3780,8 +3780,8 @@ class Game extends Phaser.Scene {
   // =========================================================
   //  สิ่งกีดขวาง: ยิงไม่แตก ชน = โดน (เกราะกันได้ อมตะทะลุได้) · ใช้ dt สะสม จึงหยุดตามเกม/หยุดชั่วคราวได้ถูก
   // =========================================================
-  startHazard(kind, ms) {
-    const d = Math.min(1, (this.loop - 1) / 5);   // ความยาก 0..1 ตามรอบ
+  startHazard(kind, ms, boost = 0) {
+    const d = Math.min(1, (this.loop - 1) / 5) + boost;   // ความยาก 0..1 ตามรอบ (+ boost: รูหนอนอันตราย)
     const hz = { kind, d, ms, t: 0, next: 0, items: [], done: false };
     if (kind === 'corridor') {
       hz.speed = 0.14 + d * 0.06;
@@ -4032,26 +4032,20 @@ class Game extends Phaser.Scene {
       this.tweens.add({ targets: r, scale: 12, alpha: 0, duration: 800, delay: i * 60, onComplete: () => r.destroy() });
     }
     sfx.onair();
-    this.portal = { good, hit: false, gain: 0, t: 0, ships: [], kami: 0, meteor: 0 };
+    const pt = this.portal = { good, hit: false, gain: 0, kills: 0, t: 0, spawn: 0, gold: 2200, kami: 1500, until: this.time.now + 1000 + PORTAL_MS };
     this.portalTint.setFillStyle(good ? 0x8a3dff : 0xff5a1f, 0).setVisible(true);
     this.tweens.add({ targets: this.portalTint, fillAlpha: good ? 0.22 : 0.26, duration: 500 });
-    const kind = Phaser.Utils.Array.GetRandom(good ? PORTAL_GOOD_GIMMICKS : PORTAL_BAD_GIMMICKS);
-    if (good) {
-      this.banner('WARP: โซนโบนัส!', 'ยิงยานม่วงเก็บแต้ม · ไม่ชนอะไรเลย = แต้ม x2', { size: 40, rainbow: true });
-      for (let i = 0; i < 2; i++) {
-        const e = this.makeEnemy('bonusShip', { state: 'portalShip' }).setVisible(true).setPosition(i ? W * 0.7 : W * 0.3, -40);
-        this.portal.ships.push(e);
-        this.tweens.add({ targets: e, y: 110 + i * 70, duration: 900, ease: 'Sine.easeOut' });
-      }
-    } else {
-      this.banner('WARP: โซนอันตราย!', 'ฝนอุกกาบาต + ศัตรูบุก · รอดออกไปได้รางวัล', { size: 40 });
-      sfx.alarm();
-    }
+    if (good) this.banner('WARP: FRENZY!', 'มอนบุกเต็มจอ ยิงให้หมด · ของหล่นเพียบ · ไม่ชนเลย = แต้ม x2', { size: 40, rainbow: true });
+    else { this.banner('WARP: โซนอันตราย!', 'สิ่งกีดขวางเร็ว + มอนบุก · รอดออกไปได้รางวัลใหญ่', { size: 40 }); sfx.alarm(); }
+    this.portalText = txt(this, W / 2, 64, '', 17, good ? '#e0c8ff' : '#ffb38a', { stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5, 0).setDepth(11);
     this.updateHud();
     this.time.delayedCall(1000, () => {
-      if (this.over || !this.portal) return;
-      const hz = this.startHazard(kind, PORTAL_MS);
-      hz.onDone = () => this.exitPortal();
+      if (this.over || this.portal !== pt) return;
+      if (good) this.time.delayedCall(PORTAL_MS, () => { if (this.portal === pt) this.exitPortal(); });
+      else {
+        const hz = this.startHazard(Phaser.Utils.Array.GetRandom(PORTAL_BAD_GIMMICKS), PORTAL_MS, PORTAL_HAZ_BOOST);
+        hz.onDone = () => this.exitPortal();
+      }
     });
   }
 
@@ -4062,30 +4056,38 @@ class Game extends Phaser.Scene {
     // ขอบจอเรืองแสงตามธีม
     const pulse = 0.5 + 0.5 * Math.sin(time / 140);
     this.portalEdge.clear().lineStyle(14, pt.good ? 0xc18bff : 0xff5a1f, 0.12 + pulse * 0.14).strokeRect(7, 7, W - 14, H - 14);
-    if (pt.good) {   // ยานโบนัสลอยเป็นเลข 8 ด้านบน
-      pt.ships.forEach((e, i) => {
-        if (!e.active || pt.t < 1000) return;
-        const a = time / 1300 + i * Math.PI;
-        e.x = W / 2 + Math.sin(a) * (W * 0.33);
-        e.y = 120 + i * 60 + Math.sin(a * 2) * 40;
-      });
-    } else if (this.hazard) {   // โซนอันตราย: อุกกาบาตตลอด + ศัตรูพุ่งเข้าใส่
-      pt.meteor -= dt; pt.kami -= dt;
-      if (pt.meteor <= 0) { pt.meteor = 520 - this.hazard.d * 180; this.spawnMeteor(); }
-      if (pt.kami <= 0) { pt.kami = 2000 - this.hazard.d * 600; this.spawnKamikaze(); }
+    const left = Math.max(0, Math.ceil((pt.until - this.time.now) / 1000));
+    if (this.portalText) this.portalText.setText(`${pt.good ? 'FRENZY' : 'โซนอันตราย'} ${left} วิ · ฆ่า ${pt.kills} ตัว`);
+    if (pt.t < 1000 || this.time.now > pt.until - 1200) return;   // ช่วงวาร์ปเข้า / ใกล้หมดเวลาไม่ปล่อยเพิ่ม
+    pt.spawn -= dt;
+    if (pt.spawn <= 0) { pt.spawn = pt.good ? 650 : 1300; this.swarmWave(pt.good); }
+    if (pt.good) {   // มอนทองแต้มสูง ของหล่นแน่นอน
+      pt.gold -= dt;
+      if (pt.gold <= 0) { pt.gold = 2600; this.swarmGolden(); }
+    } else {          // โซนอันตราย: ยานพุ่งชนเพิ่ม
+      pt.kami -= dt;
+      if (pt.kami <= 0) { pt.kami = Math.max(700, 1400 - this.loop * 80); this.spawnKamikaze(); }
     }
   }
 
-  hitBonusShip(b, e) {
-    if (b.pierce) { if (b.hitSet.has(e)) return; b.hitSet.add(e); } else b.disableBody(true, true);
-    const pts = 5 * this.loop;   // แต้มต่อนัด (ไม่คูณคอมโบ) · รอบ 3 อยู่ครบ 20 วิ ได้ราว 25k ไม่ชนเลย x2
-    this.portal && (this.portal.gain += pts);
-    this.addScore(pts);
-    this.registerHit();
-    e.setTintFill(0xffffff);
-    this.time.delayedCall(50, () => { if (e.active) e.clearTint(); });
-    if (Math.random() < 0.08) this.popText(e.x + rand(-20, 20), e.y, '+' + fmt(pts), '#e0c8ff', 13);
-    this.grazeSparks.explode(2, b.x, b.y);
+  // มอนบุกเป็นขบวน (ไม่ยิง) · ชนยาน = โดนตี
+  swarmWave(good) {
+    const spd = (good ? 150 : 170) + this.loop * 8;
+    const mk = (x, y, vx, vy, delay = 0) => this.time.delayedCall(delay, () => {
+      if (this.over || !this.portal) return;
+      const e = this.makeEnemy(Math.random() < 0.25 ? 'shooter' : 'normal', { state: 'swarm', portalMob: true, hp: 1, maxHp: 1 });
+      e.setVisible(true).setPosition(x, y).setVelocity(vx, vy);
+    });
+    const k = Phaser.Utils.Array.GetRandom(['line', 'vee', 'side', 'rain']);
+    if (k === 'line') for (let i = 0; i < 7; i++) mk(40 + i * (W - 80) / 6, -30, 0, spd);
+    else if (k === 'vee') for (let i = -3; i <= 3; i++) mk(W / 2 + i * 50, -30 - Math.abs(i) * 34, 0, spd);
+    else if (k === 'side') { const L = Math.random() < 0.5; for (let i = 0; i < 6; i++) mk(L ? -30 : W + 30, 90 + i * 28, (L ? 1 : -1) * spd * 1.1, spd * 0.5, i * 110); }
+    else for (let i = 0; i < 9; i++) mk(rand(30, W - 30), -30, frand(-30, 30), spd * frand(0.9, 1.3), i * 120);
+  }
+  swarmGolden() {
+    const hp = 4 + this.loop;
+    const e = this.makeEnemy('tank', { state: 'swarm', portalMob: true, golden: true, hp, maxHp: hp, score: 1500, tint: 0xffd23f });
+    e.setVisible(true).setPosition(rand(60, W - 60), -40).setTint(0xffd23f).setVelocity(frand(-40, 40), 110);
   }
 
   exitPortal() {
@@ -4094,28 +4096,35 @@ class Game extends Phaser.Scene {
     this.clearHazard();
     for (const e of this.enemies.getChildren().slice()) {
       const st = e.getData('state');
-      if (e.active && (st === 'portalShip' || st === 'meteor' || st === 'kamikaze')) e.destroy();
+      if (e.active && (st === 'swarm' || st === 'meteor' || st === 'kamikaze')) e.destroy();
     }
     this.ebullets.getChildren().forEach(b => b.active && b.disableBody(true, true));
     this.tweens.add({ targets: this.portalTint, fillAlpha: 0, duration: 600, onComplete: () => this.portalTint.setVisible(false) });
     this.portalEdge.clear();
+    if (this.portalText) { this.portalText.destroy(); this.portalText = null; }
     this.cameras.main.flash(400, 255, 255, 255);
+    const px = this.player.x, py = this.player.y;
     if (pt.good) {
+      this.dropCoins(px, py - 120, Math.min(30, 6 + Math.floor(pt.kills / 4)));
       if (!pt.hit) {
         this.addScore(pt.gain);
-        this.banner('PERFECT WARP!! x2', `ไม่ชนเลย · โบนัส ${fmt(pt.gain)} x2 = ${fmt(pt.gain * 2)}`, { rainbow: true, size: 40 });
-        sfx.fanfare();
-      } else this.banner('ออกจากรูหนอน', `โบนัส +${fmt(pt.gain)} (ชนแล้ว ไม่ได้ x2)`, { size: 34 });
+        this.banner('PERFECT FRENZY!! x2', `ฆ่า ${pt.kills} ตัว · ${fmt(pt.gain)} x2 = ${fmt(pt.gain * 2)}`, { rainbow: true, size: 40 });
+        if (Math.random() < 0.5) this.dropPowerup(px, py - 170, 'ticket');
+      } else this.banner('ออกจากรูหนอน', `ฆ่า ${pt.kills} ตัว · +${fmt(pt.gain)} (ชนแล้ว ไม่ได้ x2)`, { size: 34 });
+      sfx.fanfare();
     } else {
-      this.banner('รอดจากโซนอันตราย!', 'ได้คริสตัลโบนัส', { size: 36 });
-      this.dropCoins(this.player.x, this.player.y - 120, 15 + this.loop * 3);
-      if (Math.random() < 0.3) this.dropPowerup(this.player.x, this.player.y - 160, 'ticket');
+      this.banner('รอดจากโซนอันตราย!', `ฆ่า ${pt.kills} ตัว · ได้คริสตัล + ไอเท็ม`, { size: 36 });
+      this.dropCoins(px, py - 120, 25 + this.loop * 5);
+      this.dropPowerup(px - 50, py - 170);
+      this.dropPowerup(px + 50, py - 170);
+      if (Math.random() < 0.5) this.dropPowerup(px, py - 220, 'ticket');
       sfx.fanfare();
     }
     this.portal = null;
     this.updateHud();
     this.time.delayedCall(1600, () => { if (!this.over) this.nextWave(); });
   }
+
 
   cargoShip() {
     this.banner('ยานขนเสบียง!', 'ยิงให้แตกก่อนหนีไป ได้ไอเท็ม 3 ชิ้น', { size: 32, y: H * 0.3 });
@@ -4611,7 +4620,6 @@ class Game extends Phaser.Scene {
   // =========================================================
   hitEnemy(b, e) {
     if (!b.active || !e.active || !e.visible) return;
-    if (e.getData('type') === 'bonusShip') return this.hitBonusShip(b, e);
     // โล่หมุนของบอส: ไม่ลอดช่อง = ถูกกัน (ลำแสงก็เช่นกัน)
     if (e.getData('boss') && this.time.now < this.bossShieldUntil && !b.passed) {
       if (!this.inShieldGap(b.x, b.y)) { this.grazeSparks.explode(2, b.x, b.y); b.disableBody(true, true); return; }
@@ -4789,6 +4797,15 @@ class Game extends Phaser.Scene {
       const bonus = state === 'diving' ? 50 : 0;
       const pts = Math.round((e.getData('score') + bonus) * this.multiplier / 10) * 10;
       this.addScore(pts);
+      if (e.getData('portalMob') && this.portal) {   // รูหนอน: นับแต้ม (ไว้คูณ x2) + ของหล่นเพิ่มในโซน FRENZY
+        this.portal.kills++;
+        this.portal.gain += pts;
+        if (this.portal.good) {
+          if (e.getData('golden')) this.dropCoins(x, y, 8); else if (Math.random() < 0.5) this.dropCoins(x, y, 1);
+          if (e.getData('golden') && Math.random() < 0.15) this.dropPowerup(x + 30, y, 'ticket');
+          else if (Math.random() < 0.06) this.dropPowerup(x, y);
+        }
+      }
       if (this.multiplier >= 2 && !isBoss) this.popText(x, y - 10, '+' + fmt(pts), this.fever ? '#fff35a' : '#ffe9b0');
       const c = ENEMIES[type] ? ENEMIES[type].coin : [1, 20];
       if (Math.random() < c[0]) this.dropCoins(x, y, c[1]);
@@ -6049,7 +6066,7 @@ class Game extends Phaser.Scene {
     for (const p of this.powerups.getChildren().slice()) if (p.y > H + 40) p.destroy();
     for (const e of this.enemies.getChildren().slice()) {
       const st = e.getData('state');
-      if ((st === 'kamikaze' || st === 'meteor') && (e.y > H + 60 || e.x < -60 || e.x > W + 60)) e.destroy();
+      if ((st === 'kamikaze' || st === 'meteor' || st === 'swarm') && (e.y > H + 60 || e.x < -60 || e.x > W + 60)) e.destroy();
       else if (st === 'cargo' && ((e.body.velocity.x > 0 && e.x > W + 80) || (e.body.velocity.x < 0 && e.x < -80))) e.destroy();
     }
 
