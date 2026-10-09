@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PvP Arena Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #05030f; --panel: #0d0b22; --line: #2a2a55; --text: #e8f3ff; --dim: #8b93b8; --me: #36f1ff; --opp: #ffb000; --gold: #ffd23f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Chakra Petch", system-ui, sans-serif; }
+  body { background: radial-gradient(1000px 500px at 50% -10%, #1a0f3a 0%, transparent 60%), var(--bg); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 24px 16px 70px; }
+  h1 { font-size: 28px; margin: 6px 0 4px; }
+  h1 small { font-size: 14px; color: var(--dim); font-weight: 500; margin-left: 8px; }
+  h2 { font-size: 21px; margin: 40px 0 8px; padding-left: 12px; border-left: 4px solid var(--gold); }
+  .lead { color: var(--dim); margin: 0 0 16px; line-height: 1.6; }
+  .main { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .phone { width: 360px; max-width: calc(100vw - 32px); aspect-ratio: 360 / 680; border-radius: 34px; border: 2px solid #2d2d5e; overflow: hidden;
+    box-shadow: 0 0 0 6px #0c0a20, 0 20px 60px rgba(0,0,0,.6); background: #05030f; }
+  .phone canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+  .side { flex: 1; min-width: 280px; max-width: 520px; }
+  .ctrl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .ctrl button { font: 500 14px "Chakra Petch", sans-serif; color: var(--text); background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+  .ctrl button.on { background: var(--gold); color: #05030f; border-color: var(--gold); font-weight: 700; }
+  .lbl { font-size: 12px; color: var(--dim); margin: 14px 0 6px; letter-spacing: 1px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin-top: 14px; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 500; font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; color: #05030f; }
+  ul { margin: 6px 0; padding-left: 20px; line-height: 1.75; font-size: 14px; }
+  ul li::marker { color: var(--gold); }
+  .dim { color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PvP ARENA · ต่อสู้ 1 ต่อ 1 <small>หน้าพรีวิวดีไซน์ (ยังไม่ได้ใส่เกม)</small></h1>
+  <p class="lead">กดในจอได้เลย: <b>หาคู่ต่อสู้</b> → เรดาร์หาคู่ → <b>ฉาก VS</b> → แข่ง 2 จอ (บอทเล่นแทนทั้งสองฝั่ง) → ผลแพ้ชนะ ·
+    หลบกำแพงแบบ <b style="color:var(--gold)">PERFECT</b> หรือ <b style="color:var(--gold)">เคลียร์มอนไว</b> = ชาร์จหลอด เต็มแล้วยิงการโจมตีข้ามไปจออีกฝ่าย</p>
+  <div class="main">
+    <div class="phone"><canvas id="cv"></canvas></div>
+    <div class="side">
+      <div class="lbl">ข้ามไปหน้า</div>
+      <div class="ctrl" id="jump">
+        <button data-s="lobby">① Matching</button><button data-s="search">② กำลังหาคู่</button><button data-s="vs">③ ฉาก VS</button>
+        <button data-s="battle">④ แข่ง 2 จอ</button><button data-s="result">⑤ ผลการแข่ง</button>
+      </div>
+      <div class="lbl">รูปแบบจอแข่ง</div>
+      <div class="ctrl" id="layout"><button data-l="equal" class="on">แบ่งครึ่งเท่ากัน</button><button data-l="big">จอเราใหญ่ + จอคู่แข่งเล็ก</button></div>
+
+      <div class="card">
+        <h3>ทำอะไร → ส่งอะไรไปจออีกฝ่าย</h3>
+        <table>
+          <tr><th>ทำได้</th><th>ชาร์จ</th><th>ถ้าหลอดเต็มจากสิ่งนี้ จะส่ง</th></tr>
+          <tr><td>หลบกำแพงเลเซอร์ผ่านช่อง <b>PERFECT</b></td><td>+25</td><td><span class="chip" style="background:#ffb84d">กำแพงคู่</span> ช่องแคบกว่าปกติ</td></tr>
+          <tr><td>เคลียร์ทั้ง wave ภายใน 9 วิ <b>เคลียร์ไว!</b></td><td>+35</td><td><span class="chip" style="background:#ff7af0">ฝูงมอนบุก</span> 9 ตัวพุ่งลงมา</td></tr>
+          <tr><td>ยิงมอนแตก</td><td>+4/ตัว</td><td><span class="chip" style="background:#ff6b6b">ม่านกระสุน</span> 3 แถว มีช่องเดียว</td></tr>
+          <tr><td>โอกาส 10% ทุกครั้งที่ส่ง</td><td>–</td><td><span class="chip" style="background:#c18bff">หมอกมืด</span> มองเห็นแค่รอบยาน 3.5 วิ</td></tr>
+        </table>
+        <p class="dim" style="font-size:13px;margin:10px 0 0">🛡 <b style="color:var(--text)">หักล้าง:</b> มีการโจมตีกำลังมาหาเรา (ขึ้นป้ายเตือน 1.2 วิ) แล้วหลอดเราเต็มพอดี = ยกเลิกการโจมตีนั้นแทนการส่ง</p>
+      </div>
+
+      <div class="card">
+        <h3>กติกาโหมด PvP</h3>
+        <ul>
+          <li>แข่ง <b>60 วิ</b> · ชีวิต 3 · ใครตายก่อนแพ้ · หมดเวลาวัดแต้ม</li>
+          <li>ด่านสุ่มจาก <b>seed เดียวกัน</b> ทั้งสองฝั่งเจอมอน/กำแพงชุดเดียวกัน (ต่างกันแค่ที่อีกฝ่ายส่งมา)</li>
+          <li><b>สิ่งกีดขวางเร็วกว่าปกติ:</b> กำแพงตกเร็ว ×1.45 และมาถี่ทุก 3.6 วิ (โหมดปกติรอบแรก ~5–6 วิ)</li>
+          <li><b>สนามเท่าเทียม:</b> ยานทุกลำปรับเป็นเลเวลเดียวกัน ใช้สกิลได้ · ปิดสมบัติชุบชีวิต (ขนนก/ซูเปอร์โนวา)</li>
+          <li>ไม่มีคนออนไลน์ภายใน 15 วิ → สู้กับ <b>เงา</b> (บันทึกการเล่นจริงของผู้เล่นอื่น) จะได้มีคู่ทุกครั้ง</li>
+          <li>ชนะ <b style="color:var(--gold)">+25 🏆</b> · แพ้ −15 🏆 · ชนะติดกันได้โบนัส · ตารางอันดับ PvP รายสัปดาห์</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// หน้าพรีวิวโหมด PvP — เปิดไฟล์นี้ตรงๆ ในเบราว์เซอร์ได้เลย (ไม่ได้ deploy) · วาดด้วย canvas ทั้งหมด บอทเล่นแทนทั้งสองฝั่ง
+const W = 360, H = 680, DPR = 2, TAU = Math.PI * 2, FONT = '"Chakra Petch", sans-serif';
+const cv = document.getElementById('cv'), c = cv.getContext('2d');
+cv.width = W * DPR; cv.height = H * DPR;
+const ME_COL = '#36f1ff', OPP_COL = '#ffb000';
+const ME = { name: 'คุณ (EvoTest)', ship: 'โนวา', trophy: 1240, col: ME_COL };
+const POOL = [
+  { name: 'PhantomX', ship: 'แฟนทอม', trophy: 1310 }, { name: 'แมวอวกาศ', ship: 'พายุ', trophy: 1195 },
+  { name: 'NovaKing', ship: 'โนวา', trophy: 1402 }, { name: 'ดาวตกไม่หยุด', ship: 'ฟีนิกซ์', trophy: 1288 }, { name: 'เช่นช้างน้อย', ship: 'ปริซึม', trophy: 1350 },
+];
+let OPP = Object.assign({ col: OPP_COL }, POOL[0]);
+const rgba = (h, a) => `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a})`;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = k => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
+function txt(s, x, y, size, col, align = 'center', weight = 700, glow) {
+  c.save(); c.font = `${weight} ${size}px ${FONT}`; c.textAlign = align; c.textBaseline = 'middle'; c.fillStyle = col;
+  if (glow) { c.shadowColor = glow; c.shadowBlur = size * 0.6; }
+  c.fillText(s, x, y); c.restore();
+}
+function rrect(x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+// ยานนีออน (dir 1 = หัวขึ้น, -1 = หัวลง)
+function ship(x, y, s, col, dir = 1, t = 0) {
+  c.save(); c.translate(x, y); c.scale(s, s * dir);
+  c.save(); c.globalCompositeOperation = 'lighter';
+  const L = 26 + Math.sin(t * 30) * 4;
+  c.fillStyle = (() => { const g = c.createLinearGradient(0, 14, 0, 14 + L); g.addColorStop(0, '#fff'); g.addColorStop(0.3, col); g.addColorStop(1, rgba(col, 0)); return g; })();
+  for (const fx of [-7, 7]) { c.beginPath(); c.moveTo(fx - 4, 14); c.lineTo(fx, 14 + L); c.lineTo(fx + 4, 14); c.fill(); }
+  c.restore();
+  c.shadowColor = col; c.shadowBlur = 16; c.lineWidth = 2.2; c.strokeStyle = col; c.fillStyle = rgba(col, 0.18);
+  c.beginPath(); [[0, -30], [8, -10], [30, 10], [30, 16], [10, 12], [6, 18], [-6, 18], [-10, 12], [-30, 16], [-30, 10], [-8, -10]].forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath();
+  c.fill(); c.stroke();
+  c.shadowBlur = 8; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(0, -8, 3.5, 8, 0, 0, TAU); c.fill();
+  c.restore();
+}
+// ดาวพื้นหลัง
+const STARS = Array.from({ length: 120 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() < 0.1 ? 1.6 : 1, a: 0.2 + Math.random() * 0.6, sp: 0.5 + Math.random() }));
+function stars(x0, y0, w, h, t, speed = 30, col = '#ffffff') {
+  for (const s of STARS) { const y = y0 + ((s.y * h + t * speed * s.sp) % h); c.fillStyle = rgba(col, s.a); c.fillRect(x0 + s.x * w, y, s.s, s.s); }
+}
+
+// ================================================================ การแข่ง (สนามขนาด 240×600 ต่อฝั่ง)
+const FW = 240, FH = 600, MATCH = 60;
+const ATK = {
+  wall:    { name: 'กำแพงคู่',   col: '#ffb84d', icon: '▤' },
+  swarm:   { name: 'ฝูงมอนบุก',  col: '#ff7af0', icon: '✸' },
+  curtain: { name: 'ม่านกระสุน', col: '#ff6b6b', icon: '⁘' },
+  fog:     { name: 'หมอกมืด',    col: '#c18bff', icon: '◐' },
+};
+class Sim {
+  constructor(o) { Object.assign(this, o); this.reset(); }
+  reset() {
+    Object.assign(this, { x: 120, y: 540, tx: 120, lives: 3, inv: 0, score: 0, charge: 0, chargeSrc: 'kill', bul: [], en: [], eb: [], walls: [], fx: [], pops: [],
+      incoming: [], fog: 0, fireT: 0, wallT: 2.2, wave: 0, waveStart: 0, time: 0, clearing: false, nextWaveAt: 0, dead: false, shake: 0,
+      stats: { sent: 0, perfect: 0, fast: 0, cancel: 0, kills: 0 } });
+    this.spawnWave();
+  }
+  pop(s, x, y, col = '#fff', size = 13) { this.pops.push({ s, x, y, col, size, t: 0 }); }
+  spawnWave() {
+    this.wave++; this.waveStart = this.time;
+    for (let i = 0; i < 8; i++) this.en.push({ x: 45 + (i % 4) * 50, y: -30 - Math.floor(i / 4) * 36, ty: 70 + Math.floor(i / 4) * 38, hp: 2, kind: 'n', ph: Math.random() * TAU });
+  }
+  addWall(gw, y = -12) { const gx = gw / 2 + 10 + Math.random() * (FW - gw - 20); this.walls.push({ y, gx, gw }); }
+  hit() {
+    if (this.inv > 0 || this.dead) return;
+    this.lives--; this.inv = 1.6; this.shake = 0.35;
+    this.boom(this.x, this.y, '#ff6b6b', 18); this.pop('-1 ชีวิต', this.x, this.y - 30, '#ff8a8a', 14);
+    if (this.lives <= 0) { this.dead = true; this.boom(this.x, this.y, '#ffffff', 40); }
+  }
+  boom(x, y, col, n = 10) { for (let i = 0; i < n; i++) { const a = Math.random() * TAU, v = rnd(40, 160); this.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: rnd(0.3, 0.7), col }); } }
+  addCharge(v, src) { if (this.dead) return; this.charge += v; this.chargeSrc = src; }
+  apply(type) {
+    this.pop(`${ATK[type].name}!`, FW / 2, 110, ATK[type].col, 16);
+    if (type === 'swarm') for (let i = 0; i < 9; i++) this.en.push({ x: rnd(20, FW - 20), y: -20 - i * 26, kind: 's', hp: 1, ph: Math.random() * TAU });
+    if (type === 'wall') { this.addWall(46, -12); this.addWall(46, -150); }
+    if (type === 'curtain') { for (let r = 0; r < 3; r++) { const gap = Math.floor(Math.random() * 8); for (let k = 0; k < 9; k++) if (k !== gap && k !== gap + 1) this.eb.push({ x: 12 + k * 27, y: -10 - r * 60, vx: 0, vy: 150 }); } }
+    if (type === 'fog') this.fog = 3.5;
+  }
+  update(dt) {
+    for (const p of this.pops) p.t += dt; this.pops = this.pops.filter(p => p.t < 1.1);
+    for (const f of this.fx) { f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; } this.fx = this.fx.filter(f => f.t < f.life);
+    this.shake = Math.max(0, this.shake - dt);
+    if (this.dead) return;
+    this.time += dt; this.inv = Math.max(0, this.inv - dt); this.fog = Math.max(0, this.fog - dt);
+    // บอท: มีกำแพงใกล้ → ไปที่ช่อง (มีพลาดตามฝีมือ) · ไม่มี → ตามมอนตัวล่างสุด และหลบกระสุน
+    const wall = this.walls.filter(w => !w.passed && w.y < this.y && this.y - w.y < 250).sort((a, b) => b.y - a.y)[0];
+    if (wall) { if (wall.aim === undefined) wall.aim = wall.gx + (Math.random() - 0.5) * wall.gw * (1.35 - this.skill) * 1.7; this.tx = wall.aim; }
+    else {
+      const tgt = this.en.filter(e => e.y > 0).sort((a, b) => b.y - a.y)[0];
+      if (tgt) this.tx = tgt.x + Math.sin(this.time * 2) * 10;
+      for (const b of this.eb) if (b.y < this.y && this.y - b.y < 80 && Math.abs(b.x - this.x) < 18 && Math.random() < this.skill) this.tx = this.x + (b.x < this.x ? 40 : -40);
+    }
+    this.x += clamp(this.tx - this.x, -235 * dt, 235 * dt); this.x = clamp(this.x, 14, FW - 14);
+    // ยิง
+    this.fireT -= dt;
+    if (this.fireT <= 0) { this.fireT = 0.13; this.bul.push({ x: this.x - 6, y: this.y - 20 }, { x: this.x + 6, y: this.y - 20 }); }
+    for (const b of this.bul) b.y -= 520 * dt;
+    this.bul = this.bul.filter(b => b.y > -10 && !b.dead);
+    // มอน
+    for (const e of this.en) {
+      if (e.kind === 'n') { e.y += clamp(e.ty - e.y, -90 * dt, 90 * dt); e.x += Math.sin(this.time * 1.4 + e.ph) * 14 * dt; if (Math.random() < 0.22 * dt && e.y > 20) this.eb.push({ x: e.x, y: e.y + 8, vx: (this.x - e.x) * 0.28, vy: 175 }); }
+      else { e.y += 165 * dt; e.x += clamp(this.x - e.x, -40 * dt, 40 * dt) + Math.sin(this.time * 5 + e.ph) * 30 * dt; if (Math.abs(e.x - this.x) < 15 && Math.abs(e.y - this.y) < 15) { e.dead = true; this.hit(); } }
+      for (const b of this.bul) if (!b.dead && Math.abs(b.x - e.x) < 13 && Math.abs(b.y - e.y) < 13) {
+        b.dead = true; e.hp--;
+        if (e.hp <= 0) { e.dead = true; this.score += 100; this.stats.kills++; this.addCharge(4, 'kill'); this.boom(e.x, e.y, e.kind === 's' ? '#ff7af0' : '#ffd0f6', 8); }
+      }
+    }
+    this.en = this.en.filter(e => !e.dead && e.y < FH + 30);
+    // กระสุนศัตรู
+    for (const b of this.eb) { b.x += b.vx * dt; b.y += b.vy * dt; if (Math.abs(b.x - this.x) < 8 && Math.abs(b.y - this.y) < 10) { b.dead = true; this.hit(); } }
+    this.eb = this.eb.filter(b => !b.dead && b.y < FH + 10);
+    // เคลียร์ wave
+    if (!this.clearing && !this.en.some(e => e.kind === 'n')) {
+      this.clearing = true; this.nextWaveAt = this.time + 1;
+      const took = this.time - this.waveStart;
+      if (took < 9) { this.score += 1000; this.stats.fast++; this.addCharge(35, 'fast'); this.pop(`เคลียร์ไว! ${took.toFixed(1)} วิ`, FW / 2, 200, '#ffd23f', 15); }
+    }
+    if (this.clearing && this.time >= this.nextWaveAt) { this.clearing = false; this.spawnWave(); }
+    // กำแพงเลเซอร์ (เร็วกว่าโหมดปกติ)
+    this.wallT -= dt; if (this.wallT <= 0) { this.wallT = 3.6; this.addWall(64); }
+    for (const w of this.walls) {
+      const prev = w.y; w.y += 175 * dt;
+      if (!w.passed && prev < this.y && w.y >= this.y) {
+        w.passed = true;
+        if (Math.abs(this.x - w.gx) < w.gw / 2 - 9) { this.score += 500; this.stats.perfect++; this.addCharge(25, 'perfect'); this.pop('PERFECT!', this.x, this.y - 40, '#ffd23f', 15); w.flash = 0.3; }
+        else this.hit();
+      }
+      if (w.flash) w.flash = Math.max(0, w.flash - dt);
+    }
+    this.walls = this.walls.filter(w => w.y < FH + 20);
+    // การโจมตีที่กำลังมา
+    for (const a of this.incoming) a.t -= dt;
+    for (const a of this.incoming.filter(a => a.t <= 0)) this.apply(a.type);
+    this.incoming = this.incoming.filter(a => a.t > 0);
+    if (this.charge >= 100) { this.charge -= 100; match.send(this, this.chargeSrc); }
+  }
+}
+
+// ================================================================ ตัวจัดการแมตช์
+const match = {
+  me: null, opp: null, proj: [], feed: [], t: 0, over: false,
+  start() {
+    this.me = new Sim({ side: 'me', col: ME_COL, shot: '#bff8ff', skill: 0.92 });
+    this.opp = new Sim({ side: 'opp', col: OPP_COL, shot: '#c18bff', skill: 0.86 });
+    this.proj = []; this.feed = []; this.t = 0; this.over = false; this.endAt = 0;
+  },
+  other(s) { return s === this.me ? this.opp : this.me; },
+  send(from, src) {
+    if (from.incoming.length) {   // หักล้าง
+      from.incoming.shift(); from.stats.cancel++;
+      from.pop('🛡 หักล้าง!', FW / 2, 140, '#7dff6a', 16);
+      this.log(from, 'หักล้างการโจมตี', '#7dff6a');
+      return;
+    }
+    let type = { perfect: 'wall', fast: 'swarm', kill: 'curtain' }[src] || 'curtain';
+    if (Math.random() < 0.1) type = 'fog';
+    from.stats.sent++;
+    this.proj.push({ from, to: this.other(from), type, t: 0 });
+    this.log(from, `ส่ง ${ATK[type].name}`, ATK[type].col);
+  },
+  log(from, s, col) { this.feed.unshift({ who: from === this.me ? 'คุณ' : OPP.name, s, col, side: from.side }); this.feed.length = Math.min(this.feed.length, 4); },
+  update(dt) {
+    if (this.over) { this.me.update(dt); this.opp.update(dt); return; }
+    this.t += dt;
+    this.me.update(dt); this.opp.update(dt);
+    for (const p of this.proj) { p.t += dt / 0.75; if (p.t >= 1 && !p.done) { p.done = true; p.to.incoming.push({ type: p.type, t: 1.2, max: 1.2 }); } }
+    this.proj = this.proj.filter(p => p.t < 1.15);
+    if (this.t >= MATCH || this.me.dead || this.opp.dead) { this.over = true; this.endAt = now(); }
+  },
+  winner() {
+    if (this.me.dead !== this.opp.dead) return this.me.dead ? 'opp' : 'me';
+    return this.me.score >= this.opp.score ? 'me' : 'opp';
+  },
+};
+
+// ================================================================ วาดจอแข่ง
+let layout = 'equal';
+function rects() {
+  return layout === 'equal'
+    ? { me: { x: 4, y: 64, w: 174 }, opp: { x: 182, y: 64, w: 174 } }
+    : { me: { x: 4, y: 64, w: 228 }, opp: { x: 236, y: 64, w: 120 } };
+}
+function drawPane(sim, r, t, label) {
+  const s = r.w / FW, h = FH * s, mine = sim.side === 'me';
+  const sk = sim.shake > 0 ? (Math.random() - 0.5) * 6 : 0;
+  c.save(); c.translate(r.x + sk, r.y); rrect(0, 0, r.w, h, 12); c.clip();
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0b0624'); g.addColorStop(1, '#050312'); c.fillStyle = g; c.fillRect(0, 0, r.w, h);
+  stars(0, 0, r.w, h, t, 40 * s);
+  c.scale(s, s);
+  // กำแพงเลเซอร์ (สีส้มทอง ไม่ซ้ำกับกระสุนแดง)
+  for (const w of sim.walls) {
+    const col = w.flash ? '#ffffff' : (w.gw < 50 ? '#ff9a3c' : '#ffb84d');
+    c.save(); c.shadowColor = col; c.shadowBlur = 14; c.fillStyle = rgba(col, 0.9);
+    c.fillRect(0, w.y - 3, w.gx - w.gw / 2, 6); c.fillRect(w.gx + w.gw / 2, w.y - 3, FW, 6);
+    c.fillStyle = '#fff'; c.fillRect(w.gx - w.gw / 2 - 4, w.y - 7, 4, 14); c.fillRect(w.gx + w.gw / 2, w.y - 7, 4, 14);
+    c.restore();
+    c.fillStyle = rgba(col, 0.08); c.fillRect(0, w.y - 18, FW, 36);
+  }
+  // มอน
+  for (const e of sim.en) {
+    const col = e.kind === 's' ? '#ff7af0' : '#ff9ae8', sz = e.kind === 's' ? 8 : 11;
+    c.save(); c.translate(e.x, e.y); c.shadowColor = col; c.shadowBlur = 10; c.strokeStyle = col; c.lineWidth = 2; c.fillStyle = 'rgba(70,10,60,.85)';
+    c.beginPath(); c.moveTo(0, sz); c.lineTo(sz, -sz * 0.2); c.lineTo(sz * 0.6, -sz); c.lineTo(0, -sz * 0.5); c.lineTo(-sz * 0.6, -sz); c.lineTo(-sz, -sz * 0.2); c.closePath(); c.fill(); c.stroke(); c.restore();
+  }
+  // กระสุนเรา/คู่แข่ง (ไม่ใช้แดง) · กระสุนศัตรู (แดง)
+  c.save(); c.shadowColor = sim.shot; c.shadowBlur = 8; c.fillStyle = sim.shot; for (const b of sim.bul) c.fillRect(b.x - 1.5, b.y, 3, 11); c.restore();
+  for (const b of sim.eb) { c.save(); c.shadowColor = '#ff3b3b'; c.shadowBlur = 8; c.fillStyle = '#ff3b3b'; c.beginPath(); c.arc(b.x, b.y, 4, 0, TAU); c.fill(); c.fillStyle = '#ffd0d0'; c.beginPath(); c.arc(b.x, b.y, 1.6, 0, TAU); c.fill(); c.restore(); }
+  // ยาน
+  if (!sim.dead && !(sim.inv > 0 && Math.floor(t * 14) % 2)) ship(sim.x, sim.y, 0.62, sim.col, 1, t);
+  c.save(); c.globalCompositeOperation = 'lighter'; for (const f of sim.fx) { c.fillStyle = rgba(f.col, 1 - f.t / f.life); c.fillRect(f.x - 1.5, f.y - 1.5, 3, 3); } c.restore();
+  // หมอกมืด
+  if (sim.fog > 0) {
+    const a = Math.min(1, sim.fog / 0.4) * 0.82, gr = c.createRadialGradient(sim.x, sim.y, 40, sim.x, sim.y, 120);
+    gr.addColorStop(0, 'rgba(10,4,24,0)'); gr.addColorStop(1, `rgba(10,4,24,${a})`); c.fillStyle = gr; c.fillRect(0, 0, FW, FH);
+  }
+  c.restore();
+  // ป้ายเตือนการโจมตีที่กำลังมา
+  c.save(); c.translate(r.x, r.y);
+  sim.incoming.forEach((a, i) => {
+    const k = a.t / a.max, blink = Math.floor(t * 8) % 2 ? 1 : 0.6, y = 22 + i * 26, A = ATK[a.type];
+    c.globalAlpha = blink; rrect(6, y - 10, r.w - 12, 20, 6); c.fillStyle = rgba(A.col, 0.22); c.fill(); c.strokeStyle = A.col; c.lineWidth = 1.5; c.stroke();
+    c.fillStyle = A.col; c.fillRect(6, y + 8, (r.w - 12) * k, 2); c.globalAlpha = 1;
+    txt(`⚠ ${A.name}`, r.w / 2, y, r.w < 140 ? 10 : 12, '#fff');
+  });
+  // ข้อความลอย
+  for (const p of sim.pops) txt(p.s, p.x * s, p.y * s - p.t * 30, Math.max(9, p.size * Math.min(1, s + 0.15)), rgba(p.col, 1 - p.t / 1.1), 'center', 700, p.col);
+  // กรอบ + ป้ายชื่อ
+  rrect(0, 0, r.w, h, 12); c.strokeStyle = rgba(sim.col, mine ? 0.9 : 0.7); c.lineWidth = 2; c.stroke();
+  rrect(r.w / 2 - 34, h - 16, 68, 18, 8); c.fillStyle = 'rgba(5,3,15,.8)'; c.fill();
+  txt(label, r.w / 2, h - 7, 10, sim.col);
+  if (sim.dead) { c.fillStyle = 'rgba(5,3,15,.6)'; c.fillRect(0, 0, r.w, h); txt('K.O.', r.w / 2, h / 2, r.w < 140 ? 26 : 38, '#ff6b6b', 'center', 700, '#ff3b3b'); }
+  c.restore();
+  // หลอดชาร์จใต้จอ
+  const by = r.y + h + 8;
+  rrect(r.x, by, r.w, 10, 5); c.fillStyle = 'rgba(255,255,255,.08)'; c.fill();
+  const fw = r.w * clamp(sim.charge / 100, 0, 1);
+  if (fw > 0) { rrect(r.x, by, Math.max(10, fw), 10, 5); const gg = c.createLinearGradient(r.x, 0, r.x + r.w, 0); gg.addColorStop(0, sim.col); gg.addColorStop(1, '#ffffff'); c.fillStyle = gg; c.fill(); }
+  txt(`ATTACK ${Math.floor(clamp(sim.charge, 0, 100))}%`, r.x + r.w / 2, by + 20, 10, '#c9d3f0', 'center', 500);
+  return { h, by };
+}
+function drawBattle(t) {
+  const R = rects(), m = match;
+  c.fillStyle = '#05030f'; c.fillRect(0, 0, W, H);
+  // แถบบน: ชื่อ แต้ม เวลา ชีวิต
+  const hearts = n => '♥'.repeat(Math.max(0, n)) + '♡'.repeat(3 - Math.max(0, n));
+  txt('คุณ', 12, 16, 11, ME_COL, 'left'); txt(m.me.score.toLocaleString(), 12, 34, 18, '#fff', 'left'); txt(hearts(m.me.lives), 12, 52, 11, '#ff6b8a', 'left', 500);
+  txt(OPP.name, W - 12, 16, 11, OPP_COL, 'right'); txt(m.opp.score.toLocaleString(), W - 12, 34, 18, '#fff', 'right'); txt(hearts(m.opp.lives), W - 12, 52, 11, '#ff6b8a', 'right', 500);
+  const left = Math.max(0, MATCH - m.t);
+  txt(`0:${String(Math.ceil(left)).padStart(2, '0')}`, W / 2, 24, 20, left < 10 ? '#ff6b6b' : '#fff');
+  // แถบแต้มเทียบกัน
+  const tot = m.me.score + m.opp.score || 1, mid = 110 + 140 * (m.me.score / tot);
+  c.fillStyle = ME_COL; c.fillRect(110, 44, mid - 110, 4); c.fillStyle = OPP_COL; c.fillRect(mid, 44, 250 - mid, 4);
+  txt('VS', W / 2, 55, 9, '#8b93b8');
+  const a = drawPane(m.me, R.me, t, 'คุณ'), b = drawPane(m.opp, R.opp, t, layout === 'equal' ? OPP.name : 'คู่แข่ง');
+  // ลูกพลังการโจมตีบินข้ามจอ
+  for (const p of m.proj) {
+    const fr = p.from === m.me ? R.me : R.opp, to = p.from === m.me ? R.opp : R.me, fh = p.from === m.me ? a : b;
+    const x0 = fr.x + fr.w / 2, y0 = fh.by, x1 = to.x + to.w / 2, y1 = to.y + 24, k = ease(Math.min(1, p.t));
+    const x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k - Math.sin(k * Math.PI) * 120, col = ATK[p.type].col;
+    if (p.t < 1) {
+      c.save(); c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 8; i++) { const kk = ease(Math.max(0, Math.min(1, p.t) - i * 0.03)), tx = x0 + (x1 - x0) * kk, ty = y0 + (y1 - y0) * kk - Math.sin(kk * Math.PI) * 120;
+        c.fillStyle = rgba(col, 0.5 - i * 0.06); c.beginPath(); c.arc(tx, ty, 9 - i, 0, TAU); c.fill(); }
+      c.shadowColor = col; c.shadowBlur = 24; c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, 7, 0, TAU); c.fill(); c.restore();
+      txt(ATK[p.type].name, x, y - 18, 11, col, 'center', 700, '#000');
+    } else { const k2 = (p.t - 1) / 0.15; c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = rgba(col, 1 - k2); c.lineWidth = 3; c.beginPath(); c.arc(x1, y1, 10 + k2 * 40, 0, TAU); c.stroke(); c.restore(); }
+  }
+  // บันทึกเหตุการณ์ (ถ้ามีที่ว่างด้านล่าง)
+  const fy = Math.max(a.by, b.by) + 38;
+  if (fy < H - 30) {
+    txt('เหตุการณ์ล่าสุด', 14, fy, 11, '#8b93b8', 'left', 500);
+    m.feed.forEach((f, i) => { txt(`${f.side === 'me' ? '▲' : '▼'} ${f.who}: ${f.s}`, 14, fy + 20 + i * 19, 12, f.col, 'left', 500); });
+  }
+  if (m.over) {
+    const k = clamp((now() - m.endAt) / 600, 0, 1);
+    c.fillStyle = `rgba(5,3,15,${0.55 * k})`; c.fillRect(0, 0, W, H);
+    txt(m.t >= MATCH ? 'TIME UP!' : 'K.O.!', W / 2, H * 0.42, 44 * (0.6 + 0.4 * ease(k)), '#ffd23f', 'center', 700, '#ff8a00');
+  }
+}
+
+// ================================================================ หน้า Matching / หาคู่ / VS / ผล
+let state = 'lobby', st0 = 0, searchFound = 2.6;
+const now = () => performance.now() / 1000;
+function go(s) {
+  state = s; st0 = now();
+  if (s === 'search') { searchFound = rnd(2.2, 3.4); }
+  if (s === 'vs' || s === 'search') OPP = Object.assign({ col: OPP_COL }, POOL[Math.floor(Math.random() * POOL.length)]);
+  if (s === 'battle') match.start();
+  if (s === 'result' && !match.me) { match.start(); match.me.score = 48200; match.opp.score = 41700; match.me.stats = { sent: 5, perfect: 7, fast: 3, cancel: 1, kills: 61 }; match.opp.stats = { sent: 4, perfect: 5, fast: 2, cancel: 0, kills: 54 }; match.opp.lives = 0; match.opp.dead = true; }
+  document.querySelectorAll('#jump button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+}
+const BTN = { lobby: { x: 50, y: 520, w: 260, h: 64 }, again: { x: 40, y: 560, w: 136, h: 54 }, back: { x: 184, y: 560, w: 136, h: 54 }, cancel: { x: 110, y: 590, w: 140, h: 42 } };
+function button(b, label, sub, col = '#ffd23f', t = 0, primary = true) {
+  c.save();
+  if (primary) { c.shadowColor = col; c.shadowBlur = 18 + Math.sin(t * 4) * 8; }
+  rrect(b.x, b.y, b.w, b.h, 16);
+  const g = c.createLinearGradient(0, b.y, 0, b.y + b.h);
+  if (primary) { g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, col); g.addColorStop(1, '#c08a00'); } else { g.addColorStop(0, 'rgba(255,255,255,.12)'); g.addColorStop(1, 'rgba(255,255,255,.05)'); }
+  c.fillStyle = g; c.fill(); if (!primary) { c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1.5; c.stroke(); }
+  c.restore();
+  txt(label, b.x + b.w / 2, b.y + b.h / 2 - (sub ? 7 : 0), primary ? 20 : 15, primary ? '#1a1000' : '#fff');
+  if (sub) txt(sub, b.x + b.w / 2, b.y + b.h / 2 + 13, 10, primary ? '#4a3400' : '#c9d3f0', 'center', 500);
+}
+function bg(t, col1 = '#1a0f3a') {
+  const g = c.createRadialGradient(W / 2, H * 0.4, 20, W / 2, H * 0.4, H * 0.8); g.addColorStop(0, col1); g.addColorStop(1, '#05030f');
+  c.fillStyle = g; c.fillRect(0, 0, W, H); stars(0, 0, W, H, t, 12);
+}
+function drawLobby(t) {
+  bg(t);
+  txt('PVP ARENA', W / 2, 70, 34, '#fff', 'center', 700, '#36f1ff');
+  txt('ต่อสู้ 1 ต่อ 1 · 60 วินาที', W / 2, 102, 13, '#c9d3f0', 'center', 500);
+  rrect(W / 2 - 70, 122, 140, 30, 15); c.fillStyle = 'rgba(255,210,63,.12)'; c.fill(); c.strokeStyle = 'rgba(255,210,63,.5)'; c.stroke();
+  txt(`🏆 ${ME.trophy.toLocaleString()} · แรงค์ทอง II`, W / 2, 137, 12, '#ffd23f');
+  // แท่นยาน
+  const cy = 300 + Math.sin(t * 1.5) * 6;
+  c.save(); c.globalCompositeOperation = 'lighter';
+  const g = c.createRadialGradient(W / 2, 360, 10, W / 2, 360, 140); g.addColorStop(0, 'rgba(54,241,255,.35)'); g.addColorStop(1, 'rgba(54,241,255,0)'); c.fillStyle = g; c.fillRect(0, 220, W, 280);
+  c.strokeStyle = 'rgba(54,241,255,.6)'; c.lineWidth = 2; c.beginPath(); c.ellipse(W / 2, 372, 90, 18, 0, 0, TAU); c.stroke();
+  c.strokeStyle = 'rgba(54,241,255,.25)'; c.beginPath(); c.ellipse(W / 2, 372, 120 + Math.sin(t * 2) * 6, 26, 0, 0, TAU); c.stroke();
+  c.restore();
+  ship(W / 2, cy, 1.9, ME_COL, 1, t);
+  txt(`${ME.ship} · สนามเท่าเทียม (Lv เท่ากันทุกลำ)`, W / 2, 410, 12, '#c9d3f0', 'center', 500);
+  // สถิติ
+  [['ชนะ', '38'], ['แพ้', '21'], ['ชนะติด', '4🔥']].forEach(([a, b], i) => { const x = 70 + i * 110; txt(b, x, 446, 20, '#fff'); txt(a, x, 468, 11, '#8b93b8', 'center', 500); });
+  button(BTN.lobby, 'หาคู่ต่อสู้', 'ไม่เจอใน 15 วิ → สู้กับเงาของผู้เล่นจริง', '#ffd23f', t);
+  txt('ตารางอันดับ PvP สัปดาห์นี้ · อันดับคุณ #4', W / 2, 620, 12, '#8b93b8', 'center', 500);
+}
+function drawSearch(t) {
+  const e = now() - st0;
+  bg(t, '#0d1a3a');
+  txt('กำลังหาคู่ต่อสู้', W / 2, 70, 22, '#fff');
+  txt(`0:${String(Math.floor(e)).padStart(2, '0')} · ออนไลน์ 3 คน`, W / 2, 98, 12, '#8b93b8', 'center', 500);
+  // เรดาร์
+  const cx = W / 2, cy = 280, R = 120;
+  c.save();
+  for (let i = 1; i <= 3; i++) { c.strokeStyle = `rgba(54,241,255,${0.12 + i * 0.05})`; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, R * i / 3, 0, TAU); c.stroke(); }
+  c.beginPath(); c.moveTo(cx - R, cy); c.lineTo(cx + R, cy); c.moveTo(cx, cy - R); c.lineTo(cx, cy + R); c.stroke();
+  const a = t * 2.4;
+  c.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 24; i++) { c.fillStyle = `rgba(54,241,255,${0.16 * (1 - i / 24)})`; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, R, a - i * 0.04 - 0.04, a - i * 0.04); c.closePath(); c.fill(); }
+  // จุดผู้เล่นบนเรดาร์
+  [[0.6, 1.2], [0.85, 3.9], [0.4, 5.1]].forEach(([d, ang]) => { const diff = ((a - ang) % TAU + TAU) % TAU, al = Math.max(0, 1 - diff / 2.5);
+    c.fillStyle = `rgba(255,176,0,${al})`; c.beginPath(); c.arc(cx + Math.cos(ang) * R * d, cy + Math.sin(ang) * R * d, 5, 0, TAU); c.fill(); });
+  c.restore();
+  ship(cx, cy, 0.8, ME_COL, 1, t);
+  // ชื่อที่วนสุ่ม
+  const found = e >= searchFound, nm = found ? OPP : POOL[Math.floor(t * 12) % POOL.length];
+  rrect(40, 440, 280, 70, 16); c.fillStyle = found ? 'rgba(255,176,0,.15)' : 'rgba(255,255,255,.05)'; c.fill(); c.strokeStyle = found ? OPP_COL : 'rgba(255,255,255,.15)'; c.lineWidth = 1.5; c.stroke();
+  txt(found ? 'เจอคู่ต่อสู้แล้ว!' : 'กำลังจับคู่ตามถ้วยรางวัล ±150 ...', W / 2, 458, 11, found ? OPP_COL : '#8b93b8', 'center', 500);
+  txt(nm.name, W / 2, 486, 22, found ? '#fff' : 'rgba(255,255,255,.5)');
+  txt(`🏆 ${nm.trophy}`, W / 2, 506, 11, '#ffd23f', 'center', 500);
+  if (!found) button(BTN.cancel, 'ยกเลิก', '', '#fff', t, false);
+  if (found && e > searchFound + 0.9) go('vs');
+}
+function drawVS(t) {
+  const e = now() - st0, k = ease(e / 0.55);
+  // พื้นหลังแบ่งทแยง: บนขวา = คู่แข่ง (ส้มทอง) · ล่างซ้าย = เรา (ฟ้า)
+  const yl = H * 0.6, yr = H * 0.4;
+  c.save(); c.beginPath(); c.moveTo(0, 0); c.lineTo(W, 0); c.lineTo(W, yr); c.lineTo(0, yl); c.closePath(); c.clip();
+  let g = c.createLinearGradient(W, 0, 0, H * 0.6); g.addColorStop(0, '#5a3a00'); g.addColorStop(1, '#120800'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 14; i++) { c.fillStyle = 'rgba(255,176,0,.08)'; const y = ((i * 60 + e * 400) % (H + 100)) - 100; c.fillRect(0, y, W, 6); }
+  stars(0, 0, W, H, t, -60, '#ffd27a');
+  c.restore();
+  c.save(); c.beginPath(); c.moveTo(0, yl); c.lineTo(W, yr); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.clip();
+  g = c.createLinearGradient(0, H, W, H * 0.4); g.addColorStop(0, '#003a4a'); g.addColorStop(1, '#020c18'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 14; i++) { c.fillStyle = 'rgba(54,241,255,.07)'; const y = H - (((i * 60 + e * 400) % (H + 100)) - 100); c.fillRect(0, y, W, 6); }
+  stars(0, 0, W, H, t, 60, '#9ff8ff');
+  c.restore();
+  // ยานพุ่งเข้ามา
+  const ox = W * 0.68 + (1 - k) * 260, oy = H * 0.22, mx = W * 0.32 - (1 - k) * 260, my = H * 0.76;
+  ship(ox, oy, 2.4, OPP_COL, -1, t);
+  ship(mx, my, 2.4, ME_COL, 1, t);
+  // ป้ายชื่อ
+  const plate = (x, y, p, col, al) => {
+    c.save(); c.globalAlpha = k; rrect(al === 'left' ? x : x - 170, y - 26, 170, 54, 10); c.fillStyle = 'rgba(5,3,15,.65)'; c.fill(); c.strokeStyle = col; c.lineWidth = 1.5; c.stroke(); c.restore();
+    const tx = al === 'left' ? x + 12 : x - 12;
+    txt(p.name, tx, y - 8, 18, '#fff', al); txt(`${p.ship} · 🏆 ${p.trophy}`, tx, y + 14, 11, col, al, 500);
+  };
+  plate(14, H * 0.37 - 60, OPP, OPP_COL, 'left');
+  plate(W - 14, H * 0.63 + 60, ME, ME_COL, 'right');
+  // รอยต่อสายฟ้า
+  c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = '#fff'; c.shadowColor = '#fff'; c.shadowBlur = 16; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(0, yl); for (let i = 1; i <= 12; i++) { const f = i / 12; c.lineTo(W * f, yl + (yr - yl) * f + (i < 12 ? (Math.random() - 0.5) * 14 : 0)); } c.stroke(); c.restore();
+  // VS
+  const vk = clamp((e - 0.35) / 0.35, 0, 1), vs = 1 + (1 - ease(vk)) * 2.5 + (e > 0.7 && e < 0.9 ? Math.random() * 0.1 : 0);
+  if (vk > 0) { c.save(); c.globalAlpha = vk; c.translate(W / 2, H / 2); c.scale(vs, vs); c.rotate(-0.17); txt('VS', 0, 0, 80, '#ffd23f', 'center', 700, '#ff8a00'); c.restore(); }
+  if (e > 0.6 && e < 0.8) { c.fillStyle = `rgba(255,255,255,${0.6 * (1 - (e - 0.6) / 0.2)})`; c.fillRect(0, 0, W, H); }
+  // นับถอยหลัง
+  const cd = e - 1.9;
+  if (cd > 0) {
+    const n = Math.floor(cd), f = cd - n, label = n < 3 ? String(3 - n) : 'FIGHT!';
+    c.fillStyle = 'rgba(5,3,15,.35)'; c.fillRect(0, 0, W, H);
+    c.save(); c.globalAlpha = 1 - f * 0.6; txt(label, W / 2, H / 2, (n < 3 ? 90 : 56) * (1.4 - ease(f) * 0.4), '#fff', 'center', 700, n < 3 ? '#36f1ff' : '#ffd23f'); c.restore();
+    if (cd > 3.7) go('battle');
+  } else txt('ด่านสุ่มจาก seed เดียวกัน · สิ่งกีดขวางเร็ว ×1.45', W / 2, H - 22, 11, '#c9d3f0', 'center', 500);
+}
+function drawResult(t) {
+  const m = match, win = m.winner() === 'me', e = now() - st0, k = ease(e / 0.6), col = win ? '#ffd23f' : '#8b93b8';
+  bg(t, win ? '#3a2a00' : '#1a1a2a');
+  if (win) { c.save(); c.globalCompositeOperation = 'lighter'; c.translate(W / 2, 190); c.rotate(t * 0.3);
+    for (let i = 0; i < 12; i++) { c.rotate(TAU / 12); c.fillStyle = 'rgba(255,210,63,.08)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, -260); c.lineTo(18, -260); c.fill(); } c.restore(); }
+  c.save(); c.translate(W / 2, 80); c.scale(0.6 + 0.4 * k, 0.6 + 0.4 * k); txt(win ? 'VICTORY!' : 'DEFEAT', 0, 0, 46, col, 'center', 700, win ? '#ff8a00' : '#000'); c.restore();
+  ship(W / 2, 190 + Math.sin(t * 2) * 5, 1.6, win ? ME_COL : '#5a6a8a', 1, t);
+  const tr = win ? 25 : -15, shown = Math.round(tr * clamp((e - 0.5) / 0.8, 0, 1));
+  txt(`🏆 ${(ME.trophy + shown).toLocaleString()}`, W / 2, 268, 22, '#fff');
+  txt(`${tr > 0 ? '+' : ''}${shown}${win ? ' · ชนะติด 5 🔥 +5 โบนัส' : ''}`, W / 2, 294, 13, win ? '#7dff6a' : '#ff8a8a', 'center', 500);
+  // ตารางเทียบ
+  const rows = [['แต้ม', m.me.score.toLocaleString(), m.opp.score.toLocaleString()], ['ส่งการโจมตี', m.me.stats.sent, m.opp.stats.sent], ['หลบ PERFECT', m.me.stats.perfect, m.opp.stats.perfect],
+    ['เคลียร์ไว', m.me.stats.fast, m.opp.stats.fast], ['หักล้าง', m.me.stats.cancel, m.opp.stats.cancel], ['ชีวิตเหลือ', Math.max(0, m.me.lives), Math.max(0, m.opp.lives)]];
+  rrect(24, 318, W - 48, 34 + rows.length * 28, 14); c.fillStyle = 'rgba(255,255,255,.05)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.12)'; c.stroke();
+  txt('คุณ', W / 2 + 5, 336, 12, ME_COL); txt(OPP.name, W / 2 + 95, 336, 12, OPP_COL);
+  rows.forEach(([a, b, d], i) => { const y = 364 + i * 28; txt(a, 40, y, 12, '#8b93b8', 'left', 500); txt(String(b), W / 2 + 5, y, 15, '#fff'); txt(String(d), W / 2 + 95, y, 15, '#fff'); });
+  button(BTN.again, 'แข่งอีกครั้ง', '', '#ffd23f', t);
+  button(BTN.back, 'กลับ', '', '#fff', t, false);
+  txt(win ? 'รางวัล: คริสตัล +120' : 'รางวัลแพ้: คริสตัล +30', W / 2, 636, 12, '#c9d3f0', 'center', 500);
+}
+
+// ================================================================ ลูปหลัก + คลิก
+let last = now();
+function frame() {
+  const t = now(), dt = Math.min(0.05, t - last); last = t;
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (state === 'lobby') drawLobby(t);
+  else if (state === 'search') drawSearch(t);
+  else if (state === 'vs') drawVS(t);
+  else if (state === 'battle') { match.update(dt); drawBattle(t); if (match.over && now() - match.endAt > 2.2) go('result'); }
+  else drawResult(t);
+  requestAnimationFrame(frame);
+}
+const inside = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+cv.addEventListener('click', ev => {
+  const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * W / r.width, y = (ev.clientY - r.top) * H / r.height;
+  if (state === 'lobby' && inside(BTN.lobby, x, y)) go('search');
+  else if (state === 'search' && inside(BTN.cancel, x, y)) go('lobby');
+  else if (state === 'result') { if (inside(BTN.again, x, y)) go('search'); else if (inside(BTN.back, x, y)) go('lobby'); }
+});
+document.querySelectorAll('#jump button').forEach(b => b.onclick = () => go(b.dataset.s));
+document.querySelectorAll('#layout button').forEach(b => b.onclick = () => { layout = b.dataset.l; document.querySelectorAll('#layout button').forEach(x => x.classList.toggle('on', x === b)); });
+document.fonts.ready.then(() => { go('lobby'); requestAnimationFrame(frame); });
+</script>
+</body>
+</html>
