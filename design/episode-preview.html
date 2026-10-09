@@ -296,7 +296,7 @@ const goldMetal = c => lg(c, -32, 0, 32, 0, [[0, '#6a4a14'], [0.3, '#fff3d0'], [
 
 // ---------------------------------------------------------------- ยานคอสมิก 5 ลำ (พิกัด ±160)
 const DRAW = {
-  // EP1 ราชันวงแหวน — ลำทองงาช้าง สวมวงแหวนดาวเสาร์ + ดวงจันทร์จิ๋ว 3 ดวง
+  // EP3 ราชันวงแหวน — ลำทองงาช้าง สวมวงแหวนดาวเสาร์ + ดวงจันทร์จิ๋ว 3 ดวง
   saturn(c, t) {
     aura(c, '#ffd23f', 175, 0.28);
     const ring = back => {
@@ -368,7 +368,7 @@ const DRAW = {
     c.restore();
   },
 
-  // EP3 ตรีศูลเนปจูน — ปีกกระเบนน้ำลึก ตรีศูลเงินสามง่าม คลื่นเรืองแสงบนปีก
+  // EP4 ตรีศูลเนปจูน — ปีกกระเบนน้ำลึก ตรีศูลเงินสามง่าม คลื่นเรืองแสงบนปีก
   neptune(c, t) {
     aura(c, '#36a8ff', 175, 0.28);
     both(c, () => flame(c, 14, 98, 9, 64, '#36f1ff', t));
@@ -397,7 +397,7 @@ const DRAW = {
     c.beginPath(); c.arc(0, 28, 18, t * 3, t * 3 + 1.6); c.stroke(); c.beginPath(); c.arc(0, 28, 18, t * 3 + Math.PI, t * 3 + Math.PI + 1.6); c.stroke(); c.restore();
   },
 
-  // EP4 ขอบฟ้าเหตุการณ์ — ปีกจันทร์เสี้ยวออบซิเดียน หลุมดำกลางลำ จานพลังงานหมุน
+  // EP5 ขอบฟ้าเหตุการณ์ — ปีกจันทร์เสี้ยวออบซิเดียน หลุมดำกลางลำ จานพลังงานหมุน
   horizon(c, t) {
     aura(c, '#7a4bff', 180, 0.3);
     const disk = back => {
@@ -439,7 +439,41 @@ const DRAW = {
     disk(false);
   },
 
-  // EP5 สุริยเทพ — ปีกใบมีด 6 ปีกแบบเทวทูต รัศมีสุริยะหมุน แกนกลางดวงอาทิตย์จิ๋ว
+  // EP1 จันทราพิทักษ์ — ลำมุกขาวเงิน ปีกพระจันทร์เสี้ยว ดวงจันทร์กลางลำเปลี่ยนเฟส ดาวบริวารโคจร
+  moon(c, t) {
+    aura(c, '#9fc4ff', 175, 0.26);
+    both(c, () => flame(c, 15, 96, 9, 60, '#9fd8ff', t));
+    // ปีกเสี้ยวจันทร์ = วงใหญ่ ลบด้วยวงที่เลื่อนขึ้น (บีบแนวตั้ง)
+    c.save(); c.translate(0, 18); c.scale(1, 0.5);
+    const cres = () => { c.beginPath(); c.arc(0, 0, 152, -0.244, Math.PI + 0.244); c.arc(0, -64, 150, Math.PI - 0.183, 0.183, true); c.closePath(); };
+    cres(); c.fillStyle = lg(c, 0, -40, 0, 150, [[0, '#ffffff'], [0.35, '#d6deee'], [0.75, '#8a94ac'], [1, '#3a4258']]); c.fill();
+    c.save(); cres(); c.clip();
+    const r = rng(5);
+    for (let i = 0; i < 16; i++) { const a = Math.PI * (0.1 + r() * 0.8), d = 110 + r() * 34, cr = 4 + r() * 9;
+      c.fillStyle = 'rgba(70,80,100,.45)'; c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, cr, 0, TAU); c.fill(); }
+    c.restore();
+    cres(); c.save(); c.shadowColor = '#bfe6ff'; c.shadowBlur = 16; c.strokeStyle = '#e8f4ff'; c.lineWidth = 4; c.stroke(); c.restore();
+    c.restore();
+    both(c, () => { path(c, [[20, 40], [50, 74], [22, 76]]); fillStroke(c, '#c8d2e6', '#ffffff', 1.2, '#bfe6ff', 8); });
+    sym(c, [[0, -130], [10, -104], [18, -60], [22, 0], [24, 50], [16, 90], [0, 98]]);
+    fillStroke(c, lg(c, -24, 0, 24, 0, [[0, '#3a4a6a'], [0.3, '#ffffff'], [0.55, '#dfe8ff'], [0.8, '#8a9ac0'], [1, '#2a3450']]), '#ffffff', 1.6, '#bfe6ff', 12);
+    c.strokeStyle = 'rgba(120,150,200,.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-10, -30); c.lineTo(-12, 80); c.moveTo(10, -30); c.lineTo(12, 80); c.stroke();
+    glass(c, 0, -62, 7, 18, '#9fd8ff');
+    // ดวงจันทร์กลางลำ + เงาเฟส
+    const R = 20, cy = 24;
+    c.save(); c.shadowColor = '#bfe6ff'; c.shadowBlur = 26;
+    c.fillStyle = rg(c, 0, cy, 0, R, [[0, '#ffffff'], [0.6, '#c8d0e0'], [1, '#7a849c']], -6, cy - 6); c.beginPath(); c.arc(0, cy, R, 0, TAU); c.fill(); c.restore();
+    c.save(); c.beginPath(); c.arc(0, cy, R, 0, TAU); c.clip();
+    [[-6, -5, 4], [7, 4, 5], [-2, 9, 3], [9, -8, 2.5]].forEach(([x, y, cr]) => { c.fillStyle = 'rgba(90,100,125,.5)'; c.beginPath(); c.arc(x, cy + y, cr, 0, TAU); c.fill(); });
+    const ph = (t * 0.25) % 1, dx = (ph * 2 - 1) * R * 2.1;
+    c.fillStyle = 'rgba(8,12,34,.82)'; c.beginPath(); c.arc(dx, cy, R * 1.02, 0, TAU); c.fill();
+    c.restore();
+    // ดาวบริวาร
+    const a = t * 1.4;
+    gem(c, Math.cos(a) * 64, 30 + Math.sin(a) * 22, 6, '#bfe6ff');
+  },
+
+  // EP พิเศษ (สำรอง) สุริยเทพ — ปีกใบมีด 6 ปีกแบบเทวทูต รัศมีสุริยะหมุน แกนกลางดวงอาทิตย์จิ๋ว
   helios(c, t) {
     aura(c, '#ffb800', 185, 0.4);
     c.save(); c.translate(0, 10); c.globalCompositeOperation = 'lighter';
@@ -526,6 +560,22 @@ const PLANET = {
     c.save(); c.shadowColor = '#fff'; c.shadowBlur = 18; c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, R * 1.05, 0, TAU); c.stroke(); c.restore();
     c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill();
   },
+  moon(c, w, h, t) {
+    const x = w / 2, y = h / 2 + h * 0.04, R = Math.min(w, h) * 0.31;
+    c.fillStyle = rg(c, x, y, R * 0.9, R * 1.5, [[0, 'rgba(190,212,255,.25)'], [1, 'rgba(190,212,255,0)']]); c.fillRect(0, 0, w, h);
+    c.save(); c.beginPath(); c.arc(x, y, R, 0, TAU); c.clip();
+    c.fillStyle = rg(c, x - R * 0.3, y - R * 0.3, 0, R * 1.2, [[0, '#f2f4fa'], [0.6, '#b8bfcc'], [1, '#6a7080']]); c.fillRect(x - R, y - R, 2 * R, 2 * R);
+    const r = rng(77);
+    for (let i = 0; i < 14; i++) { const cx = x + (r() - 0.5) * R * 1.7, cy = y + (r() - 0.5) * R * 1.7, cr = R * (0.05 + r() * 0.13);
+      c.fillStyle = 'rgba(90,96,112,.45)'; c.beginPath(); c.arc(cx, cy, cr, 0, TAU); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.4)'; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, cr, Math.PI * 0.15, Math.PI * 0.85); c.stroke(); }
+    c.fillStyle = rg(c, x - R * 0.5, y - R * 0.5, R * 0.2, R * 1.4, [[0, 'rgba(0,0,0,0)'], [0.7, 'rgba(0,0,0,.15)'], [1, 'rgba(0,0,0,.65)']]); c.fillRect(x - R, y - R, 2 * R, 2 * R);
+    c.restore();
+    const ex = x + R * 1.0, ey = y - R * 0.95, er = R * 0.24;   // โลกลอยอยู่ด้านหลัง
+    c.fillStyle = rg(c, ex, ey, 0, er * 2, [[0, 'rgba(90,170,255,.35)'], [1, 'rgba(90,170,255,0)']]); c.fillRect(ex - er * 2, ey - er * 2, er * 4, er * 4);
+    c.fillStyle = rg(c, ex - er * 0.3, ey - er * 0.3, 0, er, [[0, '#bfefff'], [0.5, '#2a7ae0'], [1, '#0a2a6a']]); c.beginPath(); c.arc(ex, ey, er, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(90,200,120,.7)'; c.beginPath(); c.ellipse(ex - er * 0.2, ey + er * 0.1, er * 0.35, er * 0.22, 0.5, 0, TAU); c.fill();
+  },
   sun(c, w, h, t) {
     const x = w / 2, y = h / 2, R = Math.min(w, h) * 0.3;
     c.save(); c.globalCompositeOperation = 'lighter';
@@ -539,19 +589,26 @@ const PLANET = {
 
 // ---------------------------------------------------------------- ข้อมูลด่าน / ยาน
 const ICON_NAME = { crystal: 'คริสตัล', ticket: 'ตั๋ว', key: 'กุญแจดาว', gold: 'หีบทอง', evo: 'หินอีโว' };
+// เรียงจากใกล้โลกที่สุดออกไปไกลสุด · ราคา/ความยาก/ของรางวัลผูกกับลำดับด่าน
 const EPS = [
-  { n: 1, name: 'วงแหวนดาวเสาร์', en: 'SATURN RINGS', color: '#ffd23f', planet: 'saturn', stone: [104, 88, 64], cost: 3, hp: '×1', pts: '×1', bullet: 'ปกติ', ship: 'saturn', rec: { score: 18420560, name: 'ดาวตกไม่หยุด', ship: 'phoenix', when: '2 วันก่อน' }, mine: 6210300,
+  { n: 1, name: 'ดวงจันทร์', en: 'THE MOON', color: '#bfd4ff', planet: 'moon', stone: [88, 92, 104], cost: 3, hp: '×1', pts: '×1', bullet: 'ปกติ', ship: 'moon', rec: { score: 18420560, name: 'ดาวตกไม่หยุด', ship: 'phoenix', when: '2 วันก่อน' }, mine: 6210300,
     white: [['crystal', 300], ['crystal', 300], ['crystal', 500], ['ticket', 1], ['ticket', 1], ['key', 1]], gold: [['gold', 1], ['ticket', 5]] },
   { n: 2, name: 'พายุยักษ์พฤหัส', en: 'JUPITER STORM', color: '#ff9a3c', planet: 'jupiter', stone: [104, 72, 52], cost: 5, hp: '×1.3', pts: '×1.25', bullet: '+10%', ship: 'jupiter', rec: { score: 9875140, name: 'NovaKing', ship: 'nova', when: 'เมื่อวาน' }, mine: 2105880,
     white: [['crystal', 500], ['crystal', 500], ['crystal', 800], ['ticket', 2], ['key', 1], ['key', 1]], gold: [['gold', 1], ['ticket', 10]] },
-  { n: 3, name: 'ทะเลคริสตัลเนปจูน', en: 'NEPTUNE ABYSS', color: '#36a8ff', planet: 'neptune', stone: [56, 74, 100], cost: 7, hp: '×1.6', pts: '×1.5', bullet: '+20%', ship: 'neptune', rec: { score: 4302900, name: 'แมวอวกาศ', ship: 'storm', when: '5 ชม.ก่อน' }, mine: 0,
+  { n: 3, name: 'วงแหวนดาวเสาร์', en: 'SATURN RINGS', color: '#ffd23f', planet: 'saturn', stone: [104, 88, 64], cost: 7, hp: '×1.6', pts: '×1.5', bullet: '+20%', ship: 'saturn', rec: { score: 4302900, name: 'แมวอวกาศ', ship: 'storm', when: '5 ชม.ก่อน' }, mine: 0,
     white: [['crystal', 800], ['crystal', 800], ['crystal', 1200], ['ticket', 2], ['ticket', 3], ['key', 2]], gold: [['gold', 2], ['ticket', 10]] },
-  { n: 4, name: 'ขอบหลุมดำ', en: 'BLACK HOLE RIM', color: '#b46bff', planet: 'blackhole', stone: [70, 58, 96], cost: 9, hp: '×2', pts: '×1.8', bullet: '+30%', ship: 'horizon', rec: { score: 1250480, name: 'PhantomX', ship: 'phantom', when: 'วันนี้' }, mine: 0,
+  { n: 4, name: 'ทะเลคริสตัลเนปจูน', en: 'NEPTUNE ABYSS', color: '#36a8ff', planet: 'neptune', stone: [56, 74, 100], cost: 9, hp: '×2', pts: '×1.8', bullet: '+30%', ship: 'neptune', rec: { score: 1250480, name: 'PhantomX', ship: 'phantom', when: 'วันนี้' }, mine: 0,
     white: [['crystal', 1200], ['crystal', 1200], ['crystal', 1500], ['ticket', 3], ['ticket', 3], ['key', 2]], gold: [['gold', 2], ['ticket', 15]] },
-  { n: 5, name: 'ใจกลางดวงอาทิตย์', en: 'SOLAR CORE', color: '#ffb800', planet: 'sun', stone: [110, 76, 44], cost: 10, hp: '×2.5', pts: '×2.2', bullet: '+40%', ship: 'helios', rec: null, mine: 0,
+  { n: 5, name: 'ขอบหลุมดำ', en: 'BLACK HOLE RIM', color: '#b46bff', planet: 'blackhole', stone: [70, 58, 96], cost: 10, hp: '×2.5', pts: '×2.2', bullet: '+40%', ship: 'horizon', rec: null, mine: 0,
     white: [['crystal', 1500], ['crystal', 1500], ['crystal', 2000], ['ticket', 3], ['ticket', 5], ['key', 3]], gold: [['gold', 3], ['ticket', 20]] },
 ];
+// ดวงอาทิตย์ + ยานสุริยเทพ (DRAW.helios, SHIPS.helios, PLANET.sun) เก็บไว้ทำ EP พิเศษทีหลัง
 const SHIPS = {
+  moon:    { name: 'จันทราพิทักษ์', en: 'LUNAR WARDEN', shot: '#bfe6ff', lives: 4, speed: 1.05, fire: '+10%',
+    look: 'ลำมุกขาวเงิน ปีกพระจันทร์เสี้ยวลายหลุมอุกกาบาต ดวงจันทร์กลางลำเปลี่ยนเฟสตลอดเวลา มีดวงจันทร์จิ๋วโคจรรอบ',
+    skills: [['ข้างขึ้นข้างแรม', 'ดวงจันทร์กลางลำเปลี่ยนเฟสทุก 5 วิ · ถึงเต็มดวง (ทุก 20 วิ) ยิงแรง ×1.5 นาน 6 วิ'],
+             ['ดาวบริวาร', 'ดวงจันทร์จิ๋วโคจรรอบยาน ยิงช่วยอัตโนมัติ และรับกระสุนแทน 1 นัดทุก 12 วิ'],
+             ['แรงไทดัล', 'ดูดไอเท็มและคริสตัลเข้าหายานในระยะกลาง · เริ่มเกมชีวิต 4']] },
   saturn:  { name: 'ราชันวงแหวน', en: 'SATURN SOVEREIGN', shot: '#ffd23f', lives: 4, speed: 1.05, fire: '+15%',
     look: 'ลำทองงาช้าง สวมวงแหวนดาวเสาร์ 5 ชั้น มีดวงจันทร์คริสตัล 3 ดวงโคจรรอบ มงกุฎ 3 แฉกเหนือห้องนักบิน',
     skills: [['วงแหวนพิทักษ์', 'ดวงจันทร์ 3 ดวงโคจรรอบยาน ปัดกระสุนศัตรูทิ้ง ดวงละ 1 นัด เกิดใหม่ทุก 4 วิ'],
