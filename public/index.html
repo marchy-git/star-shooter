@@ -1151,9 +1151,10 @@ const EVO = {
 // สมบัติ: ได้จากหีบ (ซ้ำ = อัปขั้น สูงสุด 3) · vals = ค่าที่ขั้น 1/2/3 · rarity ใช้สี/ชื่อจาก TIERS
 // ค่าทั้งหมดต้องตรงกับ TREASURE_* / TR_* ใน API · ภาพจาก design/treasure-preview.html (TrArt ด้านล่าง)
 const TREASURE_SLOTS = 2, CHEST_PRICE = 1500, SLOT2_PRICE = 5000, TR_SHIELD_MAX = 2;
+const NOVA_PULL = 70, NOVA_INV = 3000;   // หัวใจซูเปอร์โนวา: รัศมีดูดไอเท็ม · อมตะหลังเกิดใหม่ (ms) · แต้มท้ายเกม % อยู่ใน vals (ต้องตรงกับ NOVA_BONUS ใน API)
 const TREASURES = {
-  nova:      { name: 'หัวใจซูเปอร์โนวา', rarity: 'mythic', vals: [2000, 3000, 3000],
-    desc: (v, lv) => `ชีวิตหมด → วาร์ปแดง ช็อตไฟฟ้าทำลายมอนทั้งจอ (บอส −10%) แล้วเกิดใหม่ อาวุธไม่ลด อมตะ ${v / 1000} วิ · ${lv >= 3 ? 2 : 1} ครั้ง/เกม` },
+  nova:      { name: 'หัวใจซูเปอร์โนวา', rarity: 'mythic', vals: [0.05, 0.1, 0.15],
+    desc: (v, lv) => `ดูดไอเท็มรอบตัวระยะสั้น · จบเกมแต้ม +${Math.round(v * 100)}% · ชีวิตหมด → เกิดใหม่ อมตะ 3 วิ ล้างสิ่งกีดขวางและกระสุนทั้งจอ อาวุธไม่ลด (${lv >= 3 ? 2 : 1} ครั้ง/เกม)` },
   feather:   { name: 'ขนนกคืนชีพ',     rarity: 'legendary', vals: [2000, 3000, 4000],
     desc: (v, lv) => `ตายครั้งแรกในเกม ฟื้นทันที อาวุธไม่ลด อมตะ ${v / 1000} วิ` + (lv >= 3 ? ' + คลื่นเพลิงล้างกระสุนทั้งจอ' : '') },
   magnet:    { name: 'วงแหวนแม่เหล็กทอง', rarity: 'legendary', vals: [100, 125, 150],
@@ -5943,7 +5944,7 @@ class Game extends Phaser.Scene {
     this.popText(this.player.x, this.player.y - 56, this.shield > 1 ? `โล่ผลึก! เกราะ x${this.shield}` : 'โล่ผลึก!', '#9ff3ff', 16);
     this.trPulse('shield');
   }
-  // หัวใจซูเปอร์โนวา: วาร์ปแดงเต็มจอ → ช็อตไฟฟ้าใส่ศัตรูทุกตัว (บอส −10%) ล้างกระสุน
+  // หัวใจซูเปอร์โนวา: วาร์ปแดงเต็มจอ → เกิดใหม่ ล้างสิ่งกีดขวางและกระสุนศัตรูทั้งจอ
   supernova() {
     const x = this.player.x, y = this.player.y, cam = this.cameras.main;
     cam.flash(600, 255, 50, 50);
@@ -5952,29 +5953,34 @@ class Game extends Phaser.Scene {
     this.tweens.add({ targets: tint, alpha: 0, duration: 1000, onComplete: () => tint.destroy() });
     const ring = this.add.image(x, y, 'ring').setDepth(9).setBlendMode('ADD').setTint(0xff3b3b).setScale(0.3);
     this.tweens.add({ targets: ring, scale: 10, alpha: 0, duration: 800, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
-    this.banner('SUPERNOVA!', this.novaLeft ? `เกิดใหม่ · เหลืออีก ${this.novaLeft} ครั้ง` : 'เกิดใหม่!', { size: 40, y: H * 0.35 });
-    for (const b of this.ebullets.getChildren()) if (b.active) b.disableBody(true, true);
+    this.banner('SUPERNOVA!', `เกิดใหม่ · อมตะ 3 วิ · ล้างสิ่งกีดขวาง` + (this.novaLeft ? ` · เหลืออีก ${this.novaLeft} ครั้ง` : ''), { size: 40, y: H * 0.35 });
     sfx.shatter();
     this.trPulse('nova');
-    // ช็อตหลังแฟลชนิดหน่อย (ไม่ทำลายศัตรูกลางการชน)
-    this.time.delayedCall(180, () => {
+    this.novaClear();
+    // คลื่นแดงกวาดทั้งจอหลังแฟลช
+    this.time.delayedCall(120, () => {
       if (this.over) return;
-      const g = this.add.graphics().setDepth(9).setBlendMode('ADD');
-      for (const e of this.enemies.getChildren().slice()) {
-        if (!e.active || !e.visible || e.getData('state') === 'sucked' || e.getData('state') === 'portalShip') continue;
-        const pts = [], n = 8;
-        for (let i = 0; i <= n; i++) pts.push({ x: x + (e.x - x) * i / n + (i % n ? frand(-14, 14) : 0), y: y + (e.y - y) * i / n + (i % n ? frand(-14, 14) : 0) });
-        g.lineStyle(8, 0xff3b3b, 0.35).strokePoints(pts);
-        g.lineStyle(2.5, 0xffe0e0, 1).strokePoints(pts);
-        if (e.getData('boss')) {
-          const dmg = Math.max(1, Math.round(e.getData('maxHp') * 0.1));
-          this.popText(e.x, e.y - 40, `-${dmg} (10%)`, '#ff8a8a', 20);
-          this.damage(e, dmg);
-        } else this.killEnemy(e, true);
-      }
-      this.tweens.add({ targets: g, alpha: 0, duration: 450, onComplete: () => g.destroy() });
+      const wave = this.add.image(x, y, 'ring').setDepth(9).setBlendMode('ADD').setTint(0xff8a8a).setScale(0.5).setAlpha(0.9);
+      this.tweens.add({ targets: wave, scale: 14, alpha: 0, duration: 650, ease: 'Sine.easeOut', onComplete: () => wave.destroy() });
     });
   }
+  // ล้างสิ่งกีดขวางทั้งจอ: กระสุนศัตรู · สิ่งกีดขวางของด่าน (DANGER ZONE / รูหนอน) · ท่าไม้ตายบอส · อุกกาบาต
+  novaClear() {
+    for (const b of this.ebullets.getChildren()) if (b.active) { this.grazeSparks.explode(2, b.x, b.y); b.disableBody(true, true); }
+    const hz = this.hazard;
+    if (hz) {
+      hz.items.forEach(o => { if (o.obj) { this.explode(o.obj.x, o.obj.y, 0.8, 'cargo'); o.obj.destroy(); } });
+      hz.items = [];
+      if (hz.kind === 'corridor') hz.len = Math.min(hz.len, hz.dist - H - 1);   // กำแพงทางเดินหายทั้งแนว
+      hz.next = Math.max(hz.next, 1500);                                        // เว้นช่วงก่อนสิ่งกีดขวางชุดใหม่
+      this.hazGfx.clear();
+    }
+    if (this.setPiece) this.endSetPiece();
+    for (const e of this.enemies.getChildren().slice()) {
+      if (e.active && e.getData('state') === 'meteor') { this.explode(e.x, e.y, 1, 'normal'); e.destroy(); }
+    }
+  }
+
   // โล่ดวงอาทิตย์: โดนดาเมจแล้วสุ่มกางโล่ (ได้ทุก 10 วิ)
   trySolar() {
     if (!this.tr.solar || this.over) return;
@@ -6726,7 +6732,7 @@ class Game extends Phaser.Scene {
       this.time.delayedCall(900, () => this.endGame());
       return;
     }
-    this.invulnUntil = this.time.now + (revived ? Math.max(2200, this.trv(nova ? 'nova' : 'feather')) : 2200);
+    this.invulnUntil = this.time.now + (nova ? NOVA_INV : revived ? Math.max(2200, this.trv('feather')) : 2200);
     this.player.setPosition(W / 2, H - 110);
     this.trySolar();
     this.drag = null;
@@ -6775,6 +6781,9 @@ class Game extends Phaser.Scene {
     this.over = true;
     if (this.fever) this.endFever();
 
+    // หัวใจซูเปอร์โนวา: แต้มท้ายเกม +5/10/15% (server ขยายเพดานตรวจให้ตามขั้น)
+    this.novaBonus = this.tr.nova && this.score > 0 ? Math.round(this.score * this.trv('nova')) : 0;
+    if (this.novaBonus) this.addScore(this.novaBonus);
     // คะแนนแปลงเป็นคริสตัล 1 ต่อ 1,000 แต้ม · server เป็นคนบวกรางวัลจริงตอนส่งคะแนน
     this.scoreBonus = Math.floor(this.score / 1000);
     const localBest = Save.loggedIn && this.score > Save.data.best;
@@ -6798,6 +6807,7 @@ class Game extends Phaser.Scene {
     this.tweens.add({ targets: nameT, scale: { from: ns * 0.3, to: ns }, duration: 450, ease: 'Back.easeOut' });
     txt(this, W / 2, 238, fmt(this.score), 46, '#ffd23f', { stroke: '#3a1600', strokeThickness: 6 }).setOrigin(0.5).setDepth(21);
     if (localBest && this.score > 0) txt(this, W / 2, 278, 'สถิติใหม่ของคุณ!', 16, '#6fe3ff').setOrigin(0.5).setDepth(21);
+    if (this.novaBonus) txt(this, W / 2, localBest ? 296 : 278, `หัวใจซูเปอร์โนวา +${fmt(this.novaBonus)} (${Math.round(this.trv('nova') * 100)}%)`, 14, '#ff8a8a').setOrigin(0.5).setDepth(21);
     const rankLine = txt(this, W / 2, 314, '', 20, '#e8f3ff').setOrigin(0.5).setDepth(21);
     const rankSub = txt(this, W / 2, 342, '', 14, '#a9b9d6').setOrigin(0.5).setDepth(21);
     const rewardLine = (coins, bonus, tickets, sub) =>
@@ -7081,7 +7091,7 @@ class Game extends Phaser.Scene {
 
     // ดูดของดีเข้าหายาน: คริสตัลมีแม่เหล็กพื้นฐาน, ไอเท็มแม่เหล็กดูดไกลขึ้นทุกอย่าง, FEVER ดูดคริสตัลทั้งจอ, ON AIR ดูดทุกอย่างทั้งจอ
     const magnetOn = time < this.magnetUntil;
-    const pullR = this.onair || time < this.superMagnetUntil ? Infinity : Math.max(magnetOn ? MAGNET_R : 0, this.trv('magnet'));
+    const pullR = this.onair || time < this.superMagnetUntil ? Infinity : Math.max(magnetOn ? MAGNET_R : 0, this.trv('magnet'), this.tr.nova ? NOVA_PULL : 0);
     const pullTo = (o, speed) => {
       if (o.body) o.body.setAllowGravity(false);
       this.physics.velocityFromRotation(Phaser.Math.Angle.Between(o.x, o.y, this.player.x, this.player.y), speed, o.body.velocity);
@@ -7100,6 +7110,10 @@ class Game extends Phaser.Scene {
       const r = this.trv('magnet'), k = (time % 1200) / 1200;
       this.magnetRing.lineStyle(2, 0xffd23f, 0.3 * (1 - k)).strokeCircle(this.player.x, this.player.y, r * (0.5 + 0.5 * k));
       this.magnetRing.lineStyle(1, 0xffd23f, 0.16).strokeCircle(this.player.x, this.player.y, r);
+    }
+    if (pv && this.tr.nova && !this.tr.magnet && !this.onair) {   // หัวใจซูเปอร์โนวา: วงแดงจางๆ ระยะดูดสั้น
+      const k = (time % 1400) / 1400;
+      this.magnetRing.lineStyle(1.5, 0xff5a5a, 0.25 * (1 - k)).strokeCircle(this.player.x, this.player.y, NOVA_PULL * (0.5 + 0.5 * k));
     }
     this.updateSolar(time, pv);
     if (pv && magnetOn && !this.onair) {

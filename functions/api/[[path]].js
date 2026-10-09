@@ -126,6 +126,7 @@ const TR_UP_COST = {                                                // คริ
 const KEY_CHANCE = 0.06;                                            // ล้มบอส 1 ตัว มีโอกาสได้กุญแจดาว
 const MILESTONES = { 3: { keys: 1 }, 5: { keys: 2 }, 8: { gold: 1 } };   // ถึงรอบใหม่ครั้งแรก (ครั้งเดียวต่อบัญชี)
 const BAG_BONUS = [0, 0.1, 0.2, 0.3];   // กระเป๋าคริสตัล: คริสตัลที่เก็บได้ในรอบ +% ตามขั้น
+const NOVA_BONUS = [0, 0.05, 0.1, 0.15]; // หัวใจซูเปอร์โนวา: แต้มท้ายเกม +% ตามขั้น (ขยายเพดานตรวจโกงตาม)
 const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIP_TIER[id]].cost / 10) * 10;
 
 const randFloat = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
@@ -724,11 +725,12 @@ async function submit(env, request) {
   // รอบที่ไปถึงต้องสัมพันธ์กับเวลาที่เล่นจริง (เกิน = โกงแน่นอน ไม่ให้อะไรเลย)
   if (loop > 1 + Math.floor(sec / LOOP_MIN_SEC)) return json({ error: 'implausible' }, 400);
   // คะแนนเกินเพดาน: ไม่ขึ้นตาราง แต่ยังได้คริสตัล/ตั๋วที่เก็บ (จำกัดตามเวลาอยู่แล้ว) และบันทึกไว้ให้ผู้ดูแลตรวจ
-  const scoreCap = Math.min(SCORE_PER_LOOP * loop + SCORE_LOOP_BASE, 50_000 + sec * SCORE_PER_SEC);
+  const d0 = dataOf(u);
+  const novaMul = 1 + (d0.equip.includes('nova') ? NOVA_BONUS[d0.treasures.nova] || 0 : 0);
+  const scoreCap = Math.min(SCORE_PER_LOOP * loop + SCORE_LOOP_BASE, 50_000 + sec * SCORE_PER_SEC) * novaMul;
   const flagged = score > scoreCap;
 
   // รางวัล: ของที่เก็บได้ถูกจำกัดเพดาน, โบนัสจากคะแนน 1 คริสตัลต่อ 1,000 แต้ม
-  const d0 = dataOf(u);
   const bag = d0.equip.includes('bag') ? BAG_BONUS[d0.treasures.bag] || 0 : 0;
   const coins = Math.floor(Math.min(int(body.coins, 0, 1_000_000) ?? 0, Math.floor(sec * COINS_PER_SEC)) * (1 + bag));
   const tickets = Math.min(int(body.tickets, 0, 10_000) ?? 0, loop * TICKETS_PER_LOOP, 1 + Math.floor(sec / TICKET_MIN_SEC));
