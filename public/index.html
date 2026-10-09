@@ -598,14 +598,14 @@ const MAX_LV = 10;
 const SHARD_NEED = 5, EVO_LV = 13;
 const SHARD_PRICE = { rare: 80, epic: 180, legendary: 400, mythic: 1000 };
 const EVO = {
-  magneto: { color: 0xff5a3c, alt: 0x36f1ff, look: 'ขดลวดแม่เหล็กสองข้าง ฐานทอง เพชรที่หัว' },
+  magneto: { color: 0xff5a3c, shot: 0x36f1ff, alt: 0x9ff3ff, look: 'ขดลวดแม่เหล็กสองข้าง ฐานทอง เพชรที่หัว' },
   falcon:  { color: 0x7dff6a, alt: 0xd8ff6a, look: 'ปีกขนนกกวาดหลัง ขอบทอง' },
   comet:   { color: 0x9ff3ff, alt: 0xffffff, look: 'หัวผลึกน้ำแข็ง หางดาวหางยาว' },
-  storm:   { color: 0xff4fd8, alt: 0xfff35a, look: 'ปีกใบมีดสายฟ้า ฟ้าผ่ากลางลำ' },
+  storm:   { color: 0xff4fd8, shot: 0xfff35a, alt: 0xc18bff, look: 'ปีกใบมีดสายฟ้า ฟ้าผ่ากลางลำ' },
   phantom: { color: 0xb46bff, alt: 0xffd23f, look: 'ผ้าคลุมพลิ้ว เขาจันทร์เสี้ยว ตาทอง' },
   prism:   { color: 0xc8f6ff, alt: 0xff3df2, look: 'สามเหลี่ยมซ้อนเป็นดาว 6 แฉก ขอบสีรุ้ง' },
   nova:    { color: 0xffd23f, alt: 0xfff3b0, look: 'ดาวซ้อน 2 ชั้น แสงทองเจิดจ้า' },
-  phoenix: { color: 0xff3b3b, alt: 0xffb84d, look: 'ปีกเพลิงซ้อน มงกุฎหงอนไฟ' },
+  phoenix: { color: 0xff3b3b, shot: 0xffd23f, alt: 0xfff3b0, look: 'ปีกเพลิงซ้อน มงกุฎหงอนไฟ' },
 };
 const shipTex = (id, d) => (EVO[id] && d.evo && d.evo[id] ? 'ship2_' + id : SHIPS[id].key);
 
@@ -663,6 +663,9 @@ const DEBRIS = {
   cargo: [0x2fe6c8, 0xfff35a, 0xff4fd8], player: [0x36f1ff, 0xffffff],
 };
 
+// สีกระสุนฝั่งเรา ต้องไม่ใช่แดง/ชมพู (สีกระสุนศัตรู) · ชุด "ม่วงนีออน" จาก design/player-color-preview.html
+const LASER_COLOR = 0xa66bff, PLASMA_COLOR = 0xd6b8ff;
+const feverShotColor = h => hueColor(180 + (((h % 120) + 120) % 120));   // FEVER: สีรุ้งเฉพาะช่วงฟ้า-ม่วง
 const hueColor = h => Phaser.Display.Color.HSVToRGB((((h % 360) + 360) % 360) / 360, 0.7, 1).color;
 const hexStr = c => '#' + c.toString(16).padStart(6, '0');
 const hueDark = h => Phaser.Display.Color.HSVToRGB((((h % 360) + 360) % 360) / 360, 0.85, 0.28).color;
@@ -1914,7 +1917,7 @@ function makeTextures(scene) {
     g.fillStyle(0xffffff, 1); g.fillRoundedRect(w / 2 - 1, 2, 2, h - 4, 1);
   });
   bolt('bullet', 8, 22, 0x36f1ff);
-  bolt('laser', 8, 44, 0xff3df2);
+  bolt('laser', 8, 44, LASER_COLOR);
   bolt('bulletG', 8, 16, 0x7dff6a);
   bolt('droneShot', 4, 12, 0x9ff3ff);
   draw('missile', 10, 24, g => {
@@ -2173,7 +2176,7 @@ class Evolve extends Phaser.Scene {
       let n = 0;
       this.time.addEvent({ delay: 170, loop: true, callback: () => {
         n++;
-        for (const ox of [-14, 14]) this.shot(ship.x + ox, ship.y - 70, e.color, 0);
+        for (const ox of [-14, 14]) this.shot(ship.x + ox, ship.y - 70, e.shot || e.color, 0);
         if (n % 4 === 0) for (const sd of [-1, 1]) this.shot(ship.x + sd * 50, ship.y - 30, e.alt, sd * 160);
       } });
       this.time.delayedCall(700, () => { this.ready = true; tap.setAlpha(1); });
@@ -2618,10 +2621,10 @@ class Game extends Phaser.Scene {
     b.born = this.time.now;
     b.setScale(s.scale || 1);
     b.setBlendMode(this.evolved ? 'ADD' : 'NORMAL');
-    if (this.fever) b.setTint(hueColor(this.time.now * 0.4 + i * 50));
-    else if (this.evolved) b.setTint(s.wing ? this.evo.alt : this.evo.color);
+    if (this.fever) b.setTint(feverShotColor(this.time.now * 0.4 + i * 50));
+    else if (this.evolved) b.setTint(s.wing ? this.evo.alt : this.evo.shot || this.evo.color);
     else if (s.hot) b.setTint(0xffe3a0);   // โอเวอร์ชาร์จ: สีทองร้อน
-    else if (this.fx && this.fx.rank >= 4) b.setTint(0xff7a5a);   // มิธิค: กระสุนพลาสมาแดง
+    else if (this.fx && this.fx.rank >= 4) b.setTint(PLASMA_COLOR);   // มิธิค: กระสุนพลาสมา (ม่วงขาว ไม่ใช้แดงเพราะชนกับกระสุนศัตรู)
     else b.clearTint();
   }
 
