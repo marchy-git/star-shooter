@@ -484,7 +484,7 @@
         <div id="chestResult" class="spin-result" hidden></div>
         <h3>สมบัติทั้งหมด</h3>
         <div id="trGrid" class="tr-grid"></div>
-        <p class="tr-note">วิธีได้: หีบดาว (คริสตัล) · กุญแจดาวจากการล้มบอส · ถึงรอบ 3 / 5 / 8 ครั้งแรก ได้กุญแจและหีบทอง · ได้ชิ้นที่ขั้นเต็มแล้ว = ฝุ่นดาว ใช้เลือกอัปชิ้นที่อยากได้</p>
+        <p class="tr-note">วิธีได้: หีบดาว (คริสตัล) · กุญแจดาวจากการล้มบอส · ถึงรอบ 3 / 5 / 8 ครั้งแรก ได้กุญแจและหีบทอง · อัปขั้นด้วยคริสตัล · ได้ชิ้นที่มีแล้วได้คริสตัลคืนเล็กน้อย</p>
       </div>
     </div>
 
@@ -682,26 +682,37 @@ const EVO = {
 };
 // สมบัติ: ได้จากหีบ (ซ้ำ = อัปขั้น สูงสุด 3) · vals = ค่าที่ขั้น 1/2/3 · rarity ใช้สี/ชื่อจาก TIERS
 // ค่าทั้งหมดต้องตรงกับ TREASURE_* / TR_* ใน API · ภาพจาก design/treasure-preview.html (TrArt ด้านล่าง)
-const TREASURE_SLOTS = 2, CHEST_PRICE = 1500;
+const TREASURE_SLOTS = 2, CHEST_PRICE = 1500, SLOT2_PRICE = 5000, TR_SHIELD_MAX = 2;
 const TREASURES = {
+  nova:      { name: 'หัวใจซูเปอร์โนวา', rarity: 'mythic', vals: [2000, 3000, 3000],
+    desc: (v, lv) => `ชีวิตหมด → วาร์ปแดง ช็อตไฟฟ้าทำลายมอนทั้งจอ (บอส −10%) แล้วเกิดใหม่ อาวุธไม่ลด อมตะ ${v / 1000} วิ · ${lv >= 3 ? 2 : 1} ครั้ง/เกม` },
   feather:   { name: 'ขนนกคืนชีพ',     rarity: 'legendary', vals: [2000, 3000, 4000],
     desc: (v, lv) => `ตายครั้งแรกในเกม ฟื้นทันที อาวุธไม่ลด อมตะ ${v / 1000} วิ` + (lv >= 3 ? ' + คลื่นเพลิงล้างกระสุนทั้งจอ' : '') },
+  magnet:    { name: 'วงแหวนแม่เหล็กทอง', rarity: 'legendary', vals: [100, 125, 150],
+    desc: (v, lv) => `ดูดไอเท็ม ตัวอักษร และคริสตัลรอบตัวตลอดเวลา รัศมี ${v}` + (lv >= 3 ? ' · เก็บไอเท็มแม่เหล็กแล้วนานขึ้น 2 เท่า' : '') },
+  solar:     { name: 'โล่ดวงอาทิตย์',   rarity: 'legendary', vals: [0.25, 0.35, 0.5],
+    desc: (v, lv) => `โดนดาเมจแล้วมีโอกาส ${Math.round(v * 100)}% กางโล่ ${lv >= 3 ? 4 : 3} วิ สะท้อนกระสุนกลับ (ได้ทุก 10 วิ)` },
   hourglass: { name: 'นาฬิกาทราย',     rarity: 'epic',      vals: [0.1, 0.2, 0.3],        desc: v => `คอมโบหลุดช้าลง และ ON AIR นานขึ้น ${Math.round(v * 100)}%` },
   mirror:    { name: 'กระจกสะท้อน',    rarity: 'epic',      vals: [25000, 20000, 15000], desc: v => `ทุก ${v / 1000} วิ กันกระสุนนัดแรกที่โดน แล้วสะท้อนกลับไปยิงศัตรู` },
   battery:   { name: 'แบตเตอรี่สำรอง', rarity: 'rare',      vals: [0.3, 0.6, 1],          desc: v => v >= 1 ? 'ตายแล้วอาวุธไม่ลด' : `ตายแล้วมีโอกาส ${Math.round(v * 100)}% อาวุธไม่ลด` },
-  shield:    { name: 'โล่ผลึก',        rarity: 'rare',      vals: [1, 2, 3],              desc: v => ['ได้เกราะตอนเริ่มแต่ละรอบ', 'ได้เกราะตอนเริ่มรอบ และตอนเจอบอส', 'ได้เกราะตอนเริ่มเกม เริ่มรอบ และตอนเจอบอส'][v - 1] },
+  shield:    { name: 'โล่ผลึก',        rarity: 'rare',      vals: [1, 2, 3],
+    desc: v => ['ได้เกราะตอนเริ่มเกมและเริ่มรอบใหม่', 'ได้เกราะตอนเริ่มเกม เริ่มรอบ และตอนเจอบอส', 'ได้เกราะทุก wave และตอนเจอบอส'][v - 1] + ' (ซ้อนได้ 2 ชั้น)' },
   compass:   { name: 'เข็มทิศล่าบอส',   rarity: 'rare',      vals: [0.08, 0.14, 0.2],     desc: v => `ดาเมจใส่บอส +${Math.round(v * 100)}%` },
-  heart:     { name: 'หัวใจสำรอง',     rarity: 'common',    vals: [1, 1, 2],              desc: (v, lv) => lv === 2 ? 'เริ่มเกมชีวิต +1 และเกราะ 1 ชั้น' : `เริ่มเกมชีวิต +${v}` },
+  heart:     { name: 'หัวใจสำรอง',     rarity: 'common',    vals: [1, 1, 2],
+    desc: (v, lv) => ['เริ่มเกมชีวิต +1', 'เริ่มเกมชีวิต +1 และเกราะ 1 ชั้น (ซ้อนได้ 2 ชั้น)', 'เริ่มเกมชีวิต +2 (เกินเพดาน 5 ชีวิตได้เกราะแทน)'][lv - 1] },
   lens:      { name: 'เลนส์เวลา',      rarity: 'common',    vals: [0.06, 0.1, 0.15],     desc: v => `กระสุนศัตรูช้าลง ${Math.round(v * 100)}%` },
-  lucky:     { name: 'ดาวนำโชค',       rarity: 'common',    vals: [0.1, 0.18, 0.25],     desc: v => `ไอเท็มหล่นบ่อยขึ้น ${Math.round(v * 100)}% · อมตะหล่นบ่อยขึ้น 2 เท่า` },
+  lucky:     { name: 'ดาวนำโชค',       rarity: 'common',    vals: [10, 9, 8],            desc: v => `ไอเท็มหล่นแน่นอนทุก ${v} ตัว (ปกติ 12) · อมตะหล่นบ่อยขึ้น 2 เท่า` },
   bag:       { name: 'กระเป๋าคริสตัล', rarity: 'common',    vals: [0.1, 0.2, 0.3],        desc: v => `คริสตัลที่เก็บได้ในรอบ +${Math.round(v * 100)}% · ดูดคริสตัลไกลขึ้น` },
 };
-const TR_ODDS = { common: 55, rare: 30, epic: 12, legendary: 3 };   // โอกาสจากหีบ (%) หีบทอง = เฉพาะเอพิก/ตำนาน
+const TR_ODDS = { common: 55, rare: 30, epic: 11.5, legendary: 3, mythic: 0.5 };   // โอกาสจากหีบ (%)
+const TR_GOLD_ODDS = { epic: 75, legendary: 20, mythic: 5 };        // หีบทอง: เอพิกขึ้นไปเท่านั้น
 const TR_PITY_EPIC = 10, TR_PITY_LEGEND = 30;                       // การันตีของหีบ
-const TR_DUST_COST = { common: 10, rare: 10, epic: 25, legendary: 25 };   // ฝุ่นดาวที่ใช้อัปขั้นชิ้นที่เลือก
-const SLOT2_LOOP = 3;                                               // ช่องที่ 2 ปลดล็อกเมื่อถึงรอบนี้ครั้งแรก
-const trSlots = d => (d.ms.includes(SLOT2_LOOP) ? TREASURE_SLOTS : 1);
-const trHigh = id => ['epic', 'legendary'].includes(TREASURES[id].rarity);   // ใส่พร้อมกันได้ 1 ชิ้น
+const TR_DUPE = { common: 100, rare: 200, epic: 400, legendary: 800, mythic: 1600 };   // ได้ชิ้นที่มีแล้ว → คริสตัลคืน
+const TR_UP_COST = {                                                // คริสตัลที่ใช้อัปขั้น 1→2, 2→3
+  common: [3000, 6000], rare: [3900, 7800], epic: [4800, 9600], legendary: [6000, 12000], mythic: [7500, 15000],
+};
+const trSlots = d => (d.slot2 ? TREASURE_SLOTS : 1);
+const trHigh = id => ['epic', 'legendary', 'mythic'].includes(TREASURES[id].rarity);   // ใส่พร้อมกันได้ 1 ชิ้น
 // สมบัติที่ใส่ได้จริง: มีอยู่, ห้ามซ้ำ, เอพิก/ตำนานไม่เกิน 1, ไม่เกินช่องที่ปลดล็อก (เหมือน cleanEquip ใน API)
 function trClean(list, d) {
   const out = [];
@@ -730,6 +741,13 @@ const TrArt = (() => {
     c.save(); c.globalAlpha *= Math.max(0, a); c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
     c.beginPath(); c.moveTo(x, y - r); c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r); c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r); c.fill(); c.restore();
   }
+  const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  function bolt(c, x1, y1, x2, y2, seed) {
+    const pts = [[x1, y1]], n = 9, dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+    for (let i = 1; i < n; i++) { const o = (hash(seed + i) - 0.5) * 26; pts.push([x1 + dx * i / n + nx * o, y1 + dy * i / n + ny * o]); }
+    pts.push([x2, y2]);
+    c.save(); c.shadowColor = '#ff3b3b'; c.shadowBlur = 14; line(c, pts, '#ffe0e0', 0.6); c.restore();
+  }
   function arrow(c, x, y, a, col) {
     c.save(); c.translate(x, y); c.rotate(a);
     c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
@@ -737,6 +755,33 @@ const TrArt = (() => {
     c.fillStyle = rgba(col, 0.4); c.fillRect(-13, -1.5, 10, 3); c.restore();
   }
   const ICON = {
+    // หัวใจซูเปอร์โนวา: แกนพลังแดง แฉก 8 ทิศ ประกายไฟฟ้าวิ่งรอบ
+    nova(c, t) {
+      c.save(); c.rotate(t * 0.4); neon(c, poly(starPts(0, 0, 34, 15, 8)), '#ff3b3b', 0.18); c.restore();
+      const g = c.createRadialGradient(0, 0, 2, 0, 0, 16); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#ffb3b3'); g.addColorStop(1, rgba('#ff3b3b', 0));
+      c.fillStyle = g; c.fill(circ(0, 0, 16 + Math.sin(t * 6) * 1.5));
+      neon(c, circ(0, 0, 11), '#ffd0d0', 0, 0.6);
+      const f = Math.floor(t * 12);
+      for (let i = 0; i < 2; i++) { const a = (f * 0.7 + i * Math.PI) % (Math.PI * 2); bolt(c, Math.cos(a) * 14, Math.sin(a) * 14, Math.cos(a + 0.5) * 36, Math.sin(a + 0.5) * 36, f * 3 + i); }
+    },
+    // วงแหวนแม่เหล็กทอง: แม่เหล็กเกือกม้า + คลื่นสนามแม่เหล็ก
+    magnet(c, t) {
+      const o = new Path2D(); o.moveTo(-22, -26); o.lineTo(-22, 2); o.arc(0, 2, 22, Math.PI, 0, true); o.lineTo(22, -26); o.lineTo(10, -26); o.lineTo(10, 2); o.arc(0, 2, 10, 0, Math.PI, false); o.lineTo(-10, -26); o.closePath();
+      neon(c, o, GOLD, 0.25);
+      c.save(); c.fillStyle = '#ffffff'; c.shadowColor = '#fff'; c.shadowBlur = 8; c.fillRect(-21, -30, 10, 7); c.fillRect(11, -30, 10, 7); c.restore();
+      for (let i = 0; i < 3; i++) { const k = (t * 0.8 + i / 3) % 1; c.save(); c.globalAlpha *= 1 - k; c.lineWidth = 1.6; c.strokeStyle = GOLD; c.beginPath(); c.arc(0, -26, 14 + k * 22, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); c.restore(); }
+    },
+    // โล่ดวงอาทิตย์: โล่กลม แสงอาทิตย์ 12 แฉก ลูกศรแดงเข้า เด้งออกเป็นทอง
+    solar(c, t) {
+      c.save(); c.rotate(t * 0.3);
+      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; line(c, [[Math.cos(a) * 30, Math.sin(a) * 30], [Math.cos(a) * 37, Math.sin(a) * 37]], '#ffb84d', 0.6); }
+      c.restore();
+      neon(c, circ(0, 0, 27), GOLD, 0.16);
+      neon(c, circ(0, 0, 14), '#fff3b0', 0.35, 0.6);
+      const f = (t * 0.8) % 1;
+      if (f < 0.5) arrow(c, -44 + f * 36, 34 - f * 28, -0.6, '#ff3b3b');
+      else arrow(c, -26 - (f - 0.5) * 40, 20 + (f - 0.5) * 36, 2.5, GOLD);
+    },
     feather(c, t, lv) {
       c.save(); c.rotate(0.62 + Math.sin(t * 1.6) * 0.05);
       const body = new Path2D(); body.moveTo(0, -38); body.bezierCurveTo(20, -22, 18, 10, 2, 26); body.lineTo(-2, 26); body.bezierCurveTo(-16, 8, -16, -20, 0, -38); body.closePath();
@@ -847,12 +892,6 @@ const TrArt = (() => {
     line(c, [[0, 22], [10, 22]], '#36f1ff', 0.9); line(c, [[0, 30], [8, 30]], '#36f1ff', 0.9);
     c.restore();
   }
-  function dust(c, t) {
-    c.save(); c.scale(1.7, 1.7);
-    neon(c, circ(0, 0, 26), '#c18bff', 0.08, 0.7);
-    for (let i = 0; i < 9; i++) { const a = t * (0.5 + i * 0.07) + i * 0.7, r = 6 + (i * 5) % 17; sparkle(c, Math.cos(a) * r, Math.sin(a) * r, 2.5 + (i % 3), i % 3 ? '#ffffff' : '#c18bff', 0.6 + 0.4 * Math.sin(t * 4 + i)); }
-    c.restore();
-  }
   function chest(c, t, col) {
     c.save(); c.scale(1.4, 1.4); c.translate(0, 4);
     const open = col === GOLD ? (Math.sin(t * 1.2) + 1) / 4 : 0;
@@ -867,10 +906,9 @@ const TrArt = (() => {
     if (open) { const g = c.createRadialGradient(0, -10, 2, 0, -10, 50); g.addColorStop(0, rgba(col, 0.6 * open)); g.addColorStop(1, rgba(col, 0)); c.fillStyle = g; c.fillRect(-60, -70, 120, 80); }
     c.restore();
   }
-  // art = id สมบัติ หรือ 'key' / 'dust' / 'chest' / 'gold'
+  // art = id สมบัติ หรือ 'key' / 'chest' / 'gold'
   function draw(c, art, lv, t) {
     if (art === 'key') key(c, t);
-    else if (art === 'dust') dust(c, t);
     else if (art === 'chest') chest(c, t, '#36f1ff');
     else if (art === 'gold') chest(c, t, GOLD);
     else { frame(c, t, lv, TIERS[TREASURES[art].rarity].color); ICON[art](c, t + lv, lv); }
@@ -954,8 +992,8 @@ const errText = e => ({
   not_enough: 'คริสตัลไม่พอ', no_ticket: 'ตั๋วหมดแล้ว', not_owned: 'ยังไม่มียานลำนี้', max_level: 'เลเวลเต็มแล้ว',
   busy: 'กดถี่เกินไป ลองใหม่อีกครั้ง', need_shards: 'เศษยานยังไม่ครบ', need_max_level: 'ต้องอัปยานถึง Lv10 ก่อน',
   already: 'ยานลำนี้แปลงร่างแล้ว', bad_equip: 'ใส่สมบัติไม่ได้', dup_equip: 'ใส่สมบัติชิ้นเดียวกันซ้ำไม่ได้',
-  one_high: 'สมบัติเอพิก/ตำนานใส่ได้ครั้งละ 1 ชิ้น', slot_locked: `ช่องที่ 2 ปลดล็อกเมื่อถึงรอบ ${SLOT2_LOOP} ครั้งแรก`,
-  no_key: 'ไม่มีกุญแจดาว', no_gold: 'ไม่มีหีบทอง', no_dust: 'ฝุ่นดาวไม่พอ', not_owned_tr: 'ยังไม่มีสมบัติชิ้นนี้', not_evolvable: 'ยานลำนี้แปลงร่างไม่ได้', not_enough_shards: 'เศษยานไม่พอ', unauthorized: 'การล็อกอินหมดอายุ ล็อกอินใหม่ที่หน้าแรก',
+  one_high: 'สมบัติเอพิกขึ้นไปใส่ได้ครั้งละ 1 ชิ้น', slot_locked: 'ช่องที่ 2 ยังไม่ปลดล็อก', slot_owned: 'ปลดล็อกช่องที่ 2 แล้ว',
+  no_key: 'ไม่มีกุญแจดาว', no_gold: 'ไม่มีหีบทอง', not_owned_tr: 'ยังไม่มีสมบัติชิ้นนี้', not_evolvable: 'ยานลำนี้แปลงร่างไม่ได้', not_enough_shards: 'เศษยานไม่พอ', unauthorized: 'การล็อกอินหมดอายุ ล็อกอินใหม่ที่หน้าแรก',
 }[e && e.message] || 'เชื่อมต่อไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่');
 // ระดับที่ใช้แสดงเอฟเฟกต์: Lv10 ตื่นพลัง ได้เอฟเฟกต์สูงกว่าระดับจริง 1 ขั้น
 const visualTier = (id, lv) => TIER_ORDER[Math.min(TIER_ORDER.length - 1, TIER_ORDER.indexOf(SHIPS[id].tier) + (lv >= 10 ? 1 : 0))];
@@ -1144,7 +1182,7 @@ const music = {
 //  3. ข้อมูลในเครื่อง + ตารางอันดับออนไลน์
 // =====================================================================
 const SESSION_KEY = 'star-shooter-session-v1';
-const DEFAULT_DATA = () => ({ coins: 0, tickets: 1, chars: { bolt: 1 }, ship: 'bolt', best: 0, pity: { e: 0, l: 0 }, shards: {}, evo: {}, treasures: {}, equip: [], keys: 0, gold: 0, dust: 0, tpity: { e: 0, l: 0 }, ms: [] });
+const DEFAULT_DATA = () => ({ coins: 0, tickets: 1, chars: { bolt: 1 }, ship: 'bolt', best: 0, pity: { e: 0, l: 0 }, shards: {}, evo: {}, treasures: {}, equip: [], keys: 0, gold: 0, tpity: { e: 0, l: 0 }, ms: [], slot2: false });
 
 // เรียก API ของเกม (แนบ token ถ้าล็อกอินอยู่) เกิด error จะโยน Error ที่มี .status
 async function api(path, body) {
@@ -1178,6 +1216,7 @@ const Save = {
     x.treasures = Object.fromEntries(Object.entries(x.treasures || {}).filter(([k]) => TREASURES[k]));
     x.tpity = Object.assign({ e: 0, l: 0 }, x.tpity);
     x.ms = Array.isArray(x.ms) ? x.ms : [];
+    x.slot2 = !!x.slot2;
     x.equip = trClean(Array.isArray(x.equip) ? x.equip : [], x);
     if (!x.chars.bolt) x.chars.bolt = 1;
     for (const k of Object.keys(x.chars)) if (!SHIPS[k]) delete x.chars[k];
@@ -1678,18 +1717,23 @@ const App = {
 
     const wallet = $('trWallet');
     wallet.textContent = '';
-    for (const [art, label, v] of [['key', 'กุญแจ', d.keys], ['gold', 'หีบทอง', d.gold], ['dust', 'ฝุ่นดาว', d.dust]]) {
+    for (const [art, label, v] of [['key', 'กุญแจดาว', d.keys], ['gold', 'หีบทอง', d.gold]]) {
       const sp = mk('span'); sp.append(TrArt.el(art), `${label} ${fmt(v)}`); wallet.append(sp);
     }
 
-    // ช่องที่ใส่อยู่: แตะเพื่อถอด · ช่อง 2 ล็อกจนถึงรอบ SLOT2_LOOP ครั้งแรก
+    // ช่องที่ใส่อยู่: แตะเพื่อถอด · ช่อง 2 ปลดล็อกด้วยคริสตัล
     const slots = $('trSlots');
     slots.textContent = '';
     for (let i = 0; i < TREASURE_SLOTS; i++) {
       const id = d.equip[i], t = TREASURES[id];
       const el = mk('button');
       el.type = 'button';
-      if (i >= n) { el.className = 'tr-slot lock'; el.textContent = `ช่อง ${i + 1} ล็อกอยู่ · ถึงรอบ ${SLOT2_LOOP} ครั้งแรกเพื่อปลดล็อก`; el.disabled = true; }
+      if (i >= n) {
+        el.className = 'tr-slot lock';
+        el.textContent = `🔒 ปลดล็อกช่อง ${i + 1} · ${fmt(SLOT2_PRICE)} คริสตัล`;
+        el.disabled = busy || d.coins < SLOT2_PRICE;
+        el.onclick = () => this.unlockSlot();
+      }
       else if (t) {
         el.className = 'tr-slot on';
         el.style.setProperty('--tier', TIERS[t.rarity].color);
@@ -1699,7 +1743,7 @@ const App = {
       } else { el.className = 'tr-slot'; el.textContent = `ช่อง ${i + 1} ว่าง · แตะสมบัติด้านล่างเพื่อใส่`; el.disabled = true; }
       slots.append(el);
     }
-    $('trNote').textContent = 'ห้ามใส่ชิ้นซ้ำกัน · เอพิก/ตำนานใส่ได้ครั้งละ 1 ชิ้น · ได้ชิ้นซ้ำ = อัปขั้น (สูงสุด 3)';
+    $('trNote').textContent = 'ห้ามใส่ชิ้นซ้ำกัน · เอพิกขึ้นไปใส่ได้ครั้งละ 1 ชิ้น · อัปขั้นด้วยคริสตัล (สูงสุด 3)';
 
     // ปุ่มเปิดหีบ 3 แบบ
     const chests = $('trChests');
@@ -1722,7 +1766,7 @@ const App = {
     // สมบัติทั้งหมด เรียงจากหายากสุด
     const grid = $('trGrid');
     grid.textContent = '';
-    const order = ['legendary', 'epic', 'rare', 'common'];
+    const order = ['mythic', 'legendary', 'epic', 'rare', 'common'];
     const list = Object.entries(TREASURES).sort((a, b) => order.indexOf(a[1].rarity) - order.indexOf(b[1].rarity));
     for (const [id, t] of list) {
       const lv = d.treasures[id] || 0, on = d.equip.includes(id), shown = Math.max(1, lv);
@@ -1741,12 +1785,12 @@ const App = {
         eq.onclick = () => this.toggleEquip(id);
         acts.append(eq);
         if (lv < 3) {
-          const cost = TR_DUST_COST[t.rarity];
-          const up = mk('button', 'btn', `อัปขั้น ✦${cost}`);
+          const cost = TR_UP_COST[t.rarity][lv - 1];
+          const up = mk('button', 'btn', `อัป ${fmt(cost)}`);
           up.type = 'button';
-          up.title = `ใช้ฝุ่นดาว ${cost}`;
-          up.disabled = busy || d.dust < cost;
-          up.onclick = () => this.dustUp(id);
+          up.title = `ใช้คริสตัล ${fmt(cost)} อัปเป็นขั้น ${lv + 1}`;
+          up.disabled = busy || d.coins < cost;
+          up.onclick = () => this.treasureUp(id);
           acts.append(up);
         }
         el.append(acts);
@@ -1763,7 +1807,7 @@ const App = {
     else {
       next = cur;
       const high = next.find(x => trHigh(id) && trHigh(x));
-      if (high) { next = next.filter(x => x !== high); msg = `เอพิก/ตำนานใส่ได้ 1 ชิ้น ถอด${TREASURES[high].name}ออกให้แล้ว`; }
+      if (high) { next = next.filter(x => x !== high); msg = `เอพิกขึ้นไปใส่ได้ 1 ชิ้น ถอด${TREASURES[high].name}ออกให้แล้ว`; }
       if (next.length >= n) { msg = msg || `ช่องเต็ม ถอด${TREASURES[next[0]].name}ออกให้แล้ว`; next = next.slice(next.length - n + 1); }
       next = [...next, id];
     }
@@ -1772,16 +1816,27 @@ const App = {
     this.chesting = false;
     this.renderTreasure();
   },
-  async dustUp(id) {
+  async treasureUp(id) {
     if (!Save.loggedIn || this.chesting) return;
     this.chesting = true;
     try {
       const r = await Save.act('/api/treasure/up', { id });
-      UI.toast(`${TREASURES[id].name} อัปเป็นขั้น ${r.level}!`);
+      UI.toast(`${TREASURES[id].name} อัปเป็นขั้น ${r.level}! (−${fmt(r.cost)} คริสตัล)`);
       sfx.power();
     } catch (e) { UI.toast(errText(e)); }
     this.chesting = false;
     this.renderTreasure();
+    this.refreshMenu();
+  },
+  async unlockSlot() {
+    if (!Save.loggedIn || this.chesting) return;
+    if (Save.data.coins < SLOT2_PRICE) return UI.toast(`คริสตัลไม่พอ ขาดอีก ${fmt(SLOT2_PRICE - Save.data.coins)}`);
+    this.chesting = true;
+    try { await Save.act('/api/treasure/slot'); UI.toast('ปลดล็อกช่องสมบัติที่ 2 แล้ว!'); sfx.fanfare(); }
+    catch (e) { UI.toast(errText(e)); }
+    this.chesting = false;
+    this.renderTreasure();
+    this.refreshMenu();
   },
   async openChest(pay = 'coins') {
     if (!Save.loggedIn || this.chesting) return;
@@ -1793,11 +1848,11 @@ const App = {
       const t = TREASURES[r.treasure], box = $('chestResult'), tier = TIERS[t.rarity];
       box.textContent = '';
       box.style.setProperty('--tier', tier.color);
-      const msg = r.dust ? `ขั้นเต็มแล้ว ได้ฝุ่นดาว +${r.dust}` : r.isNew ? 'ได้สมบัติใหม่!' : `อัปเป็นขั้น ${r.level}!`;
+      const msg = r.isNew ? 'ได้สมบัติใหม่!' : `มีแล้ว ได้คริสตัลคืน +${fmt(r.refund)}`;
       const tg = document.createElement('div'); tg.className = 'tier'; tg.textContent = tier.name;
       const b = document.createElement('b'); b.textContent = t.name;
       const sp = document.createElement('span'); sp.textContent = msg;
-      box.append(TrArt.el(r.treasure, r.level || 3), tg, b, sp);
+      box.append(TrArt.el(r.treasure, r.level || 1), tg, b, sp);
       box.hidden = false;
       sfx.fanfare();
     } catch (e) { UI.toast(errText(e)); }
@@ -3079,6 +3134,7 @@ class Game extends Phaser.Scene {
     // สมบัติที่ใส่: ไอคอนนีออนเหนือแถบสกิล · กระจกมีวงนับถอยหลัง · ขนนกใช้แล้วจางลง
     this.trIcons = Object.keys(this.tr).map((id, i) => this.add.image(30 + i * 40, H - 116, `tr_${id}_${this.tr[id]}`).setDisplaySize(36, 36).setDepth(10));
     this.trRing = this.add.graphics().setDepth(10);
+    this.solarGfx = this.add.graphics().setDepth(5).setBlendMode('ADD');
     this.coinText = txt(this, 14, H - 34, '', 14, '#ffd23f').setOrigin(0, 1).setDepth(10);
     this.weaponText = txt(this, 14, H - 12, '', 15, '#6fe3ff').setOrigin(0, 1).setDepth(10);
     this.starBtn = this.add.image(W - 46, H - 52, 'starBtn').setDepth(10).setInteractive({ useHandCursor: true });
@@ -3357,6 +3413,7 @@ class Game extends Phaser.Scene {
       });
     }
 
+    if (this.trv('shield') >= 3 && this.wave > 1) this.crystalShield();   // wave แรกของรอบได้จากการเริ่มรอบแล้ว
     this.banner(`WAVE ${this.wave}/${WAVES_PER_LOOP}`, this.loop > 1 ? `รอบ ${this.loop}` : '');
     const w = this.wave;
     this.time.delayedCall(900, () => {
@@ -4489,7 +4546,7 @@ class Game extends Phaser.Scene {
       if (Math.random() < c[0]) this.dropCoins(x, y, c[1]);
       if (type === 'cargo') {
         for (let i = -1; i <= 1; i++) this.time.delayedCall(150 + i * 120, () => this.dropPowerup(x + i * 34, y));
-      } else if (!isBoss && state !== 'bonus' && (type === 'tank' || Math.random() < (this.easy ? 0.14 : 0.08) * (1 + this.trv('lucky')) || this.kills % (this.easy ? 8 : 12) === 0)) {
+      } else if (!isBoss && state !== 'bonus' && (type === 'tank' || Math.random() < (this.easy ? 0.14 : 0.08) || this.kills % this.dropEvery === 0)) {
         this.dropPowerup(x, y);
       }
       if (this.shipId === 'storm' && !this.starHeld && ++this.skKills >= this.sk.need) {
@@ -4535,15 +4592,21 @@ class Game extends Phaser.Scene {
     this.tr = Object.fromEntries((d.equip || []).filter(id => TREASURES[id] && d.treasures[id]).map(id => [id, d.treasures[id]]));
     this.featherUsed = false;
     this.mirrorAt = 0;
+    this.novaLeft = this.tr.nova ? (this.tr.nova >= 3 ? 2 : 1) : 0;
+    this.solarUntil = 0;
+    this.solarReadyAt = 0;
     if (this.tr.heart) {
-      this.lives = Math.min(MAX_LIVES, this.lives + this.trv('heart'));
-      if (this.tr.heart === 2) this.shield = Math.max(this.shield, 1);
+      const add = this.trv('heart'), room = MAX_LIVES - this.lives;
+      this.lives += Math.min(add, room);
+      if (this.tr.heart === 2 || add > room) this.addLayer();   // ขั้น 2 ได้เกราะ · ชีวิตชนเพดาน ส่วนเกินเป็นเกราะ
     }
-    if (this.trv('shield') >= 3) this.shield = Math.max(this.shield, 1);
+    if (this.tr.shield) this.addLayer();   // โล่ผลึก: ได้เกราะตั้งแต่เริ่มเกม
     if (this.tr.hourglass) { this.comboWindow *= 1 + this.trv('hourglass'); this.onairMs *= 1 + this.trv('hourglass'); }
     if (this.tr.bag) this.magnetR *= 1 + this.trv('bag') * 2;
   }
   trv(id) { const lv = this.tr && this.tr[id]; return lv ? TREASURES[id].vals[lv - 1] : 0; }
+  // ไอเท็มหล่นแน่นอนทุกกี่ตัว (ดาวนำโชคลดลง · รอบแรกหล่นถี่กว่า)
+  get dropEvery() { const n = this.tr.lucky ? this.trv('lucky') : 12; return this.easy ? n - 4 : n; }
   // ไอคอนสมบัติบน HUD เด้งตอนสมบัติทำงาน
   trPulse(id) {
     const ic = this.trIcons && this.trIcons[Object.keys(this.tr).indexOf(id)];
@@ -4551,12 +4614,81 @@ class Game extends Phaser.Scene {
     const base = 36 / ic.width;
     this.tweens.add({ targets: ic, scale: { from: base * 1.8, to: base }, duration: 450, ease: 'Back.easeOut' });
   }
-  // โล่ผลึก: ได้เกราะ (ถ้ายังไม่มี)
+  // เกราะจากสมบัติ: ซ้อนได้ถึง TR_SHIELD_MAX ชั้น (ยานที่เริ่มพร้อมเกราะก็ยังได้ประโยชน์)
+  addLayer() {
+    if (this.shield >= TR_SHIELD_MAX) return false;
+    this.shield++;
+    return true;
+  }
+  // โล่ผลึก: ได้เกราะเพิ่ม 1 ชั้น
   crystalShield() {
-    if (this.shield >= 1) return;
-    this.shield = 1;
-    this.popText(this.player.x, this.player.y - 56, 'โล่ผลึก!', '#9ff3ff', 16);
+    if (!this.addLayer()) return;
+    this.popText(this.player.x, this.player.y - 56, this.shield > 1 ? `โล่ผลึก! เกราะ x${this.shield}` : 'โล่ผลึก!', '#9ff3ff', 16);
     this.trPulse('shield');
+  }
+  // หัวใจซูเปอร์โนวา: วาร์ปแดงเต็มจอ → ช็อตไฟฟ้าใส่ศัตรูทุกตัว (บอส −10%) ล้างกระสุน
+  supernova() {
+    const x = this.player.x, y = this.player.y, cam = this.cameras.main;
+    cam.flash(600, 255, 50, 50);
+    cam.shake(500, 0.02);
+    const tint = this.add.rectangle(W / 2, H / 2, W, H, 0xff2020, 0.5).setDepth(9).setBlendMode('ADD');
+    this.tweens.add({ targets: tint, alpha: 0, duration: 1000, onComplete: () => tint.destroy() });
+    const ring = this.add.image(x, y, 'ring').setDepth(9).setBlendMode('ADD').setTint(0xff3b3b).setScale(0.3);
+    this.tweens.add({ targets: ring, scale: 10, alpha: 0, duration: 800, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
+    this.banner('SUPERNOVA!', this.novaLeft ? `เกิดใหม่ · เหลืออีก ${this.novaLeft} ครั้ง` : 'เกิดใหม่!', { size: 40, y: H * 0.35 });
+    for (const b of this.ebullets.getChildren()) if (b.active) b.disableBody(true, true);
+    sfx.shatter();
+    this.trPulse('nova');
+    // ช็อตหลังแฟลชนิดหน่อย (ไม่ทำลายศัตรูกลางการชน)
+    this.time.delayedCall(180, () => {
+      if (this.over) return;
+      const g = this.add.graphics().setDepth(9).setBlendMode('ADD');
+      for (const e of this.enemies.getChildren().slice()) {
+        if (!e.active || !e.visible || e.getData('state') === 'sucked' || e.getData('state') === 'portalShip') continue;
+        const pts = [], n = 8;
+        for (let i = 0; i <= n; i++) pts.push({ x: x + (e.x - x) * i / n + (i % n ? frand(-14, 14) : 0), y: y + (e.y - y) * i / n + (i % n ? frand(-14, 14) : 0) });
+        g.lineStyle(8, 0xff3b3b, 0.35).strokePoints(pts);
+        g.lineStyle(2.5, 0xffe0e0, 1).strokePoints(pts);
+        if (e.getData('boss')) {
+          const dmg = Math.max(1, Math.round(e.getData('maxHp') * 0.1));
+          this.popText(e.x, e.y - 40, `-${dmg} (10%)`, '#ff8a8a', 20);
+          this.damage(e, dmg);
+        } else this.killEnemy(e, true);
+      }
+      this.tweens.add({ targets: g, alpha: 0, duration: 450, onComplete: () => g.destroy() });
+    });
+  }
+  // โล่ดวงอาทิตย์: โดนดาเมจแล้วสุ่มกางโล่ (ได้ทุก 10 วิ)
+  trySolar() {
+    if (!this.tr.solar || this.over) return;
+    const now = this.time.now;
+    if (now < this.solarReadyAt || Math.random() >= this.trv('solar')) return;
+    this.solarUntil = now + (this.tr.solar >= 3 ? 4000 : 3000);
+    this.solarReadyAt = now + 10000;
+    this.popText(this.player.x, this.player.y - 70, 'โล่ดวงอาทิตย์!', '#ffd23f', 18);
+    this.trPulse('solar');
+    sfx.shield();
+  }
+  // วาดโล่ดวงอาทิตย์ + สะท้อนกระสุนศัตรูที่เข้ามาในโล่ กลับไปทางเดิม
+  updateSolar(time, pv) {
+    const g = this.solarGfx;
+    g.clear();
+    if (!pv || time >= this.solarUntil) return;
+    const x = this.player.x, y = this.player.y, R = 46, left = this.solarUntil - time, a = left < 600 ? left / 600 : 1;
+    g.fillStyle(0xffd23f, 0.08 * a).fillCircle(x, y, R);
+    g.lineStyle(3, 0xffd23f, 0.9 * a).strokeCircle(x, y, R);
+    g.lineStyle(2, 0xffb84d, 0.7 * a);
+    for (let i = 0; i < 12; i++) {
+      const ang = time / 2000 + i * Math.PI / 6;
+      g.lineBetween(x + Math.cos(ang) * (R + 3), y + Math.sin(ang) * (R + 3), x + Math.cos(ang) * (R + 11), y + Math.sin(ang) * (R + 11));
+    }
+    for (const b of this.ebullets.getChildren()) {
+      if (!b.active || (b.x - x) ** 2 + (b.y - y) ** 2 > R * R) continue;
+      const v = b.body.velocity;
+      this.spawnBullet({ key: 'bullet', x: b.x, y: b.y, vx: -v.x * 1.8, vy: -v.y * 1.8, dmg: 2 }, 0);
+      this.sparks.explode(4, b.x, b.y);
+      b.disableBody(true, true);
+    }
   }
   // ขนนกคืนชีพขั้น 3: คลื่นเพลิงล้างกระสุนศัตรูทั้งจอ
   featherWave() {
@@ -4704,7 +4836,7 @@ class Game extends Phaser.Scene {
       this.popText(x, y, 'ตั๋วสุ่ม +1!', '#ffd23f', 18);
       sfx.letter(4);
     } else if (type === 'magnet') {
-      this.magnetUntil = this.time.now + MAGNET_MS;
+      this.magnetUntil = this.time.now + MAGNET_MS * (this.tr.magnet >= 3 ? 2 : 1);   // แม่เหล็กทองขั้น 3: นาน 2 เท่า
       this.popText(x, y, 'แม่เหล็ก! ดูดของไกลขึ้น', '#ff8a6a');
     } else if (type === 'life') {
       if (this.lives < MAX_LIVES) { this.lives++; this.popText(x, y, 'ชีวิต +1', '#ff7ac8'); }
@@ -4897,8 +5029,10 @@ class Game extends Phaser.Scene {
     Object.keys(this.tr).forEach((id, i) => {
       const ic = this.trIcons[i];
       if (id === 'feather') ic.setAlpha(this.featherUsed ? 0.3 : 1);
-      else if (id === 'mirror') {
-        const k = Phaser.Math.Clamp(1 - (this.mirrorAt - time) / this.trv('mirror'), 0, 1);
+      else if (id === 'nova') ic.setAlpha(this.novaLeft ? 1 : 0.3);
+      else if (id === 'mirror' || id === 'solar') {
+        const k = id === 'mirror' ? Phaser.Math.Clamp(1 - (this.mirrorAt - time) / this.trv('mirror'), 0, 1)
+          : Phaser.Math.Clamp(1 - (this.solarReadyAt - time) / 10000, 0, 1);
         ic.setAlpha(k >= 1 ? 1 : 0.5);
         this.trRing.lineStyle(3, k >= 1 ? 0x7dff9a : 0xc18bff, 0.9).beginPath()
           .arc(ic.x, ic.y, 21, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k).strokePath();
@@ -5232,12 +5366,14 @@ class Game extends Phaser.Scene {
       sfx.shield();
       this.invulnUntil = this.time.now + (this.shipId === 'magneto' ? this.sk.guard : 1000);
       this.popText(this.player.x, this.player.y - 40, this.shield ? `เกราะเหลือ ${this.shield}` : 'เกราะแตก', '#9ff3ff');
+      this.trySolar();
       return;
     }
     this.lives--;
     const revive = this.lives <= 0 && this.tr.feather && !this.featherUsed;
-    // ตาย: มีอาวุธหลายแบบ = เสียแบบที่เก็บล่าสุด (เลเวลคงเดิม) · มีแบบเดียว = เลเวลลด 1 · ขนนกคืนชีพ = อาวุธไม่ลด
-    if (revive) {}
+    const nova = this.lives <= 0 && !revive && this.novaLeft > 0;
+    // ตาย: มีอาวุธหลายแบบ = เสียแบบที่เก็บล่าสุด (เลเวลคงเดิม) · มีแบบเดียว = เลเวลลด 1 · ขนนก/ซูเปอร์โนวา = อาวุธไม่ลด
+    if (revive || nova) {}
     else if (this.tr.battery && Math.random() < this.trv('battery')) { this.popText(this.player.x, this.player.y - 70, 'แบตสำรอง: อาวุธไม่ลด', '#7dff9a', 15); this.trPulse('battery'); }
     else if (this.mods.length > 1) {
       const lost = this.mods.pop();
@@ -5251,6 +5387,11 @@ class Game extends Phaser.Scene {
       this.banner('ขนนกคืนชีพ!', 'ฟื้นคืนชีพ · อาวุธไม่ลด', { size: 40, y: H * 0.35 });
       this.trPulse('feather');
       if (this.tr.feather >= 3) this.featherWave();
+    } else if (nova) {
+      this.novaLeft--;
+      revived = true;
+      this.lives = 1;
+      this.supernova();
     }
     this.explode(this.player.x, this.player.y, 1.5, 'player');
     this.cameras.main.shake(250, 0.012);
@@ -5265,8 +5406,9 @@ class Game extends Phaser.Scene {
       this.time.delayedCall(900, () => this.endGame());
       return;
     }
-    this.invulnUntil = this.time.now + (revived ? Math.max(2200, this.trv('feather')) : 2200);
+    this.invulnUntil = this.time.now + (revived ? Math.max(2200, this.trv(nova ? 'nova' : 'feather')) : 2200);
     this.player.setPosition(W / 2, H - 110);
+    this.trySolar();
     this.drag = null;
     this.dragTo = null;
   }
@@ -5380,7 +5522,7 @@ class Game extends Phaser.Scene {
         `รวม คริสตัล ${fmt(Save.data.coins)} · ตั๋วสุ่ม ${fmt(Save.data.tickets)} ใบ`));
       const ms = Array.isArray(rw.milestones) ? rw.milestones : [];
       if (ms.length) {
-        txt(this, W / 2, 418 + OY, ms.map(m => `ถึงรอบ ${m.loop} ครั้งแรก: ` + [m.keys && `กุญแจดาว +${m.keys}`, m.gold && `หีบทอง +${m.gold}`, m.slot && 'ปลดช่องสมบัติที่ 2']
+        txt(this, W / 2, 418 + OY, ms.map(m => `ถึงรอบ ${m.loop} ครั้งแรก: ` + [m.keys && `กุญแจดาว +${m.keys}`, m.gold && `หีบทอง +${m.gold}`]
           .filter(Boolean).join(' · ')).join('\n'), 13, '#ffd23f', { align: 'center', lineSpacing: 2 }).setOrigin(0.5, 0).setDepth(21);
         sfx.fanfare();
       }
@@ -5599,7 +5741,7 @@ class Game extends Phaser.Scene {
 
     // ดูดของดีเข้าหายาน: คริสตัลมีแม่เหล็กพื้นฐาน, ไอเท็มแม่เหล็กดูดไกลขึ้นทุกอย่าง, FEVER ดูดคริสตัลทั้งจอ, ON AIR ดูดทุกอย่างทั้งจอ
     const magnetOn = time < this.magnetUntil;
-    const pullR = this.onair || time < this.superMagnetUntil ? Infinity : magnetOn ? MAGNET_R : 0;
+    const pullR = this.onair || time < this.superMagnetUntil ? Infinity : Math.max(magnetOn ? MAGNET_R : 0, this.trv('magnet'));
     const pullTo = (o, speed) => {
       if (o.body) o.body.setAllowGravity(false);
       this.physics.velocityFromRotation(Phaser.Math.Angle.Between(o.x, o.y, this.player.x, this.player.y), speed, o.body.velocity);
@@ -5614,6 +5756,12 @@ class Game extends Phaser.Scene {
       }
     }
     this.magnetRing.clear();
+    if (pv && this.tr.magnet && !this.onair) {   // วงแหวนแม่เหล็กทอง: วงทองจางๆ รอบยานตลอดเวลา
+      const r = this.trv('magnet'), k = (time % 1200) / 1200;
+      this.magnetRing.lineStyle(2, 0xffd23f, 0.3 * (1 - k)).strokeCircle(this.player.x, this.player.y, r * (0.5 + 0.5 * k));
+      this.magnetRing.lineStyle(1, 0xffd23f, 0.16).strokeCircle(this.player.x, this.player.y, r);
+    }
+    this.updateSolar(time, pv);
     if (pv && magnetOn && !this.onair) {
       const left = this.magnetUntil - time;
       const r = MAGNET_R * (0.55 + 0.45 * ((time % 900) / 900));

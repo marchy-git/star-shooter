@@ -11,8 +11,9 @@
 //   POST /api/evolve                  แปลงร่างยาน (Lv10 + เศษครบ 5) { ship }
 //   POST /api/shard/sell              ขายเศษยานเป็นคริสตัล { ship, n }
 //   POST /api/chest                   เปิดหีบสมบัติ { pay: 'coins' | 'key' | 'gold' } ได้สมบัติสุ่ม 1 ชิ้น
-//   POST /api/treasure/up             ใช้ฝุ่นดาวอัปขั้นสมบัติที่เลือก { id }
-//   POST /api/equip                   ใส่สมบัติ { slots: [id, id] } (ห้ามซ้ำ, เอพิก/ตำนานได้ 1 ชิ้น, ช่อง 2 ต้องปลดล็อก)
+//   POST /api/treasure/up             ใช้คริสตัลอัปขั้นสมบัติ { id }
+//   POST /api/treasure/slot           ปลดล็อกช่องสมบัติที่ 2 (คริสตัล 5,000)
+//   POST /api/equip                   ใส่สมบัติ { slots: [id, id] } (ห้ามซ้ำ, เอพิกขึ้นไปได้ 1 ชิ้น, ช่อง 2 ต้องปลดล็อก)
 //   POST /api/score                   จบรอบ: ส่งคะแนน + ของที่เก็บได้ { runId, score, loop, coins, tickets, ... }
 //   POST /api/logout                  ออกจากระบบ
 //   GET  /api/notice                  ประกาศ update patch ที่กำลังจะมา (ตั้งโดย deploy.sh)
@@ -100,18 +101,21 @@ const SHARD_PRICE = { rare: 80, epic: 180, legendary: 400, mythic: 1000 };
 // สมบัติ (ต้องตรงกับ TREASURES / TR_* ในเกม)
 const TREASURE_RARITY = {
   heart: 'common', lens: 'common', lucky: 'common', bag: 'common',
-  battery: 'rare', shield: 'rare', compass: 'rare', hourglass: 'epic', mirror: 'epic', feather: 'legendary',
+  battery: 'rare', shield: 'rare', compass: 'rare', hourglass: 'epic', mirror: 'epic',
+  feather: 'legendary', magnet: 'legendary', solar: 'legendary', nova: 'mythic',
 };
 const TREASURE_IDS = Object.keys(TREASURE_RARITY);
-const TREASURE_MAX = 3, TREASURE_SLOTS = 2, CHEST_PRICE = 1500;
-const TR_TIERS = ['common', 'rare', 'epic', 'legendary'];
-const TR_HIGH = ['epic', 'legendary'];                              // ใส่พร้อมกันได้ไม่เกิน 1 ชิ้น
-const TR_ODDS = { common: 55, rare: 30, epic: 12, legendary: 3 };   // โอกาสจากหีบ (%)
+const TREASURE_MAX = 3, TREASURE_SLOTS = 2, CHEST_PRICE = 1500, SLOT2_PRICE = 5000;
+const TR_TIERS = ['common', 'rare', 'epic', 'legendary', 'mythic'];
+const TR_HIGH = ['epic', 'legendary', 'mythic'];                    // ใส่พร้อมกันได้ไม่เกิน 1 ชิ้น
+const TR_ODDS = { common: 55, rare: 30, epic: 11.5, legendary: 3, mythic: 0.5 };   // โอกาสจากหีบ (%)
+const TR_GOLD_ODDS = { epic: 75, legendary: 20, mythic: 5 };        // หีบทอง: เอพิกขึ้นไปเท่านั้น
 const TR_PITY_EPIC = 10, TR_PITY_LEGEND = 30;                       // การันตีของหีบ (นับแยกจากตั๋วสุ่มยาน)
-const TR_DUST = { common: 1, rare: 2, epic: 4, legendary: 8 };      // ได้ชิ้นที่ขั้นเต็มแล้ว → ฝุ่นดาว
-const TR_DUST_COST = { common: 10, rare: 10, epic: 25, legendary: 25 };   // ฝุ่นดาวที่ใช้อัปขั้นชิ้นที่เลือก
+const TR_DUPE = { common: 100, rare: 200, epic: 400, legendary: 800, mythic: 1600 };   // ได้ชิ้นที่มีแล้ว → คริสตัลคืน
+const TR_UP_COST = {                                                // คริสตัลที่ใช้อัปขั้น 1→2, 2→3
+  common: [3000, 6000], rare: [3900, 7800], epic: [4800, 9600], legendary: [6000, 12000], mythic: [7500, 15000],
+};
 const KEY_CHANCE = 0.06;                                            // ล้มบอส 1 ตัว มีโอกาสได้กุญแจดาว
-const SLOT2_LOOP = 3;                                               // ช่องที่ 2 ปลดล็อกเมื่อถึงรอบนี้ครั้งแรก
 const MILESTONES = { 3: { keys: 1 }, 5: { keys: 2 }, 8: { gold: 1 } };   // ถึงรอบใหม่ครั้งแรก (ครั้งเดียวต่อบัญชี)
 const BAG_BONUS = [0, 0.1, 0.2, 0.3];   // กระเป๋าคริสตัล: คริสตัลที่เก็บได้ในรอบ +% ตามขั้น
 const lvCost = (id, lv) => Math.round(100 * Math.pow(1.5, lv - 1) * TIERS[SHIP_TIER[id]].cost / 10) * 10;
@@ -147,13 +151,13 @@ function treasureData(d) {
   for (const id of TREASURE_IDS) { const lv = Math.min(TREASURE_MAX, nat(d.treasures && d.treasures[id])); if (lv) treasures[id] = lv; }
   const ms = Object.keys(MILESTONES).map(Number).filter(n => Array.isArray(d.ms) && d.ms.includes(n));
   const t = {
-    treasures, keys: nat(d.keys), gold: nat(d.gold), dust: nat(d.dust), ms,
+    treasures, keys: nat(d.keys), gold: nat(d.gold), ms, slot2: !!d.slot2,
     tpity: { e: nat(d.tpity && d.tpity.e), l: nat(d.tpity && d.tpity.l) },
   };
   t.equip = cleanEquip(Array.isArray(d.equip) ? d.equip : [], t);
   return t;
 }
-const slotCount = d => (d.ms.includes(SLOT2_LOOP) ? TREASURE_SLOTS : 1);
+const slotCount = d => (d.slot2 ? TREASURE_SLOTS : 1);
 const isHigh = id => TR_HIGH.includes(TREASURE_RARITY[id]);
 // สมบัติที่ใส่ได้จริง: มีอยู่, ไม่ซ้ำ, เอพิก/ตำนานไม่เกิน 1, ไม่เกินช่องที่ปลดล็อก
 function cleanEquip(list, d) {
@@ -167,12 +171,13 @@ function cleanEquip(list, d) {
 
 // สุ่มสมบัติจากหีบ: เลือกระดับตามโอกาส (หีบทอง = เอพิกขึ้นไป) แล้วสุ่มชิ้นในระดับนั้น · มีระบบการันตี
 function rollTreasure(d, gold) {
-  let tiers = TR_TIERS;
-  if (d.tpity.l >= TR_PITY_LEGEND - 1) tiers = ['legendary'];
-  else if (gold || d.tpity.e >= TR_PITY_EPIC - 1) tiers = TR_HIGH;
-  let r = randFloat() * tiers.reduce((sum, k) => sum + TR_ODDS[k], 0);
+  const odds = gold ? TR_GOLD_ODDS : TR_ODDS;
+  let tiers = Object.keys(odds);
+  if (d.tpity.l >= TR_PITY_LEGEND - 1) tiers = ['legendary', 'mythic'];
+  else if (d.tpity.e >= TR_PITY_EPIC - 1) tiers = TR_HIGH;
+  let r = randFloat() * tiers.reduce((sum, k) => sum + odds[k], 0);
   let tier = tiers[tiers.length - 1];
-  for (const k of tiers) { r -= TR_ODDS[k]; if (r <= 0) { tier = k; break; } }
+  for (const k of tiers) { r -= odds[k]; if (r <= 0) { tier = k; break; } }
   const rank = TR_TIERS.indexOf(tier);
   d.tpity.e = rank >= 2 ? 0 : d.tpity.e + 1;
   d.tpity.l = rank >= 3 ? 0 : d.tpity.l + 1;
@@ -404,12 +409,12 @@ async function openChest(env, request) {
   else if (pay === 'gold') { if (d.gold < 1) return json({ error: 'no_gold' }, 400); d.gold -= 1; }
   else { if (d.coins < CHEST_PRICE) return json({ error: 'not_enough', need: CHEST_PRICE - d.coins }, 400); d.coins -= CHEST_PRICE; }
   const id = rollTreasure(d, pay === 'gold');
-  const lv = d.treasures[id] || 0;
-  let dust = 0;
-  if (lv >= TREASURE_MAX) { dust = TR_DUST[TREASURE_RARITY[id]]; d.dust += dust; }
-  else d.treasures[id] = lv + 1;
+  // ได้ชิ้นใหม่ = ขั้น 1 · ได้ชิ้นที่มีแล้ว = คริสตัลคืนเล็กน้อย (อัปขั้นด้วยคริสตัลแยกต่างหาก)
+  const isNew = !d.treasures[id];
+  const refund = isNew ? 0 : TR_DUPE[TREASURE_RARITY[id]];
+  if (isNew) d.treasures[id] = 1; else d.coins += refund;
   if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
-  return json({ treasure: id, level: d.treasures[id], isNew: lv === 0, dust, data: d });
+  return json({ treasure: id, level: d.treasures[id], isNew, refund, data: d });
 }
 
 async function treasureUp(env, request) {
@@ -420,12 +425,24 @@ async function treasureUp(env, request) {
   const id = body && body.id, lv = d.treasures[id] || 0;
   if (!lv) return json({ error: 'not_owned_tr' }, 400);
   if (lv >= TREASURE_MAX) return json({ error: 'max_level' }, 400);
-  const cost = TR_DUST_COST[TREASURE_RARITY[id]];
-  if (d.dust < cost) return json({ error: 'no_dust', need: cost - d.dust }, 400);
-  d.dust -= cost;
+  const cost = TR_UP_COST[TREASURE_RARITY[id]][lv - 1];
+  if (d.coins < cost) return json({ error: 'not_enough', need: cost - d.coins }, 400);
+  d.coins -= cost;
   d.treasures[id] = lv + 1;
   if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
-  return json({ treasure: id, level: lv + 1, data: d });
+  return json({ treasure: id, level: lv + 1, cost, data: d });
+}
+
+async function unlockSlot(env, request) {
+  const u = await currentUser(env, request);
+  if (!u) return json({ error: 'unauthorized' }, 401);
+  const d = dataOf(u);
+  if (d.slot2) return json({ error: 'slot_owned' }, 400);
+  if (d.coins < SLOT2_PRICE) return json({ error: 'not_enough', need: SLOT2_PRICE - d.coins }, 400);
+  d.coins -= SLOT2_PRICE;
+  d.slot2 = true;
+  if (!(await writeDataIfSame(env, u, d))) return json({ error: 'busy' }, 409);
+  return json({ data: d });
 }
 
 async function equipTreasures(env, request) {
@@ -517,7 +534,7 @@ async function submit(env, request) {
   d.coins += coins + scoreBonus;
   d.tickets += tickets;
   if (score > d.best) d.best = score;
-  // ถึงรอบใหม่ครั้งแรก: กุญแจ / หีบทอง / ปลดช่องสมบัติที่ 2
+  // ถึงรอบใหม่ครั้งแรก: กุญแจ / หีบทอง
   const milestones = [];
   for (const [at, r] of Object.entries(MILESTONES)) {
     const n = Number(at);
@@ -525,7 +542,7 @@ async function submit(env, request) {
     d.ms.push(n);
     d.keys += r.keys || 0;
     d.gold += r.gold || 0;
-    milestones.push({ loop: n, keys: r.keys || 0, gold: r.gold || 0, slot: n === SLOT2_LOOP });
+    milestones.push({ loop: n, keys: r.keys || 0, gold: r.gold || 0 });
   }
   await writeData(env, u.id, d);
 
@@ -588,6 +605,7 @@ export async function onRequest({ request, env }) {
     if (route === 'chest' && m === 'POST') return await openChest(env, request);
     if (route === 'equip' && m === 'POST') return await equipTreasures(env, request);
     if (route === 'treasure/up' && m === 'POST') return await treasureUp(env, request);
+    if (route === 'treasure/slot' && m === 'POST') return await unlockSlot(env, request);
     if (route === 'logout' && m === 'POST') return await logout(env, request);
     return json({ error: 'not_found' }, 404);
   } catch (err) {

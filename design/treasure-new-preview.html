@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Treasures</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #05030f; --card: #0d0a22; --line: #2a2552; --text: #e8f3ff; --dim: #8f9ac0;
+          --mythic: #ff3b3b; --legend: #ffd23f; --good: #7dff9a; --warn: #ffb84d; --bad: #ff6b81; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Chakra Petch", system-ui, sans-serif; }
+  body { background: radial-gradient(1200px 600px at 50% -200px, #2a0f3a 0%, var(--bg) 70%) fixed; }
+  #wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { margin: 0 0 4px; font-size: 30px; text-shadow: 0 0 12px #ff3b3b88; }
+  h2 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sub { color: var(--dim); margin: 0 0 18px; line-height: 1.6; }
+  canvas { display: block; width: 100%; height: auto; }
+  .tag { font-size: 12px; padding: 2px 9px; border-radius: 99px; border: 1px solid currentColor; font-weight: 700; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 18px; }
+  .cols { display: grid; grid-template-columns: 380px 1fr; gap: 18px; margin-top: 12px; }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
+  .demo { background: #04020c; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .lvbar { display: flex; gap: 6px; margin: 8px 0 0; }
+  .lvbar button { flex: 1; font: 700 14px "Chakra Petch", sans-serif; color: var(--text); background: #15112e; border: 1px solid var(--line); border-radius: 10px; padding: 7px 0; cursor: pointer; }
+  .lvbar button.on { border-color: var(--legend); box-shadow: 0 0 10px #ffd23f55; color: var(--legend); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; line-height: 1.5; }
+  th { color: var(--dim); font-weight: 500; white-space: nowrap; }
+  td.k { color: var(--dim); white-space: nowrap; }
+  .tblwrap { overflow-x: auto; }
+  .verdict { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.6; border-left: 4px solid; background: #120f2a; }
+  .verdict b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .v-ok { border-color: var(--good); } .v-ok b { color: var(--good); }
+  .v-op { border-color: var(--bad); } .v-op b { color: var(--bad); }
+  .v-weak { border-color: var(--warn); } .v-weak b { color: var(--warn); }
+  .meter { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); margin-top: 8px; }
+  .meter .bar { flex: 1; height: 8px; border-radius: 99px; background: linear-gradient(90deg, #ffb84d, #7dff9a 40%, #7dff9a 60%, #ff6b81); position: relative; }
+  .meter .pin { position: absolute; top: -4px; width: 4px; height: 16px; border-radius: 2px; background: #fff; box-shadow: 0 0 6px #fff; }
+  .meter .pin.me { background: #9f8bff; box-shadow: 0 0 6px #9f8bff; }
+  .legend { font-size: 12px; color: var(--dim); margin-top: 4px; }
+  .note { background: #12102b; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.7; color: #cdd6f4; }
+  .note b { color: var(--text); }
+  h3 { margin: 16px 0 6px; font-size: 15px; color: #c18bff; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>สมบัติใหม่ 3 ชิ้น</h1>
+  <p class="sub">หน้าพรีวิวให้เลือกก่อนใส่เกม (ไม่ได้ deploy) · ภาพเคลื่อนไหวด้านซ้ายคือตัวอย่างตอนทำงาน กดขั้น 1/2/3 ดูความต่างได้ (ใช้ค่า <b>แบบแนะนำ</b>)<br>
+  ตารางเทียบ <b>ตามที่สั่ง</b> กับ <b>แบบแนะนำ</b> · แถบความแรง: จุดขาว = ตามที่สั่ง · จุดม่วง = แบบแนะนำ (เขียวกลาง = พอดี)</p>
+  <div id="cards"></div>
+
+  <div class="note">
+    <b>ผลกับระบบอื่นถ้าเพิ่ม 3 ชิ้นนี้</b><br>
+    • หีบต้องมีระดับ <b>มิธิค</b> เพิ่ม: แนะนำ ธรรมดา 55% · หายาก 30% · เอพิก 11.5% · ตำนาน 3% · มิธิค 0.5% · หีบทองมีมิธิค 5%<br>
+    • กฎ <b>"เอพิกขึ้นไปใส่ได้ 1 ชิ้น"</b> ใช้กับมิธิค/ตำนานด้วย → ใส่หัวใจซูเปอร์โนวาคู่กับขนนกคืนชีพไม่ได้ (กันเกิดใหม่ซ้อน 3 ครั้ง)<br>
+    • ขนนกคืนชีพ (ตำนาน) จะด้อยกว่าหัวใจซูเปอร์โนวา ซึ่งถือว่าโอเค เพราะเป็นของระดับต่ำกว่า และหาได้ง่ายกว่า 6 เท่า
+  </div>
+</div>
+
+<script>
+// พรีวิวสมบัติใหม่ — เทคนิควาดเดียวกับ TrArt ในเกม (เส้นนีออน 3 ชั้น) ย้ายเข้าเกมได้ตรงๆ
+const GOLD = '#ffd23f', RED = '#ff3b3b';
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const poly = (pts, close = true) => { const p = new Path2D(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); if (close) p.closePath(); return p; };
+const circ = (x, y, r) => { const p = new Path2D(); p.arc(x, y, r, 0, Math.PI * 2); return p; };
+const starPts = (cx, cy, r1, r2, n, rot = -Math.PI / 2) => Array.from({ length: n * 2 }, (_, i) => { const a = rot + i * Math.PI / n, r = i % 2 ? r2 : r1; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; });
+function neon(c, p, col, fill = 0.16, k = 1) {
+  if (fill) { c.fillStyle = rgba(col, fill); c.fill(p); }
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  for (const [w, a] of [[8, 0.12], [5, 0.3], [2.4, 1]]) { c.lineWidth = w * k; c.strokeStyle = rgba(col, a); c.stroke(p); }
+}
+const line = (c, pts, col, k = 1) => neon(c, poly(pts, false), col, 0, k);
+function sparkle(c, x, y, r, col, a = 1) {
+  c.save(); c.globalAlpha *= Math.max(0, Math.min(1, a)); c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
+  c.beginPath(); c.moveTo(x, y - r); c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r); c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r); c.fill(); c.restore();
+}
+// สุ่มแบบคงที่ (ภาพไม่กระตุก)
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+function bolt(c, x1, y1, x2, y2, seed, col = '#ffe0e0') {
+  const pts = [[x1, y1]], n = 9, dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy), nx = -dy / len, ny = dx / len;
+  for (let i = 1; i < n; i++) { const o = (hash(seed + i) - 0.5) * 26; pts.push([x1 + dx * i / n + nx * o, y1 + dy * i / n + ny * o]); }
+  pts.push([x2, y2]);
+  c.save(); c.shadowColor = RED; c.shadowBlur = 14; line(c, pts, col, 0.6); c.restore();
+}
+
+// ---------- ไอคอน ----------
+const ICON = {
+  // หัวใจซูเปอร์โนวา: แกนพลังแดง แฉก 8 ทิศ ประกายไฟฟ้าวิ่งรอบ
+  nova(c, t, lv) {
+    c.save(); c.rotate(t * 0.4);
+    neon(c, poly(starPts(0, 0, 34, 15, 8)), RED, 0.18);
+    c.restore();
+    const g = c.createRadialGradient(0, 0, 2, 0, 0, 16); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#ffb3b3'); g.addColorStop(1, rgba(RED, 0));
+    c.fillStyle = g; c.fill(circ(0, 0, 16 + Math.sin(t * 6) * 1.5));
+    neon(c, circ(0, 0, 11), '#ffd0d0', 0, 0.6);
+    const f = Math.floor(t * 12);
+    for (let i = 0; i < 2; i++) { const a = (f * 0.7 + i * Math.PI) % (Math.PI * 2); bolt(c, Math.cos(a) * 14, Math.sin(a) * 14, Math.cos(a + 0.5) * 36, Math.sin(a + 0.5) * 36, f * 3 + i); }
+  },
+  // วงแหวนแม่เหล็กทอง: แม่เหล็กเกือกม้า + คลื่นสนามแม่เหล็ก
+  magnet(c, t, lv) {
+    const outer = new Path2D(); outer.moveTo(-22, -26); outer.lineTo(-22, 2); outer.arc(0, 2, 22, Math.PI, 0, true); outer.lineTo(22, -26); outer.lineTo(10, -26); outer.lineTo(10, 2); outer.arc(0, 2, 10, 0, Math.PI, false); outer.lineTo(-10, -26); outer.closePath();
+    neon(c, outer, GOLD, 0.25);
+    c.fillStyle = '#ffffff'; c.shadowColor = '#fff'; c.shadowBlur = 8; c.fillRect(-21, -30, 10, 7); c.fillRect(11, -30, 10, 7); c.shadowBlur = 0;
+    for (let i = 0; i < 3; i++) { const k = ((t * 0.8 + i / 3) % 1); c.save(); c.globalAlpha = 1 - k; c.lineWidth = 1.6; c.strokeStyle = GOLD; c.beginPath(); c.arc(0, -26, 14 + k * 22, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); c.restore(); }
+  },
+  // โล่ดวงอาทิตย์: โล่กลม แสงอาทิตย์ 12 แฉก ลูกศรเด้งกลับ
+  solar(c, t, lv) {
+    c.save(); c.rotate(t * 0.3);
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; line(c, [[Math.cos(a) * 30, Math.sin(a) * 30], [Math.cos(a) * 37, Math.sin(a) * 37]], '#ffb84d', 0.6); }
+    c.restore();
+    neon(c, circ(0, 0, 27), GOLD, 0.16);
+    neon(c, circ(0, 0, 14), '#fff3b0', 0.35, 0.6);
+    const f = (t * 0.8) % 1;
+    c.save(); c.globalAlpha = f < 0.5 ? 1 : 1;
+    const ax = f < 0.5 ? -44 + f * 2 * 18 : -26 - (f - 0.5) * 2 * 20, ay = f < 0.5 ? 34 - f * 2 * 14 : 20 + (f - 0.5) * 2 * 18;
+    arrow(c, ax, ay, f < 0.5 ? -0.6 : 2.5, f < 0.5 ? RED : GOLD);
+    c.restore();
+  },
+};
+function arrow(c, x, y, a, col) {
+  c.save(); c.translate(x, y); c.rotate(a);
+  c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 8;
+  c.beginPath(); c.moveTo(7, 0); c.lineTo(-4, -5); c.lineTo(-1, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
+  c.fillStyle = rgba(col, 0.4); c.fillRect(-13, -1.5, 10, 3); c.restore();
+}
+function frame(c, t, lv, col, r = 50) {
+  const hex = poly(Array.from({ length: 6 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [Math.cos(a) * r, Math.sin(a) * r]; }));
+  const g = c.createRadialGradient(0, 0, 4, 0, 0, r); g.addColorStop(0, rgba(col, 0.16)); g.addColorStop(1, 'rgba(8,6,24,.9)');
+  c.fillStyle = g; c.fill(hex);
+  c.save(); c.globalAlpha *= lv >= 3 ? 1 : 0.65; neon(c, hex, col, 0, 0.7); c.restore();
+  if (lv >= 2) { c.save(); c.rotate(t * 0.6); c.setLineDash([6, 9]); c.lineWidth = 1.6; c.strokeStyle = rgba(col, 0.7); c.beginPath(); c.arc(0, 0, r + 8, 0, Math.PI * 2); c.stroke(); c.restore(); }
+  if (lv >= 3) {
+    for (let i = 0; i < 3; i++) { const a = -t * 1.1 + i * Math.PI * 2 / 3; sparkle(c, Math.cos(a) * (r + 8), Math.sin(a) * (r + 8), 5, GOLD); }
+    neon(c, poly([[-12, -r - 4], [-7, -r - 14], [0, -r - 6], [7, -r - 14], [12, -r - 4]], false), GOLD, 0, 0.6);
+  }
+  for (let i = 0; i < 3; i++) { const x = (i - 1) * 11, y = r + 2; c.fillStyle = i < lv ? (lv >= 3 ? GOLD : col) : '#2a2552'; c.beginPath(); c.moveTo(x, y - 4); c.lineTo(x + 4, y); c.lineTo(x, y + 4); c.lineTo(x - 4, y); c.fill(); }
+}
+
+// ---------- ฉากตัวอย่าง (360x260 = จอเกมย่อ 0.75) ----------
+const DW = 360, DH = 260, SC = 0.75;
+function bg(c, t) {
+  c.fillStyle = '#05030f'; c.fillRect(0, 0, DW, DH);
+  for (let i = 0; i < 50; i++) { const z = (i % 3) + 1; c.fillStyle = `rgba(200,220,255,${0.15 + z * 0.15})`; c.fillRect((i * 137.5) % DW, ((i * 89.3) + t * 18 * z) % DH, z, z); }
+}
+function ship(c, x, y, a = 1) {
+  c.save(); c.globalAlpha = a; c.translate(x, y); neon(c, poly([[0, -18], [13, 12], [0, 6], [-13, 12]]), '#36f1ff', 0.2, 0.8); c.restore();
+}
+function enemy(c, x, y) { c.save(); c.translate(x, y); neon(c, poly([[0, 12], [12, -6], [6, -10], [0, -4], [-6, -10], [-12, -6]]), RED, 0.2, 0.7); c.restore(); }
+function label(c, x, y, s, col = '#e8f3ff', size = 14, align = 'center') { c.fillStyle = col; c.font = `700 ${size}px "Chakra Petch", sans-serif`; c.textAlign = align; c.fillText(s, x, y); }
+function burst(c, x, y, k, col) { for (let i = 0; i < 10; i++) { const a = i * 0.63 + hash(i) * 0.5, r = k * (20 + hash(i + 3) * 18); sparkle(c, x + Math.cos(a) * r, y + Math.sin(a) * r, 4 * (1 - k), i % 2 ? '#ffffff' : col, 1 - k); } }
+
+// หัวใจซูเปอร์โนวา: ตาย → วาร์ปแดงเต็มจอ → ช็อตไฟฟ้าทำลายมอน → เกิดใหม่อมตะ
+function demoNova(c, t, lv) {
+  bg(c, t);
+  const inv = [2, 3, 3][lv - 1], lives = lv >= 3 ? 2 : 1, cyc = 2.6 + inv + 0.8, f = t % cyc, round = Math.floor(t / cyc);
+  const used = lv >= 3 ? round % 2 : 0;
+  const sx = 180, sy = 210, es = [60, 120, 180, 240, 300];
+  const killed = f > 2.3;
+  if (!killed) es.forEach((x, i) => enemy(c, x, 60 + Math.sin(t * 2 + i) * 6));
+  else if (f < 2.8) es.forEach((x, i) => burst(c, x, 60, (f - 2.3) / 0.5, RED));
+  if (f < 1.5) { const k = f / 1.5; arrow(c, 180, 70 + k * 135, Math.PI / 2, RED); ship(c, sx, sy); }
+  else if (f < 1.9) burst(c, sx, sy, (f - 1.5) / 0.4, '#36f1ff');
+  if (f >= 1.9 && f < 2.9) {
+    const k = (f - 1.9) / 1.0;
+    c.fillStyle = rgba(RED, 0.55 * (1 - k)); c.fillRect(0, 0, DW, DH);
+    const g = c.createRadialGradient(sx, sy, 10, sx, sy, 260); g.addColorStop(0, rgba('#ffffff', 0.5 * (1 - k))); g.addColorStop(1, rgba(RED, 0)); c.fillStyle = g; c.fillRect(0, 0, DW, DH);
+    c.save(); c.strokeStyle = rgba(RED, 1 - k); c.lineWidth = 3; c.beginPath(); c.arc(sx, sy, 20 + k * 300, 0, Math.PI * 2); c.stroke(); c.restore();
+    if (f > 2.0 && f < 2.5) es.forEach((x, i) => bolt(c, sx, sy, x, 60, Math.floor(t * 20) * 7 + i));
+    label(c, DW / 2, 130, 'SUPERNOVA!', '#ffffff', 26);
+  }
+  if (f >= 2.6) {
+    const blink = f < 2.6 + inv ? (Math.floor(t * 10) % 2 ? 0.35 : 1) : 1;
+    ship(c, sx, sy, blink);
+    if (f < 2.6 + inv) { c.save(); c.strokeStyle = rgba(RED, 0.6); c.lineWidth = 2; c.beginPath(); c.arc(sx, sy, 24, 0, Math.PI * 2); c.stroke(); c.restore(); label(c, sx, sy + 38, `อมตะ ${inv} วิ`, '#ffd0d0', 13); }
+  }
+  label(c, 10, 22, `เกิดใหม่ได้ ${lives} ครั้ง/เกม` + (lv >= 3 ? ` · ใช้ไป ${f < 1.9 ? used : used + 1}` : ''), '#ffd0d0', 13, 'left');
+}
+
+// วงแหวนแม่เหล็กทอง: ดูดไอเท็ม/ตัวอักษร/คริสตัลในรัศมีตลอดเวลา
+function demoMagnet(c, t, lv, st) {
+  bg(c, t);
+  const dt = Math.min(0.05, t - (st.last || t)); st.last = t;
+  const R = [100, 125, 150][lv - 1] * SC, sx = 180 + Math.sin(t * 0.9) * 110, sy = 210;
+  if (!st.objs) st.objs = [];
+  if (!st.objs.length) for (let i = 0; i < 9; i++) st.objs.push({ x: 20 + hash(i) * 320, y: -hash(i + 9) * 260, k: i % 3, pull: false });
+  // วงอ้างอิง: ไอเท็มแม่เหล็ก 300
+  c.save(); c.setLineDash([5, 7]); c.strokeStyle = rgba('#ff5a3c', 0.35); c.lineWidth = 1; c.beginPath(); c.arc(sx, sy, 300 * SC, 0, Math.PI * 2); c.stroke(); c.restore();
+  // วงทองของสมบัติ
+  const p = (t % 1.2) / 1.2;
+  c.save(); c.strokeStyle = rgba(GOLD, 0.5 * (1 - p)); c.lineWidth = 2; c.beginPath(); c.arc(sx, sy, R * (0.5 + 0.5 * p), 0, Math.PI * 2); c.stroke();
+  c.strokeStyle = rgba(GOLD, 0.35); c.lineWidth = 1.2; c.beginPath(); c.arc(sx, sy, R, 0, Math.PI * 2); c.stroke(); c.restore();
+  for (const o of st.objs) {
+    const d = Math.hypot(o.x - sx, o.y - sy);
+    if (d < R) o.pull = true;
+    if (o.pull) { const a = Math.atan2(sy - o.y, sx - o.x); o.x += Math.cos(a) * 360 * dt; o.y += Math.sin(a) * 360 * dt; }
+    else o.y += 70 * dt;
+    if (d < 14 || o.y > DH + 20) { if (d < 14) sparkle(c, sx, sy, 8, GOLD); o.x = 20 + Math.random() * 320; o.y = -20; o.pull = false; }
+    if (o.k === 0) neon(c, poly([[o.x, o.y - 7], [o.x + 6, o.y], [o.x, o.y + 7], [o.x - 6, o.y]]), '#36f1ff', 0.5, 0.5);
+    else if (o.k === 1) { neon(c, circ(o.x, o.y, 9), '#a66bff', 0.3, 0.5); label(c, o.x, o.y + 4, 'L', '#ffffff', 11); }
+    else label(c, o.x, o.y + 5, 'A', '#ff9a3c', 16);
+  }
+  ship(c, sx, sy);
+  label(c, 10, 22, `รัศมี ${[100, 125, 150][lv - 1]} · ไอเท็มแม่เหล็ก 300 (เส้นประ)`, '#fff3b0', 13, 'left');
+  if (lv >= 3) label(c, 10, 40, 'ขั้น 3: เก็บไอเท็มแม่เหล็ก นานขึ้น 2 เท่า', '#fff3b0', 12, 'left');
+}
+
+// โล่ดวงอาทิตย์: โดนดาเมจ → สุ่มติด → กางโล่ 3 วิ สะท้อนกระสุนกลับทางที่มา
+function demoSolar(c, t, lv, st) {
+  bg(c, t);
+  const dt = Math.min(0.05, t - (st.last || t)); st.last = t;
+  const sx = 180, sy = 205, cyc = 6, f = t % cyc, R = 42;
+  if (!st.b) st.b = [];
+  if (st.cyc !== Math.floor(t / cyc)) { st.cyc = Math.floor(t / cyc); st.b = []; st.spawn = 0; }
+  const shieldOn = f > 1.2 && f < 4.2;
+  st.spawn -= dt;
+  if (st.spawn <= 0 && f < 4.6) { st.spawn = f < 1 ? 1 : 0.32; const x = 30 + Math.random() * 300; const a = Math.atan2(sy - 20, sx - x); st.b.push({ x, y: 20, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, back: false }); }
+  for (let i = 0; i < 5; i++) enemy(c, 40 + i * 70, 22);
+  for (const b of st.b) {
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    const d = Math.hypot(b.x - sx, b.y - sy);
+    if (!b.back && shieldOn && d < R) { b.vx = -b.vx * 1.6; b.vy = -b.vy * 1.6; b.back = true; sparkle(c, b.x, b.y, 7, GOLD); }
+    if (!b.back && !shieldOn && d < 12) { b.dead = true; st.hit = t; }
+    if (!b.dead) arrow(c, b.x, b.y, Math.atan2(b.vy, b.vx), b.back ? GOLD : RED);
+  }
+  st.b = st.b.filter(b => !b.dead && b.y > -30 && b.y < DH + 30 && b.x > -30 && b.x < DW + 30);
+  ship(c, sx, sy, t - (st.hit || -9) < 0.6 && Math.floor(t * 12) % 2 ? 0.3 : 1);
+  if (t - (st.hit || -9) < 0.8) label(c, sx, sy + 40, 'โดน! -1', '#ff8a8a', 14);
+  if (shieldOn) {
+    const k = Math.min(1, (f - 1.2) / 0.25), out = f > 3.8 ? (4.2 - f) / 0.4 : 1;
+    c.save(); c.globalAlpha = k * out; c.translate(sx, sy); c.rotate(t * 0.5);
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; line(c, [[Math.cos(a) * (R + 2), Math.sin(a) * (R + 2)], [Math.cos(a) * (R + 9), Math.sin(a) * (R + 9)]], '#ffb84d', 0.5); }
+    c.restore();
+    c.save(); c.globalAlpha = k * out; neon(c, circ(sx, sy, R), GOLD, 0.1, 0.8); c.restore();
+    label(c, sx, sy - R - 10, `โล่ดวงอาทิตย์ ${Math.max(0, 4.2 - f).toFixed(1)} วิ`, '#fff3b0', 12);
+  }
+  label(c, 10, DH - 12, `ขั้น ${lv}: โดนแล้วมีโอกาส ${[25, 35, 50][lv - 1]}% (ตัวอย่างนี้สุ่มติด)`, '#fff3b0', 13, 'left');
+}
+
+// ---------- ข้อมูล ----------
+const T = [
+  { id: 'nova', name: 'หัวใจซูเปอร์โนวา', rar: ['มิธิค', RED], demo: demoNova,
+    asked: ['ชีวิตหมด → วาร์ปแดงเต็มจอ ช็อตไฟฟ้า ทำลายมอน เกิดใหม่ อมตะ 2 วิ · 1 ครั้ง', 'ไม่เพิ่มอะไร', 'เกิดใหม่ได้ 2 ครั้ง'],
+    rec: ['เหมือนที่สั่ง (1 ครั้ง อมตะ 2 วิ)', 'อมตะ 3 วิ (ให้อัปแล้วได้อะไรนิดหน่อย)', 'เกิดใหม่ได้ 2 ครั้ง อมตะ 3 วิ'],
+    extra: 'มอนธรรมดาตายหมด · บอสไม่ตาย โดนช็อต 10% ของเลือดเต็ม · กระสุนศัตรูหายหมด',
+    askP: 0.78, recP: 0.62, verdict: ['v-ok', 'แรงที่สุดในเกม แต่ไม่โกง ถ้าคุม 3 อย่าง',
+      'เป็นมิธิค (หีบ 0.5%) · ใส่คู่ขนนกไม่ได้ (กฎเอพิกขึ้นไป 1 ชิ้น) · บอสไม่ตายทันที (ไม่งั้นรอบสูงจะล้มบอสด้วยการตายเอง) · ขั้น 2 ไม่เพิ่มอะไรเลยจะรู้สึกเสียเงินฟรีตอนอัป เลยแนะนำให้อมตะนานขึ้น 1 วิ'] },
+  { id: 'magnet', name: 'วงแหวนแม่เหล็กทอง', rar: ['ตำนาน', GOLD], demo: demoMagnet,
+    asked: ['มีแม่เหล็กเล็กรอบตัวตลอดเวลา', '(ไม่ได้ระบุ)', 'ดูดแรงครึ่งนึงของไอเท็มแม่เหล็ก + ตายเกิดฟรี 1 ครั้ง'],
+    rec: ['ดูดไอเท็ม ตัวอักษร คริสตัล ตลอดเวลา รัศมี 100', 'รัศมี 125', 'รัศมี 150 (ครึ่งของไอเท็มแม่เหล็ก 300) + เก็บไอเท็มแม่เหล็กแล้วนานขึ้น 2 เท่า'],
+    extra: 'ตอนนี้คริสตัลมีแม่เหล็กพื้นฐาน 70 อยู่แล้ว · ไอเท็มแม่เหล็กรัศมี 300 นาน 8 วิ',
+    askP: 0.88, recP: 0.5, verdict: ['v-op', 'ตามที่สั่ง = โกง เพราะขั้น 3 มี "เกิดฟรี 1 ครั้ง"',
+      'ได้ทั้งแม่เหล็กตลอดเกม และชีวิตฟรี ในชิ้นเดียว เทียบกับขนนกคืนชีพ (ตำนานเหมือนกัน) ที่ให้แค่เกิดใหม่อย่างเดียว ทุกคนจะเลือกชิ้นนี้หมด · แนะนำตัดเกิดฟรีออก ให้เป็นเรื่องแม่เหล็กล้วนๆ แทน'] },
+  { id: 'solar', name: 'โล่ดวงอาทิตย์', rar: ['ตำนาน', GOLD], demo: demoSolar,
+    asked: ['โดนดาเมจแล้วมีโอกาส 5% กางโล่ สะท้อนกระสุนกลับทางที่มา', '(ไม่ได้ระบุ)', 'อัปเต็ม 5% (น่าจะพิมพ์ผิด?)'],
+    rec: ['โดนแล้วมีโอกาส 25% กางโล่ 3 วิ', 'โอกาส 35%', 'โอกาส 50% · โล่อยู่ 4 วิ'],
+    extra: 'กระสุนที่สะท้อนกลับแรงเท่าอาวุธเรา · ทำงานได้ทุก 10 วิ (กันติดรัวๆ) · ต่างจากกระจกสะท้อนที่กันก่อนโดน 1 นัด',
+    askP: 0.12, recP: 0.5, verdict: ['v-weak', 'ตามที่สั่ง = อ่อนเกินไป แทบไม่เคยเห็นทำงาน',
+      'เกมหนึ่งโดนดาเมจประมาณ 4–6 ครั้ง ที่ 5% มีโอกาสได้เห็นโล่แค่ ~20% ต่อเกม (เล่น 5 เกมเห็นครั้งเดียว) · ที่ 25/35/50% จะเห็น ~75% / ~88% / ~97% ต่อเกม แต่โล่ขึ้น "หลังโดน" แล้ว เลยไม่ได้กันดาเมจนัดนั้น ไม่โกง'] },
+];
+
+const canvases = [];
+function setup(cv, w, h, draw) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = w * dpr; cv.height = h * dpr;
+  const c = cv.getContext('2d'); canvases.push({ c, w, h, dpr, draw });
+}
+const box = document.getElementById('cards');
+for (const tr of T) {
+  const el = document.createElement('div'); el.className = 'card';
+  const row = (k, a, r) => `<tr><td class="k">ขั้น ${k}</td><td>${a}</td><td>${r}</td></tr>`;
+  el.innerHTML = `<h2>${tr.name} <span class="tag" style="color:${tr.rar[1]}">${tr.rar[0]}</span></h2>
+    <div class="cols">
+      <div>
+        <canvas class="ic"></canvas>
+        <div class="demo"><canvas class="dm"></canvas></div>
+        <div class="lvbar">${[1, 2, 3].map(l => `<button type="button" data-lv="${l}" class="${l === 3 ? 'on' : ''}">ขั้น ${l}</button>`).join('')}</div>
+      </div>
+      <div>
+        <div class="tblwrap"><table><tr><th></th><th>ตามที่สั่ง</th><th>แบบแนะนำ</th></tr>
+          ${tr.asked.map((a, i) => row(i + 1, a, tr.rec[i])).join('')}</table></div>
+        <p class="legend" style="margin-top:8px">${tr.extra}</p>
+        <div class="meter"><span>อ่อน</span><div class="bar"><span class="pin" style="left:${tr.askP * 100}%"></span><span class="pin me" style="left:${tr.recP * 100}%"></span></div><span>โกง</span></div>
+        <div class="verdict ${tr.verdict[0]}"><b>${tr.verdict[1]}</b>${tr.verdict[2]}</div>
+      </div>
+    </div>`;
+  box.appendChild(el);
+  const state = { lv: 3 };
+  el.querySelectorAll('.lvbar button').forEach(b => b.onclick = () => {
+    state.lv = Number(b.dataset.lv);
+    el.querySelectorAll('.lvbar button').forEach(x => x.classList.toggle('on', x === b));
+    for (const k of Object.keys(state)) if (k !== 'lv') delete state[k];
+  });
+  setup(el.querySelector('.ic'), 380, 140, (c, t) => {
+    for (let lv = 1; lv <= 3; lv++) { c.save(); c.translate(64 + (lv - 1) * 126, 72); c.scale(0.92, 0.92); frame(c, t, lv, tr.rar[1]); ICON[tr.id](c, t + lv, lv); c.restore(); }
+  });
+  setup(el.querySelector('.dm'), DW, DH, (c, t) => tr.demo(c, t, state.lv, state));
+}
+
+const t0 = performance.now();
+(function loop() {
+  const t = (performance.now() - t0) / 1000;
+  for (const { c, w, h, dpr, draw } of canvases) { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h); draw(c, t); }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
