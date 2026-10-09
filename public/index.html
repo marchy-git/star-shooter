@@ -666,6 +666,339 @@ const MECH_NAMES = { spawner: 'ปักเสาฐานทัพ', healer: '�
 // จังหวะยิงของบอส: ยิงครบ BOSS_VOLLEY ท่าแล้วพัก BOSS_REST_MS ให้ยิงสวน · ท่าหนา (สีในนี้) เรืองแสงเตือนก่อนยิง
 const BOSS_VOLLEY = 3, BOSS_REST_MS = 1500;
 const HEAVY_ATTACKS = { ring: 0xff4fd8, spiral: 0xc18bff, rain: 0x36f1ff, double: 0xff8a3c, burst: 0xffd23f, wall: 0x7dff6a };
+// ท่าไม้ตายของบอส (อยู่ในกองกลไกเดียวกัน): มีนับถอยหลัง/สัญญาณเตือนชัดเจน และมีทางรอดเสมอ
+// ระหว่างท่า บอสหยุดยิง กลไกอื่นพัก กระสุนบนจอถูกล้าง → เหลือโจทย์ให้หลบอย่างเดียว
+// update(sp, e, dt, g) เรียกด้วย this = ฉากเกม · e = เวลาที่ผ่านไป (ms) · คืน true เมื่อจบท่า
+const SET_PIECES = {
+  nuke: {
+    name: 'นิวเคลียร์ทั้งจอ', hint: 'เข้าไปหลบในวงเขียวก่อนระเบิด!',
+    start(sp) {
+      const n = sp.phase >= 3 ? 1 : 2, R = sp.R = this.easy ? 95 : 80;
+      sp.fuse = this.easy ? 3500 : 3000;
+      sp.zones = [];
+      for (let i = 0; i < n; i++) {
+        let x, y, tries = 0;
+        do { x = rand(R + 10, W - R - 10); y = rand(Math.round(H * 0.42), H - R - 30); }
+        while (tries++ < 30 && sp.zones.some(z => Math.hypot(z.x - x, z.y - y) < R * 2.6));
+        const a = Math.random() * Math.PI * 2, v = sp.phase >= 3 ? 0.03 : 0;   // เฟส 3: วงลอยไปมา ต้องตาม
+        sp.zones.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v });
+      }
+      for (let i = 0; i < 4; i++) {   // ลูกน้องลอยลงช้าๆ ยิงเก็บแต้มได้
+        const m = this.makeEnemy('normal', { state: 'swarm', hp: 1, maxHp: 1 });
+        m.setVisible(true).setPosition(60 + i * (W - 120) / 3, -30).setVelocity(0, 45);
+      }
+    },
+    update(sp, e, dt, g) {
+      const p = this.player, R = sp.R;
+      for (const z of sp.zones) {
+        z.x += z.vx * dt; z.y += z.vy * dt;
+        if (z.x < R || z.x > W - R) { z.vx *= -1; z.x = Phaser.Math.Clamp(z.x, R, W - R); }
+        if (z.y < H * 0.35 || z.y > H - R) { z.vy *= -1; z.y = Phaser.Math.Clamp(z.y, H * 0.35, H - R); }
+      }
+      if (e < sp.fuse) {
+        const k = e / sp.fuse;
+        g.fillStyle(0xff2020, 0.12 + k * 0.25 + Math.sin(e / 90) * 0.05).fillRect(0, 0, W, H);
+        for (const z of sp.zones) { g.fillStyle(0x7dff6a, 0.22).fillCircle(z.x, z.y, R); g.lineStyle(4, 0x7dff6a, 0.95).strokeCircle(z.x, z.y, R); }
+        this.spCount(sp.fuse - e);
+        return false;
+      }
+      if (this.spOnce(sp, 'boom')) {
+        this.cameras.main.flash(400, 255, 90, 60);
+        this.cameras.main.shake(400, 0.02);
+        sfx.shatter();
+        if (sp.zones.some(z => Math.hypot(p.x - z.x, p.y - z.y) < R)) this.popText(p.x, p.y - 60, 'รอด!', '#7dff6a', 18);
+        else this.spHurt();
+      }
+      g.fillStyle(0xffffff, Math.max(0, 0.5 - (e - sp.fuse) / 800)).fillRect(0, 0, W, H);
+      return e > sp.fuse + 600;
+    },
+  },
+
+  checker: {
+    name: 'ตาหมากรุกมรณะ', hint: 'ย้ายไปช่องที่ไม่แดง · สลับทุกรอบ',
+    start(sp) {
+      Object.assign(sp, { cols: 4, rows: 5, top: Math.round(H * 0.28), tele: this.easy ? 2000 : 1500, rounds: this.easy ? 2 : 3 });
+      sp.step = sp.tele + 400;
+    },
+    update(sp, e, dt, g) {
+      const r = Math.floor(e / sp.step);
+      if (r >= sp.rounds) return true;
+      const le = e - r * sp.step, cw = W / sp.cols, ch = (H - sp.top) / sp.rows, p = this.player;
+      const red = (c, rr) => (c + rr + r) % 2 === 0;
+      for (let c = 0; c < sp.cols; c++) for (let rr = 0; rr < sp.rows; rr++) {
+        const x = c * cw, y = sp.top + rr * ch;
+        if (le < sp.tele) {
+          if (red(c, rr)) g.fillStyle(0xff2020, 0.12 + 0.22 * le / sp.tele + (le > sp.tele - 600 && Math.floor(le / 110) % 2 ? 0.12 : 0)).fillRect(x + 2, y + 2, cw - 4, ch - 4);
+          else g.lineStyle(2, 0x7dff6a, 0.55).strokeRect(x + 3, y + 3, cw - 6, ch - 6);
+        } else if (red(c, rr)) g.fillStyle(0xffffff, 0.6 * Math.max(0, 1 - (le - sp.tele) / 400)).fillRect(x, y, cw, ch);
+      }
+      if (le < sp.tele) this.spCount(sp.tele - le);
+      else if (this.spOnce(sp, 'r' + r)) {
+        this.cameras.main.shake(120, 0.006);
+        sfx.shatter();
+        const pc = Phaser.Math.Clamp(Math.floor(p.x / cw), 0, sp.cols - 1), pr = Phaser.Math.Clamp(Math.floor((p.y - sp.top) / ch), 0, sp.rows - 1);
+        if (p.y >= sp.top && red(pc, pr)) this.spHurt();
+      }
+      return false;
+    },
+  },
+
+  lanes: {
+    name: 'เลนวัดดวง', hint: 'ไปอยู่เลนสีเขียว · เปลี่ยน 3 รอบ',
+    start(sp) {
+      sp.n = sp.phase >= 3 ? 5 : 4;
+      sp.tele = this.easy ? 1800 : 1400;
+      sp.step = sp.tele + 350;
+      sp.top = Math.round(this.boss.y + 70);
+      sp.safe = [];
+      for (let i = 0, last = -1; i < 3; i++) { let k; do k = rand(0, sp.n - 1); while (k === last); sp.safe.push(last = k); }
+    },
+    update(sp, e, dt, g) {
+      const r = Math.floor(e / sp.step);
+      if (r >= sp.safe.length) return true;
+      const le = e - r * sp.step, lw = W / sp.n, p = this.player, safe = sp.safe[r], hh = H - sp.top;
+      for (let i = 0; i < sp.n; i++) {
+        const x = i * lw;
+        if (i === safe) { g.fillStyle(0x7dff6a, 0.15).fillRect(x, sp.top, lw, hh); g.lineStyle(3, 0x7dff6a, 0.9).strokeRect(x + 2, sp.top, lw - 4, hh - 2); }
+        else if (le < sp.tele) g.fillStyle(0xff2020, 0.12 + 0.25 * le / sp.tele).fillRect(x + 2, sp.top, lw - 4, hh);
+        else g.fillStyle(0xffffff, 0.6 * Math.max(0, 1 - (le - sp.tele) / 350)).fillRect(x, sp.top, lw, hh);
+      }
+      if (le < sp.tele) this.spCount(sp.tele - le);
+      else if (this.spOnce(sp, 'r' + r)) {
+        this.cameras.main.shake(120, 0.006);
+        sfx.shatter();
+        if (p.y > sp.top && Phaser.Math.Clamp(Math.floor(p.x / lw), 0, sp.n - 1) !== safe) this.spHurt();
+      }
+      return false;
+    },
+  },
+
+  arms: {
+    name: 'เข็มนาฬิกามรณะ', hint: 'ลำแสงหมุนรอบบอส · บินวนหลบตามเข็ม',
+    start(sp) {
+      sp.n = sp.phase >= 3 ? 3 : 2;
+      sp.warn = 1300;
+      // หมุนรวมไม่เกินที่ช่องด้านล่างยังอยู่ในจอ: ช่องเริ่มเฉียงข้างหนึ่ง หมุนไปอีกข้าง (ไม่ต้องข้ามลำแสง)
+      const turn = sp.n === 3 ? 1.0 : 1.6, dir = Math.random() < 0.5 ? 1 : -1;
+      sp.dur = sp.n === 3 ? 3200 : this.easy ? 5000 : 4500;
+      sp.spd = dir * turn / sp.dur;
+      sp.a0 = Math.PI / 2 - dir * turn / 2 - Math.PI / sp.n;
+    },
+    update(sp, e, dt, g) {
+      if (e > sp.warn + sp.dur) return true;
+      const b = this.boss, p = this.player, act = e >= sp.warn;
+      const ang = sp.a0 + (act ? (e - sp.warn) * sp.spd : 0);
+      for (let i = 0; i < sp.n; i++) {
+        const a = ang + i * Math.PI * 2 / sp.n, vx = Math.cos(a), vy = Math.sin(a), x2 = b.x + vx * 1300, y2 = b.y + vy * 1300;
+        if (!act) { g.lineStyle(2, 0xff3b3b, Math.floor(e / 120) % 2 ? 0.9 : 0.3).lineBetween(b.x, b.y, x2, y2); continue; }
+        g.lineStyle(18, 0xff3b3b, 0.35).lineBetween(b.x, b.y, x2, y2);
+        g.lineStyle(4, 0xffffff, 0.95).lineBetween(b.x, b.y, x2, y2);
+        const t = (p.x - b.x) * vx + (p.y - b.y) * vy;
+        if (t > 50 && Math.abs((p.x - b.x) * vy - (p.y - b.y) * vx) < 12) this.spHurt();
+      }
+      if (!act) this.spCount(sp.warn - e);
+      return false;
+    },
+  },
+
+  cage: {
+    name: 'กรงบีบ', hint: 'เข้าไปอยู่ในกรอบเขียวก่อนกรงปิด',
+    start(sp) {
+      sp.fuse = this.easy ? 3500 : 3000;
+      sp.hold = 1500;
+      sp.size = this.easy ? 170 : 140;
+      sp.top = Math.round(H * 0.25);
+      sp.tx = rand(20, W - 20 - sp.size);
+      sp.ty = rand(Math.round(H * 0.42), H - 30 - sp.size);
+    },
+    update(sp, e, dt, g) {
+      if (e > sp.fuse + sp.hold) return true;
+      const k = Math.min(1, e / sp.fuse), q = k * k * (3 - 2 * k);
+      const x = sp.tx * q, y = sp.top + (sp.ty - sp.top) * q, w = W + (sp.size - W) * q, h = (H - sp.top) + (sp.size - (H - sp.top)) * q;
+      g.fillStyle(0xff2020, 0.18 + 0.3 * k);
+      g.fillRect(0, sp.top, W, y - sp.top).fillRect(0, y + h, W, H - y - h).fillRect(0, y, x, h).fillRect(x + w, y, W - x - w, h);
+      g.lineStyle(4, k >= 1 ? 0xffffff : 0x7dff6a, 0.95).strokeRect(x, y, w, h);
+      if (k < 1) { g.lineStyle(2, 0x7dff6a, 0.5).strokeRect(sp.tx, sp.ty, sp.size, sp.size); this.spCount(sp.fuse - e); }
+      else {
+        const p = this.player;
+        if (p.y > sp.top && (p.x < x || p.x > x + w || p.y < y || p.y > y + h)) this.spHurt();
+      }
+      return false;
+    },
+  },
+
+  stalker: {
+    name: 'ดาวตกล่าเงา', hint: 'เงาตามตัวคุณ · ขยับไปเรื่อยๆ อย่าหยุด',
+    start(sp) {
+      sp.marks = [];
+      sp.n = sp.phase >= 3 ? 8 : 6;
+      sp.every = 520;
+      sp.delay = this.easy ? 1500 : 1250;
+      sp.R = 42;
+    },
+    update(sp, e, dt, g) {
+      const p = this.player;
+      while (sp.marks.length < sp.n && e >= sp.marks.length * sp.every) sp.marks.push({ x: p.x, y: p.y, t: sp.marks.length * sp.every });
+      let alive = sp.marks.length < sp.n;
+      sp.marks.forEach((m, i) => {
+        const le = e - m.t;
+        if (le < sp.delay) {
+          alive = true;
+          const k = le / sp.delay;
+          g.fillStyle(0xff3b3b, 0.12 + 0.2 * k).fillCircle(m.x, m.y, sp.R);
+          g.lineStyle(3, 0xff3b3b, 0.9).strokeCircle(m.x, m.y, sp.R);
+          g.lineStyle(2, 0xffffff, 0.8).strokeCircle(m.x, m.y, Math.max(2, sp.R * (1 - k)));
+          g.fillStyle(0xffb84d, 0.4).fillCircle(m.x + 80 * (1 - k), m.y - 320 * (1 - k), 16);
+          g.fillStyle(0xffffff, 0.9).fillCircle(m.x + 80 * (1 - k), m.y - 320 * (1 - k), 8);
+        } else if (le < sp.delay + 300) {
+          alive = true;
+          if (this.spOnce(sp, 'm' + i)) {
+            this.debris.meteor.explode(14, m.x, m.y);
+            sfx.boom(0.6);
+            if (Math.hypot(p.x - m.x, p.y - m.y) < sp.R) this.spHurt();
+          }
+          g.fillStyle(0xffd0a0, 0.6 * (1 - (le - sp.delay) / 300)).fillCircle(m.x, m.y, sp.R);
+        }
+      });
+      return !alive;
+    },
+  },
+
+  rings: {
+    name: 'คลื่นกระแทก', hint: 'ลอดช่องว่างของคลื่นแต่ละวง',
+    start(sp) {
+      sp.warn = 900;
+      sp.spd = 0.22;
+      sp.gw = this.easy ? 0.6 : 0.45;
+      // ช่องของวงถัดไปห่างจากวงก่อนไม่เกิน 0.7 เรเดียน (ไปทันเสมอ)
+      let gap = Math.PI / 2 + frand(-0.6, 0.6);
+      sp.rings = [0, 1, 2].map(i => {
+        if (i) gap = Phaser.Math.Clamp(gap + frand(-0.7, 0.7), Math.PI / 2 - 0.9, Math.PI / 2 + 0.9);
+        return { t: sp.warn + i * (this.easy ? 1800 : 1500), gap };
+      });
+    },
+    update(sp, e, dt, g) {
+      const b = this.boss, p = this.player;
+      let alive = false;
+      for (const r of sp.rings) {
+        const le = e - r.t;
+        if (le < 0) {
+          alive = true;
+          if (le > -sp.warn) {   // บอกทิศช่องล่วงหน้า
+            g.lineStyle(4, 0x7dff6a, 0.85).lineBetween(b.x + Math.cos(r.gap) * 70, b.y + Math.sin(r.gap) * 70, b.x + Math.cos(r.gap) * 230, b.y + Math.sin(r.gap) * 230);
+          }
+          continue;
+        }
+        const rad = 40 + le * sp.spd;
+        if (rad > Math.hypot(W, H) + 40) continue;
+        alive = true;
+        const a0 = r.gap + sp.gw / 2, a1 = r.gap + Math.PI * 2 - sp.gw / 2;
+        g.lineStyle(18, 0xff3b3b, 0.35).beginPath().arc(b.x, b.y, rad, a0, a1).strokePath();
+        g.lineStyle(5, 0xffffff, 0.9).beginPath().arc(b.x, b.y, rad, a0, a1).strokePath();
+        g.lineStyle(3, 0x7dff6a, 0.9).beginPath().arc(b.x, b.y, rad, r.gap - sp.gw / 2, r.gap + sp.gw / 2).strokePath();
+        const d = Math.hypot(p.x - b.x, p.y - b.y);
+        if (Math.abs(d - rad) < 13 && Math.abs(Phaser.Math.Angle.Wrap(Math.atan2(p.y - b.y, p.x - b.x) - r.gap)) > sp.gw / 2) this.spHurt();
+      }
+      if (e < sp.warn) this.spCount(sp.warn - e);
+      return !alive;
+    },
+  },
+
+  redlight: {
+    name: 'ไฟแดง ไฟเขียว', hint: '',
+    start(sp) {
+      sp.cyc = [];
+      let t = 0;
+      for (let i = 0; i < 3; i++) {
+        const c = { g0: t, y0: t + rand(1200, 2000) };
+        c.r0 = c.y0 + 600;
+        c.r1 = c.r0 + (this.easy ? 1200 : 1500);
+        sp.cyc.push(c);
+        t = c.r1;
+      }
+      sp.end = t + 300;
+    },
+    update(sp, e, dt, g) {
+      if (e > sp.end) return true;
+      const p = this.player, i = Math.max(0, sp.cyc.findIndex(c => e < c.r1)), c = sp.cyc[i];
+      const st = e < c.y0 ? 'g' : e < c.r0 ? 'y' : e < c.r1 ? 'r' : 'g';
+      if (st === 'r') {
+        g.fillStyle(0xff2020, 0.18).fillRect(0, 0, W, H);
+        if (sp.ref !== i) { sp.ref = i; sp.rx = p.x; sp.ry = p.y; }
+        if (Math.hypot(p.x - sp.rx, p.y - sp.ry) > 8 && this.spOnce(sp, 'red' + i)) { this.popText(p.x, p.y - 60, 'ขยับ!', '#ff6b6b', 18); this.spHurt(); }
+      }
+      const cx = W / 2, cy = H * 0.3;
+      g.fillStyle(0x0a0a14, 0.9).fillRoundedRect(cx - 26, cy - 70, 52, 140, 12);
+      g.lineStyle(2, 0x9fb0d4, 0.7).strokeRoundedRect(cx - 26, cy - 70, 52, 140, 12);
+      [[0xff3b3b, 'r', -42], [0xffd23f, 'y', 0], [0x7dff6a, 'g', 42]].forEach(([col, s, dy]) => g.fillStyle(col, st === s ? 1 : 0.15).fillCircle(cx, cy + dy, 17));
+      this.spSmall.setText(st === 'r' ? 'ไฟแดง! ห้ามขยับ' : st === 'y' ? 'เตรียมหยุด…' : 'ไฟเขียว ไปได้')
+        .setColor(st === 'r' ? '#ff6b6b' : st === 'y' ? '#ffd23f' : '#7dff6a');
+      return false;
+    },
+  },
+
+  comet: {
+    name: 'ดาวหางพุ่ง', hint: 'หลบออกจากแถบเตือนแนวนอน',
+    start(sp) {
+      sp.list = Array.from({ length: sp.phase >= 3 ? 4 : 3 }, (_, i) => ({ t: i * 900, y: null, dir: Math.random() < 0.5 ? 1 : -1 }));
+      sp.tele = this.easy ? 1300 : 1100;
+      sp.run = 450;
+      sp.bh = 64;
+    },
+    update(sp, e, dt, g) {
+      const p = this.player;
+      let alive = false;
+      sp.list.forEach((c, i) => {
+        const le = e - c.t;
+        if (le < 0) { alive = true; return; }
+        if (c.y === null) c.y = i === 0 ? Phaser.Math.Clamp(p.y, H * 0.35, H - 50) : Phaser.Math.Clamp(p.y + rand(-160, 160), H * 0.35, H - 50);   // ลูกแรกเล็งแถวที่ยืนอยู่
+        if (le < sp.tele) {
+          alive = true;
+          g.fillStyle(0xff3b3b, 0.12 + 0.16 * (Math.floor(le / 110) % 2)).fillRect(0, c.y - sp.bh / 2, W, sp.bh);
+          g.lineStyle(2, 0xff3b3b, 0.9).strokeRect(0, c.y - sp.bh / 2, W, sp.bh);
+          const ax = c.dir > 0 ? 24 : W - 24;
+          g.fillStyle(0xffffff, 0.9).fillTriangle(ax + c.dir * 14, c.y, ax - c.dir * 8, c.y - 12, ax - c.dir * 8, c.y + 12);
+        } else if (le < sp.tele + sp.run) {
+          alive = true;
+          const k = (le - sp.tele) / sp.run, x = c.dir > 0 ? -80 + k * (W + 160) : W + 80 - k * (W + 160);
+          g.fillStyle(0xffb84d, 0.3).fillRect(c.dir > 0 ? 0 : x, c.y - sp.bh / 2, c.dir > 0 ? Math.max(0, x) : W - x, sp.bh);
+          g.fillStyle(0xffb84d, 0.6).fillCircle(x, c.y, 34);
+          g.fillStyle(0xffffff, 1).fillCircle(x, c.y, 20);
+          if (Math.abs(p.y - c.y) < sp.bh / 2 && Math.abs(p.x - x) < 40) this.spHurt();
+        }
+      });
+      return !alive;
+    },
+  },
+
+  umbrella: {
+    name: 'หลบใต้ร่มบอส', hint: 'ไปอยู่ใต้บอสในแถบเขียว ตามบอสไปด้วย!',
+    start(sp) {
+      sp.fuse = this.easy ? 3000 : 2500;
+      sp.hw = this.easy ? 75 : 60;
+      sp.blasts = [0, 800, 1600];
+    },
+    update(sp, e, dt, g) {
+      if (e > sp.fuse + 2000) return true;
+      const b = this.boss, p = this.player, x0 = b.x - sp.hw, x1 = b.x + sp.hw, top = b.y + 40, blasting = e >= sp.fuse;
+      g.fillStyle(0xff2020, blasting ? 0.32 : 0.12 + 0.22 * e / sp.fuse);
+      g.fillRect(0, top, Math.max(0, x0), H - top).fillRect(x1, top, Math.max(0, W - x1), H - top);
+      g.fillStyle(0x7dff6a, 0.12).fillRect(x0, top, sp.hw * 2, H - top);
+      g.lineStyle(3, 0x7dff6a, 0.9).lineBetween(x0, top, x0, H).lineBetween(x1, top, x1, H);
+      if (!blasting) this.spCount(sp.fuse - e);
+      else sp.blasts.forEach((t, i) => {
+        if (e - sp.fuse < t || !this.spOnce(sp, 'b' + i)) return;
+        this.cameras.main.shake(150, 0.008);
+        sfx.shatter();
+        for (let k = 0; k < 6; k++) this.debris.meteor.explode(4, rand(0, W), rand(Math.round(top), H));
+        if (p.x < x0 || p.x > x1) this.spHurt();
+      });
+      return false;
+    },
+  },
+};
+for (const [k, v] of Object.entries(SET_PIECES)) { MECH_EVERY[k] = 14000; MECH_NAMES[k] = v.name; }
+
 
 const ITEMS = {
   spread: { key: 'item_spread', weight: 17 },
@@ -2985,7 +3318,7 @@ class Game extends Phaser.Scene {
       overdriveUntil: 0, dashUntil: 0, phaseUntil: 0, superMagnetUntil: 0, shieldRegenAt: 0, novaAt: 0, lastGhost: 0,
       iceUntil: 0, bossCD: 0, mechCD: 0, bossMechs: [], mechTurn: 0, mechBag: [], volley: 0, lastHeavy: false,
       bossShieldUntil: 0, shieldAng: 0, shieldGapW: 1, shieldSpin: 0, bossVulnUntil: 0, orbitOn: false, orbitAng: 0,
-      gravUntil: 0, gravWarnUntil: 0, gravPull: 0, bombLabels: [],
+      gravUntil: 0, gravWarnUntil: 0, gravPull: 0, bombLabels: [], setPiece: null,
       loop: 1, wave: 0, kills: 0, lastPattern: null,
       hazard: null, inPre: false, portal: null, portalObj: null, portalPlan: Math.random() < PORTAL_CHANCE ? rand(2, 4) : 0,
       over: false, ended: false, waveActive: false, invulnUntil: 0,
@@ -3189,6 +3522,9 @@ class Game extends Phaser.Scene {
 
     this.hazGfx = this.add.graphics().setDepth(3);
     this.mechGfx = this.add.graphics().setDepth(3);
+    this.spGfx = this.add.graphics().setDepth(8);
+    this.spBig = txt(this, W / 2, H * 0.44, '', 64, '#ffffff', { stroke: '#000000', strokeThickness: 8 }).setOrigin(0.5).setDepth(12).setVisible(false);
+    this.spSmall = txt(this, W / 2, H * 0.44 + 54, '', 17, '#ffe9b0', { stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(12).setVisible(false);
     this.portalTint = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0).setDepth(-4);
     this.portalEdge = this.add.graphics().setDepth(9);
     this.time.delayedCall(500, () => this.nextWave());
@@ -4291,7 +4627,42 @@ class Game extends Phaser.Scene {
     else if (m === 'shieldGap') this.mechShield(phase);
     else if (m === 'bombs') this.mechBombs(phase);
     else if (m === 'sweep') this.mechSweep(phase);
-    else this.mechGravity(phase);
+    else if (m === 'gravity') this.mechGravity(phase);
+    else if (SET_PIECES[m]) this.startSetPiece(m, phase);
+  }
+
+  // ----- ท่าไม้ตาย: บอสหยุดยิง กลไกอื่นพัก ล้างกระสุน เหลือโจทย์ให้หลบอย่างเดียว -----
+  startSetPiece(kind, phase) {
+    if (this.setPiece || !this.boss) return;
+    for (const b of this.ebullets.getChildren()) if (b.active) { this.grazeSparks.explode(2, b.x, b.y); b.disableBody(true, true); }
+    for (const e of this.enemies.getChildren().slice()) {
+      if (e.active && (e.getData('type') === 'bomb' || e.getData('state') === 'kamikaze')) { this.grazeSparks.explode(8, e.x, e.y); e.destroy(); }
+    }
+    this.gravUntil = 0;
+    const sp = this.setPiece = { kind, phase, t0: this.time.now, done: {} };
+    SET_PIECES[kind].start.call(this, sp);
+    this.banner(SET_PIECES[kind].name, 'ท่าไม้ตาย!', { size: 34, y: H * 0.2 });   // วิธีรอดโชว์ใต้ตัวเลขนับถอยหลัง
+    sfx.alarm();
+  }
+  spOnce(sp, key) { if (sp.done[key]) return false; sp.done[key] = true; return true; }
+  spHurt() { if (this.player.active && this.time.now >= this.phaseUntil) this.playerHit(); }
+  spCount(ms) { this.spBig.setVisible(true).setText(String(Math.max(1, Math.ceil(ms / 1000)))); }
+  updateSetPiece(dt) {
+    const sp = this.setPiece;
+    if (!sp) return;
+    this.spGfx.clear();
+    this.spBig.setVisible(false);
+    if (this.over || !this.boss || !this.boss.active) return this.endSetPiece();
+    const def = SET_PIECES[sp.kind];
+    this.spSmall.setVisible(true).setText(def.hint).setColor('#ffe9b0');
+    if (def.update.call(this, sp, this.time.now - sp.t0, dt, this.spGfx)) this.endSetPiece();
+  }
+  endSetPiece() {
+    this.setPiece = null;
+    this.spGfx.clear();
+    this.spBig.setVisible(false);
+    this.spSmall.setVisible(false);
+    this.bossCD = Math.max(this.bossCD, 900);   // หายใจก่อนบอสกลับมายิง
   }
 
   // ดาวเทียมโคจร: ยิงแตกครบ → บอสรับดาเมจ x2 นาน 5 วิ
@@ -4355,7 +4726,7 @@ class Game extends Phaser.Scene {
       from: 0, to: WARN + RUN, duration: WARN + RUN,
       onUpdate: tw => {
         g.clear();
-        if (this.over || !this.boss) return;
+        if (this.over || !this.boss || this.setPiece) return;
         const t = tw.getValue();
         if (t < WARN) {
           const a = 0.45 + Math.sin(t / 50) * 0.35;
@@ -4404,7 +4775,7 @@ class Game extends Phaser.Scene {
         drones++;
         const a = this.orbitAng + e.getData('off');
         e.setPosition(Phaser.Math.Clamp(b.x + Math.cos(a) * (b.body.halfWidth + 45), 24, W - 24), b.y + Math.sin(a) * (b.body.halfHeight + 32));   // ไม่หลุดขอบจอ (ยิงได้เสมอ)
-        if (time >= e.getData('fireAt')) {
+        if (time >= e.getData('fireAt') && !this.setPiece) {
           e.setData('fireAt', time + (this.easy ? 2200 : 1700));
           if (Math.sin(a) > -0.2) this.enemyShoot(e.x, e.y, a, spd * 0.6);
         }
@@ -4412,7 +4783,7 @@ class Game extends Phaser.Scene {
         const left = e.getData('fuseAt') - time;
         const o = this.bombLabels.find(q => q.e === e);
         if (o) o.label.setPosition(e.x, e.y - 30).setText(String(Math.max(0, Math.ceil(left / 1000)))).setColor(left < 1200 && Math.floor(time / 120) % 2 ? '#ff6b6b' : '#ffffff');
-        if (left <= 0) {
+        if (left <= 0 && !this.setPiece) {
           const base = Math.random() * Math.PI;
           for (let i = 0; i < 10; i++) this.enemyShoot(e.x, e.y, base + i / 10 * Math.PI * 2, 90);
           this.explode(e.x, e.y, 1, 'cargo');
@@ -4495,6 +4866,7 @@ class Game extends Phaser.Scene {
     for (const e of this.enemies.getChildren()) {
       if (!e.active || !e.getData('pillar') || time < e.getData('next')) continue;
       if (e.getData('type') === 'pillarS') {
+        if (this.setPiece) continue;   // ท่าไม้ตาย: เสาไม่ปล่อยลูกน้อง
         // ปล่อยลูกน้องพุ่งใส่ผู้เล่น
         e.setData('next', time + (this.easy ? 3400 : Math.max(1400, 2400 - (this.loop - 1) * 150)));
         const m = this.makeEnemy('kamikaze', { state: 'kamikaze' }).setVisible(true).setPosition(e.x, e.y - 36);
@@ -4554,7 +4926,7 @@ class Game extends Phaser.Scene {
         this.tweens.add({ targets: r, scale: 2.4, alpha: 0, duration: 380, onComplete: () => r.destroy() });
         sfx.shatter();
         const now = this.time.now;
-        const inside = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) < R;
+        const inside = !this.setPiece && Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y) < R;
         if (inside && this.player.active && now >= this.starUntil && now >= this.invulnUntil && now >= this.phaseUntil) {
           this.iceUntil = now + 1400;
           this.popText(this.player.x, this.player.y - 56, 'โดนแช่แข็ง!', '#9fe8ff', 18);
@@ -4577,7 +4949,7 @@ class Game extends Phaser.Scene {
       this.time.delayedCall(1150, () => {
         warn.destroy();
         edge.destroy();
-        if (this.over) return;
+        if (this.over || this.setPiece) return;
         const beam = this.add.rectangle(x, H / 2, 46, H, 0xff3b3b, 0.85).setDepth(8).setBlendMode('ADD');
         const coreB = this.add.rectangle(x, H / 2, 12, H, 0xffffff, 0.95).setDepth(8);
         this.tweens.add({ targets: [beam, coreB], scaleX: 0, alpha: 0, duration: 420, ease: 'Cubic.easeIn', onComplete: () => { beam.destroy(); coreB.destroy(); } });
@@ -4616,12 +4988,12 @@ class Game extends Phaser.Scene {
       onUpdate: () => r.setPosition(b.x, b.y),
       onComplete: () => r.destroy(),
     });
-    this.time.delayedCall(420, () => { if (b.active && !this.over) fn(); });   // ยิงตามเวลาเกม (หยุดเกมแล้วหยุดด้วย)
+    this.time.delayedCall(420, () => { if (b.active && !this.over && !this.setPiece) fn(); });   // ยิงตามเวลาเกม (หยุดเกมแล้วหยุดด้วย)
   }
 
   bossDo(kind, b, phase) {
     const spd = this.easy ? 150 : Math.min(260, 170 + (this.loop - 1) * 15);
-    const alive = () => b.active && !this.over;
+    const alive = () => b.active && !this.over && !this.setPiece;
     const later = (ms, fn) => this.time.delayedCall(ms, () => { if (alive()) fn(); });
     if (kind === 'ring') {   // เว้นช่อง 3 นัดให้ลอดเสมอ
       const n = (this.easy ? 10 : 12) + phase * 2, gapAt = rand(0, n - 1);
@@ -5899,6 +6271,7 @@ class Game extends Phaser.Scene {
       'solarUntil', 'solarReadyAt', 'bossShieldUntil', 'bossVulnUntil', 'gravUntil', 'gravWarnUntil']) {
       if (this[k]) this[k] += ms;
     }
+    if (this.setPiece) this.setPiece.t0 += ms;
     for (const e of this.enemies.getChildren()) {   // เวลาของทุ่น ดาวเทียม เสา
       if (!e.active) continue;
       for (const k of ['fuseAt', 'fireAt', 'next']) if (e.getData(k)) e.setData(k, e.getData(k) + ms);
@@ -5977,7 +6350,7 @@ class Game extends Phaser.Scene {
       if (this.turnCD <= 0) { this.enemyTurn(); this.turnCD = this.turnDelay(); }
 
       const isBossWave = this.wave === WAVES_PER_LOOP;
-      if (this.waveActive && !this.onair && (this.wave >= 2 || this.loop >= 2) && (!isBossWave || this.loop >= 2)) {
+      if (this.waveActive && !this.onair && !this.setPiece && (this.wave >= 2 || this.loop >= 2) && (!isBossWave || this.loop >= 2)) {
         this.kamiCD -= dt;
         if (this.kamiCD <= 0) {
           const n = this.loop >= 3 ? 2 : 1;
@@ -6028,6 +6401,7 @@ class Game extends Phaser.Scene {
     // บอส: เคลื่อนที่ + จุดอ่อน + หลอดเลือด (แถบบนสุดของจอ)
     this.bossBar.clear();
     this.updateMechs(time, dt, pv);
+    this.updateSetPiece(dt);
     const b = this.boss;
     if (b && b.active) {
       const def = b.getData('def'), phase = b.getData('phase');
@@ -6039,7 +6413,7 @@ class Game extends Phaser.Scene {
         else { b.x = W / 2 + Math.sin(ph) * 140; b.y = def.y + Math.sin(ph * 2) * 50; }
       }
       if (def.spin) b.rotation += dt * def.spin * phase;
-      if (b.getData('state') === 'fight' && !this.over && !this.onair && !this.warning) {
+      if (b.getData('state') === 'fight' && !this.over && !this.onair && !this.warning && !this.setPiece) {
         this.bossCD -= dt;
         if (this.bossCD <= 0) {
           this.bossAttack();
