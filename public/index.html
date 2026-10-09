@@ -612,7 +612,8 @@ const WEAPONS = {
 // coin: [โอกาสหล่น, จำนวนคริสตัล]
 // สิ่งกีดขวาง (ยิงไม่แตก ชน = โดน) ใช้ในด่านก่อนบอส (DANGER ZONE) และรูหนอน · ดีไซน์: design/gimmick-preview.html
 const HAZ_RED = 0xff3b4f, HAZ_RED2 = 0xff7a8a;
-const PRE_MS = 20000;                 // ด่านก่อนบอสยาวกี่ ms (รอบแรก 14 วิ)
+const PRE_MS = 15000;                 // ด่านก่อนบอสยาวกี่ ms (รอบแรก PRE_MS_EASY)
+const PRE_MS_EASY = 9000;
 const PRE_GIMMICKS = ['corridor', 'gates', 'curtain', 'zones'];
 const PORTAL_CHANCE = 0.6;            // โอกาสที่รอบนี้จะมีรูหนอน (โผล่หลังเคลียร์ wave 2-4 แบบสุ่ม 1 ครั้ง)
 const PORTAL_STAY_MS = 6000, PORTAL_MS = 20000, PORTAL_GOOD = 0.6;
@@ -3940,7 +3941,7 @@ class Game extends Phaser.Scene {
     this.inPre = true;
     this.waveActive = false;
     const kind = Phaser.Utils.Array.GetRandom(PRE_GIMMICKS);
-    const ms = this.easy ? 14000 : PRE_MS;
+    const ms = this.easy ? PRE_MS_EASY : PRE_MS;
     const name = { corridor: 'ทางเดินกำแพงพลังงาน', gates: 'ประตูเลเซอร์', curtain: 'ม่านกระสุน', zones: 'เขตเตือนภัยถล่ม' }[kind];
     this.banner('DANGER ZONE', `บอสกำลังมา! ${name} · หลบให้รอด`, { size: 50 });
     this.cameras.main.shake(300, 0.006);
@@ -4355,9 +4356,12 @@ class Game extends Phaser.Scene {
 
   bossPhaseUp(b, p) {
     b.setData('phase', p);
-    this.hitStop(140);
-    this.cameras.main.flash(220, 255, 80, 80);
-    this.cameras.main.shake(300, 0.01);
+    // เอฟเฟกต์อยู่ที่ตัวบอส: ไม่ใช้แฟลชแดงทั้งจอ + สั่นแรง เพราะเหมือนตอนเราโดนตี
+    this.hitStop(80);
+    this.cameras.main.shake(160, 0.004);
+    const ring = this.add.image(b.x, b.y, 'ring').setDepth(6).setBlendMode('ADD').setTint(p === 3 ? 0xff8a3c : 0xffd23f).setScale(0.4);
+    this.tweens.add({ targets: ring, scale: 4, alpha: 0, duration: 600, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
+    this.sparks.explode(30, b.x, b.y);
     this.banner(`PHASE ${p}`, p === 3 ? 'บอสโกรธจัด ระวังลำแสง!' : 'บอสเร่งการโจมตี', { size: 40 });
     sfx.alarm();
     sfx.roar();
