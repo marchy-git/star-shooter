@@ -3888,7 +3888,7 @@ class Game extends Phaser.Scene {
     this.updateHud();
     const ti = (this.loop - 1) % THEMES.length;
     this.scroll.setTheme(ti);
-    this.banner(`รอบ ${this.loop}`, `เข้าสู่${THEMES[ti].name} · ศัตรูแข็งแกร่งขึ้น`);
+    this.banner(`รอบ ${this.loop}`, `เข้าสู่${THEMES[ti].name} · ศัตรูแข็งแกร่งขึ้น` + (this.loop <= 3 ? ` · พลังยิงสูงสุด Lv${this.powerCap}` : ''));
     this.time.delayedCall(1800, () => this.nextWave());
   }
 
@@ -5270,7 +5270,7 @@ class Game extends Phaser.Scene {
       if (Math.random() < c[0]) this.dropCoins(x, y, c[1]);
       if (type === 'cargo') {
         for (let i = -1; i <= 1; i++) this.time.delayedCall(150 + i * 120, () => this.dropPowerup(x + i * 34, y));
-      } else if (!isBoss && state !== 'bonus' && (type === 'tank' || Math.random() < (this.easy ? 0.14 : 0.08) || this.kills % this.dropEvery === 0)) {
+      } else if (!isBoss && state !== 'bonus' && !e.getData('portalMob') && (type === 'tank' || Math.random() < 0.08 || this.kills % this.dropEvery === 0)) {   // มอนรูหนอนมีดรอปของตัวเองแล้ว
         this.dropPowerup(x, y);
       }
       if (this.shipId === 'storm' && !this.starHeld && ++this.skKills >= this.sk.need) {
@@ -5330,8 +5330,12 @@ class Game extends Phaser.Scene {
     if (this.tr.bag) this.magnetR *= 1 + this.trv('bag') * 2;
   }
   trv(id) { const lv = this.tr && this.tr[id]; return lv ? TREASURES[id].vals[lv - 1] : 0; }
-  // ไอเท็มหล่นแน่นอนทุกกี่ตัว (ดาวนำโชคลดลง · รอบแรกหล่นถี่กว่า)
-  get dropEvery() { const n = this.tr.lucky ? this.trv('lucky') : 12; return this.easy ? n - 4 : n; }
+  // ไอเท็มหล่นแน่นอนทุกกี่ตัว (ดาวนำโชคลดลง)
+  get dropEvery() { return this.tr.lucky ? this.trv('lucky') : 12; }
+  // เพดานพลังยิงตามรอบ (รอบ 1 Lv6 · รอบ 2 Lv8 · รอบ 3+ Lv10) กันอาวุธตันตั้งแต่ช่วงแรก
+  get powerCap() { return Math.min(MAX_POWER, 4 + this.loop * 2); }
+  // อาวุธแบบที่ 3 ได้หลังล้มบอสตัวแรก
+  get modCap() { return this.bossKills > 0 ? MOD_ORDER.length : MOD_ORDER.length - 1; }
   // ไอคอนสมบัติบน HUD เด้งตอนสมบัติทำงาน
   trPulse(id) {
     const ic = this.trIcons && this.trIcons[Object.keys(this.tr).indexOf(id)];
@@ -5487,8 +5491,10 @@ class Game extends Phaser.Scene {
       let r = Math.random() * pool.reduce((s, [k, v]) => s + wt(k, v), 0);
       for (const [k, v] of pool) { r -= wt(k, v); if (r <= 0) { type = k; break; } }
       type = type || 'shield';
-      // รอบแรก: ได้อาวุธแล้ว 60% เป็นแบบที่ยังไม่มี จะได้รวมอาวุธได้เร็ว
-      if (this.easy && WEAPONS[type] && Math.random() < 0.6) type = this.missingMod();
+      // รอบแรก: ได้อาวุธแล้ว 30% เป็นแบบที่ยังไม่มี
+      if (this.easy && WEAPONS[type] && Math.random() < 0.3) type = this.missingMod();
+      // ยังไม่ล้มบอสแรก มีอาวุธครบ 2 แบบแล้ว: หล่นเป็นแบบที่มีอยู่แทน (แบบที่ 3 รอรางวัลบอส)
+      if (WEAPONS[type] && !this.has(type) && this.mods.length >= this.modCap) type = Phaser.Utils.Array.GetRandom(this.mods);
       // มีครบ 3 แบบและเลเวลตันแล้ว ไอเท็มอาวุธส่วนใหญ่เปลี่ยนเป็นคริสตัล
       if (WEAPONS[type] && this.power >= MAX_POWER && this.mods.length >= MOD_ORDER.length && Math.random() < MAXED_WEAPON_TO_COIN) { this.dropCoins(x, y, 5); return; }
     }
@@ -5515,7 +5521,7 @@ class Game extends Phaser.Scene {
     p.destroy();
     sfx.power();
     if (WEAPONS[type]) {
-      const isNew = !this.has(type);
+      const isNew = !this.has(type) && this.mods.length < this.modCap;
       if (isNew) {
         // ได้อาวุธแบบใหม่: รวมเข้ากับที่มีอยู่
         this.mods.push(type);
@@ -5523,7 +5529,7 @@ class Game extends Phaser.Scene {
         this.sparks.explode(20, this.player.x, this.player.y);
       }
       {
-        if (this.power < MAX_POWER) {
+        if (this.power < this.powerCap) {
           this.power++;
           if (this.power > SPREAD_MAX) {
             this.popText(x, y, `โอเวอร์ชาร์จ Lv${this.power}! แรง x${(1 + (this.power - SPREAD_MAX) * 0.2).toFixed(1)}`, '#ffd23f', 17);
@@ -5532,10 +5538,10 @@ class Game extends Phaser.Scene {
             this.popText(x, y, `พลังยิง Lv${this.power}`, WEAPONS[type].color);
           }
         }
-        else if (!isNew) { this.addScore(500); this.popText(x, y, '+500', '#ffd23f'); }
+        else if (!isNew) { this.addScore(500); this.popText(x, y, this.power < MAX_POWER ? `+500 · รอบนี้สูงสุด Lv${this.powerCap}` : '+500', '#ffd23f'); }
       }
       if (this.shipId === 'comet' && Math.random() < this.sk.chance) {
-        if (this.power < MAX_POWER) {
+        if (this.power < this.powerCap) {
           this.power++;
           this.popText(this.player.x, this.player.y - 56, `โบนัสอาวุธ! Lv${this.power}`, '#36f1ff', 18);
         } else {
