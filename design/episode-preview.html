@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Episode Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #05030f; --panel: #0d0b22; --line: #2a2a55; --text: #e8f3ff; --dim: #8b93b8; --gold: #ffd23f; --red: #ff3b3b; --cyan: #36f1ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Chakra Petch", system-ui, sans-serif; }
+  body { background: radial-gradient(1200px 600px at 50% -10%, #1a0f3a 0%, transparent 60%), var(--bg); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 30px; margin: 8px 0 4px; letter-spacing: 1px; }
+  h1 small { font-size: 14px; color: var(--dim); font-weight: 500; margin-left: 8px; }
+  h2 { font-size: 22px; margin: 48px 0 6px; padding-left: 12px; border-left: 4px solid var(--gold); }
+  .lead { color: var(--dim); margin: 0 0 18px; line-height: 1.6; }
+  .note { color: var(--dim); font-size: 13px; line-height: 1.6; }
+  b.g { color: var(--gold); } b.r { color: var(--red); } b.c { color: var(--cyan); }
+
+  /* ---------- โทรศัพท์จำลอง ---------- */
+  .phones { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: flex-start; }
+  .phone-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .phone-cap { color: var(--dim); font-size: 13px; }
+  .phone { width: 360px; max-width: calc(100vw - 32px); height: 760px; border-radius: 34px; border: 2px solid #2d2d5e; background: #070518;
+    overflow: hidden; position: relative; box-shadow: 0 0 0 6px #0c0a20, 0 20px 60px rgba(0,0,0,.6); }
+  .scroll { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 10px; position: relative; z-index: 2; }
+  .topbar .t { font-weight: 700; font-size: 18px; }
+  .wallet { display: flex; gap: 8px; font-size: 12px; }
+  .wallet span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); border-radius: 99px; padding: 3px 9px; }
+
+  /* หน้าเลือกด่าน */
+  .ep-list { display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 24px; }
+  .ep-card { position: relative; display: flex; gap: 10px; align-items: center; border-radius: 18px; padding: 8px 10px 8px 6px; cursor: pointer;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--ep) 22%, #0b0920), #0b0920 70%);
+    border: 1px solid color-mix(in srgb, var(--ep) 45%, transparent); transition: transform .15s; }
+  .ep-card:hover { transform: translateY(-2px); }
+  .ep-card.sel { box-shadow: 0 0 0 2px var(--ep), 0 0 24px color-mix(in srgb, var(--ep) 50%, transparent); }
+  .ep-card canvas { width: 104px; height: 104px; flex: none; }
+  .ep-info { flex: 1; min-width: 0; }
+  .ep-tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #05030f; background: var(--ep); border-radius: 6px; padding: 1px 7px; }
+  .ep-name { font-weight: 700; font-size: 17px; margin: 4px 0 0; }
+  .ep-en { font-size: 10px; letter-spacing: 3px; color: var(--dim); }
+  .ep-bar { height: 6px; border-radius: 4px; background: rgba(255,255,255,.08); margin: 7px 0 4px; overflow: hidden; }
+  .ep-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--ep), #fff); }
+  .ep-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); }
+  .ep-ship { position: absolute; right: 8px; top: 8px; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--red);
+    background: radial-gradient(circle, #6a0d0d, #1e0303); box-shadow: 0 0 10px rgba(255,59,59,.5); }
+  .ep-ship i { position: absolute; inset: 2px; background: center/100% no-repeat; }
+  .ep-ship.unknown i { filter: brightness(0) drop-shadow(0 0 2px #ff3b3b); }
+  .ep-lock { position: absolute; inset: 0; border-radius: 18px; background: rgba(5,3,15,.7); display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 2px; font-size: 12px; color: var(--dim); text-align: center; padding: 0 30px; }
+  .ep-lock .k { font-size: 22px; }
+
+  /* หน้าด่าน */
+  .stage-hero { position: relative; height: 128px; }
+  .stage-hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage-hero .topbar { padding-top: 14px; }
+  .stage-hero .sub { text-shadow: 0 1px 4px #000, 0 0 8px #000; position: absolute; left: 16px; bottom: 10px; font-size: 11px; letter-spacing: 3px; color: rgba(255,255,255,.75); z-index: 2; }
+  .back { font-size: 22px; margin-right: 6px; opacity: .8; }
+  .panel { margin: 10px 12px; border-radius: 18px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); padding: 12px; }
+  .ph { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .ph .t { font-weight: 700; }
+  .ph .n { font-size: 13px; color: var(--dim); }
+  .ph .n b { color: var(--text); font-size: 16px; }
+  .puzzle { display: block; width: 236px; height: 236px; margin: 0 auto; border-radius: 14px; }
+  .drop-line { font-size: 12px; color: var(--dim); text-align: center; margin: 8px 0 2px; line-height: 1.5; }
+  .btns { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { flex: 1; border: 0; border-radius: 12px; padding: 11px 8px; font: 700 14px "Chakra Petch", sans-serif; cursor: pointer; color: #05030f; background: #c9d3f0; }
+  .btn.ghost { background: rgba(255,255,255,.08); color: var(--text); border: 1px solid rgba(255,255,255,.15); font-weight: 500; }
+  .btn.go { background: linear-gradient(180deg, #fff3b0, #ffd23f 50%, #e0a800); box-shadow: 0 0 18px rgba(255,210,63,.55); animation: pulse 1s infinite alternate; }
+  .btn:disabled { opacity: .35; cursor: default; animation: none; box-shadow: none; }
+  @keyframes pulse { to { box-shadow: 0 0 30px rgba(255,210,63,.9); } }
+  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .slot { position: relative; aspect-ratio: 1 / .92; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 11px; text-align: center; border: 1.5px solid; transition: transform .1s; }
+  .slot img { width: 46px; height: 46px; }
+  .slot .q { font-weight: 700; font-size: 12px; }
+  .slot.white { border-color: #9fb0d4; background: linear-gradient(160deg, #2a3350, #141a2c); }
+  .slot.gold  { border-color: #ffd23f; background: linear-gradient(160deg, #7a5a00, #2e1d00); }
+  .slot.red   { border-color: #ff3b3b; background: radial-gradient(circle at 50% 40%, #6a0d0d, #1e0303); box-shadow: 0 0 16px rgba(255,59,59,.45) inset, 0 0 12px rgba(255,59,59,.4); }
+  .slot.red img { width: 58px; height: 58px; }
+  .slot .pct { position: absolute; top: 3px; right: 6px; font-size: 9px; color: rgba(255,255,255,.55); }
+  .slot.hl { transform: scale(1.06); box-shadow: 0 0 0 3px #fff, 0 0 24px #fff; z-index: 2; }
+  .slot.got::after { content: 'ได้แล้ว'; position: absolute; inset: 0; border-radius: 10px; background: rgba(5,3,15,.72); display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: #7dff6a; letter-spacing: 1px; }
+  .status { margin-top: 10px; border-radius: 12px; padding: 9px 11px; font-size: 12px; line-height: 1.5; }
+  .status.ok { background: rgba(54,241,255,.08); border: 1px solid rgba(54,241,255,.3); }
+  .status.done { background: rgba(193,139,255,.12); border: 1px solid #c18bff; }
+  .status.done b { color: #e2c8ff; }
+  .play { margin: 6px 12px 20px; width: calc(100% - 24px); padding: 14px; font-size: 17px; }
+  .toast { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); background: rgba(10,8,30,.95); border: 1px solid var(--gold); border-radius: 12px;
+    padding: 8px 14px; font-size: 13px; white-space: nowrap; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 5; }
+  .toast.on { opacity: 1; }
+  .reveal { position: absolute; inset: 0; z-index: 6; background: radial-gradient(circle at 50% 42%, rgba(255,59,59,.35), rgba(5,3,15,.96) 65%); display: none;
+    flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; cursor: pointer; }
+  .reveal.on { display: flex; }
+  .reveal .big { font-size: 13px; letter-spacing: 6px; color: var(--red); }
+  .reveal .nm { font-size: 30px; font-weight: 700; margin: 4px 0 0; text-shadow: 0 0 20px rgba(255,210,63,.8); }
+  .reveal canvas { width: 300px; height: 300px; }
+  .reveal .tap { color: var(--dim); font-size: 12px; margin-top: 8px; }
+
+  /* จิ๊กซอว์ทั้ง 5 */
+  .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .strip figure { margin: 0; padding: 10px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); text-align: center; }
+  .strip canvas { width: 100%; aspect-ratio: 1; border-radius: 12px; display: block; }
+  .strip figcaption { font-size: 13px; margin-top: 8px; color: var(--dim); }
+  .strip figcaption b { color: var(--text); }
+
+  /* แกลเลอรียาน */
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
+  .ship-card { border-radius: 22px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--ep) 55%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ep) 14%, #0a0820), #0a0820 55%); }
+  .ship-card canvas { display: block; width: 100%; aspect-ratio: 1; }
+  .ship-body { padding: 4px 18px 18px; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { font-size: 10px; font-weight: 700; letter-spacing: 2px; padding: 2px 8px; border-radius: 6px; }
+  .badge.cos { color: #fff; background: linear-gradient(90deg, #ff3b3b, #ffd23f); }
+  .badge.ep { color: #05030f; background: var(--ep); }
+  .badge.no { color: var(--dim); border: 1px solid var(--line); }
+  .ship-name { font-size: 26px; font-weight: 700; margin: 8px 0 0; }
+  .ship-en { font-size: 11px; letter-spacing: 4px; color: var(--ep); }
+  .look { color: var(--dim); font-size: 13px; margin: 8px 0 10px; line-height: 1.5; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+  .stat { background: rgba(255,255,255,.05); border-radius: 10px; padding: 6px; text-align: center; }
+  .stat div { font-size: 10px; color: var(--dim); }
+  .stat b { font-size: 15px; }
+  .stat i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; box-shadow: 0 0 8px currentColor; }
+  .skills { display: flex; flex-direction: column; gap: 8px; }
+  .skill { border-left: 3px solid var(--ep); padding: 2px 0 2px 10px; font-size: 13px; line-height: 1.5; }
+  .skill b { display: block; font-size: 14px; color: var(--ep); }
+
+  /* ตาราง */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl { overflow-x: auto; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
+  th, td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 500; font-size: 12px; }
+  td:first-child, th:first-child { text-align: left; }
+  tr:last-child td { border-bottom: 0; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .slider { display: flex; align-items: center; gap: 12px; margin: 10px 0 12px; flex-wrap: wrap; }
+  .slider input { flex: 1; min-width: 180px; accent-color: var(--gold); }
+  .slider output { font-weight: 700; color: var(--gold); min-width: 170px; }
+  ul.rules { line-height: 1.8; padding-left: 20px; margin: 6px 0; }
+  ul.rules li::marker { color: var(--gold); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>EPISODE · เลือกด่าน + จิ๊กซอว์ยานคอสมิก <small>หน้าพรีวิวดีไซน์ (ยังไม่ได้ใส่เกม)</small></h1>
+  <p class="lead">5 ด่าน 5 โลก · แต่ละด่านมีตารางสุ่ม 9 ช่อง (<b>ขาว 6 · <span style="color:var(--gold)">ทอง 2</span> · <span style="color:var(--red)">แดง 1</span></b>) ·
+    ช่องแดง = <b class="r">ยานคอสมิก</b> ที่สุ่มจากตั๋วไม่ได้ · เศษจิ๊กซอว์เปิดรูปยานทีละชิ้น ครบรูป = กดสุ่ม 1 ครั้ง<br>
+    <b>ลองกดได้:</b> เลือกด่านทางซ้าย → กด “+1 เศษ” จนรูปครบ → กด “สุ่ม!”</p>
+
+  <div class="phones">
+    <div class="phone-col">
+      <div class="phone"><div class="scroll">
+        <div class="topbar"><span class="t">เลือกด่าน</span><span class="wallet"><span>💎 12,480</span><span>🎫 4</span></span></div>
+        <div class="ep-list" id="epList"></div>
+      </div></div>
+      <div class="phone-cap">① หน้าเลือกด่าน (หลังกด “เริ่มเกม”)</div>
+    </div>
+    <div class="phone-col">
+      <div class="phone" id="stagePhone"><div class="scroll" id="stageScroll">
+        <div class="stage-hero"><canvas id="heroCv" width="720" height="256"></canvas>
+          <div class="topbar"><span class="t"><span class="back">‹</span><span id="stTitle"></span></span><span class="wallet"><span id="stShardChip"></span></span></div>
+          <div class="sub" id="stSub"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><span class="t">จิ๊กซอว์ยานคอสมิก</span><span class="n" id="pzCount"></span></div>
+          <canvas class="puzzle" id="pzCv" width="320" height="320"></canvas>
+          <div class="drop-line" id="dropLine"></div>
+          <div class="btns">
+            <button class="btn ghost" id="addBtn">+1 เศษ (จำลอง)</button>
+            <button class="btn go" id="drawBtn">สุ่ม!</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><span class="t">ตารางรางวัล</span><span class="n" id="boardCount"></span></div>
+          <div class="board" id="board"></div>
+          <div class="status" id="status"></div>
+          <div class="btns"><button class="btn ghost" id="resetBtn">รีเซ็ตด่านนี้</button><button class="btn ghost" id="fillBtn">จำลอง: เปิดเกือบครบ</button></div>
+        </div>
+        <button class="btn go play" id="playBtn">เริ่มเล่น</button>
+      </div>
+        <div class="toast" id="toast"></div>
+        <div class="reveal" id="reveal"><div class="big">COSMIC SHIP</div><canvas id="revCv" width="600" height="600"></canvas><div class="nm" id="revName"></div><div class="tap">ยานคอสมิก · สุ่มจากตั๋วไม่ได้ · แตะเพื่อปิด</div></div>
+      </div>
+      <div class="phone-cap">② หน้าด่าน: จิ๊กซอว์ + ตารางสุ่ม 9 ช่อง</div>
+    </div>
+  </div>
+
+  <h2>จิ๊กซอว์ทั้ง 5 ด่าน</h2>
+  <p class="lead">รูปยานแดงของด่านนั้น แบ่งเป็นแผ่นหินจำนวนเท่ากับราคาสุ่ม (3 / 5 / 7 / 9 / 10 ชิ้น) · ชิ้นที่ยังไม่เปิดเป็นหินสลักเงายาน รอยต่อเป็นเส้นทอง · ตัวอย่างด้านล่างเปิดไว้ครึ่งหนึ่ง</p>
+  <div class="strip" id="strip"></div>
+
+  <h2>ยานคอสมิก 5 ลำ</h2>
+  <p class="lead">ระดับใหม่ <b class="r">คอสมิก</b> อยู่เหนือมิธิค · ได้จากช่องแดงในตารางด่านเท่านั้น (ด่านละ 1 ลำ ไม่ซ้ำ) · อัปเลเวลด้วยคริสตัลได้ตามปกติ ·
+    สีกระสุนทุกลำไม่ใช้แดง/ชมพู</p>
+  <div class="gallery" id="gallery"></div>
+
+  <h2>ตัวเลขของแต่ละด่าน</h2>
+  <div class="tbl"><table id="epTable"></table></div>
+  <p class="note">ปลดล็อกตามลำดับ: ชนะบอสตัวแรกของด่านก่อนหน้า → เปิดด่านถัดไป · ตารางอันดับแยกตามด่าน</p>
+
+  <h3 style="margin:28px 0 0">ประมาณว่าต้องเล่นกี่เกม</h3>
+  <div class="slider"><span>แต้มเฉลี่ยต่อเกม</span><input type="range" id="scoreIn" min="1" max="12" step="0.5" value="4"><output id="scoreOut"></output></div>
+  <div class="tbl"><table id="estTable"></table></div>
+  <p class="note">สุ่มช่องแบบเท่ากันทุกช่องที่เหลือ (ช่องแดงได้เฉลี่ยตอนสุ่มครั้งที่ 5 · แย่สุดครั้งที่ 9) · เศษเกินราคาเก็บไว้ใช้รูปถัดไป</p>
+
+  <h2>สรุปกฎ</h2>
+  <ul class="rules">
+    <li><b>ดรอปเศษ:</b> ในเกมเดียว ทำแต้มแตะ 2 ล้าน, 4 ล้าน, 6 ล้าน… แต่ละครั้งลุ้น 40% ได้เศษจิ๊กซอว์ของด่านนั้น 1 ชิ้น (server สุ่มตอนส่งคะแนน) · ไม่ถึง 2 ล้าน = ไม่มีโอกาส</li>
+    <li><b>เศษแยกตามด่าน:</b> เศษของ EP1 ใช้ได้แค่ EP1</li>
+    <li><b>สุ่ม:</b> รูปยานครบ (เศษ = ราคาด่าน) → สุ่ม 1 ช่องจากช่องที่เหลือ โอกาสเท่ากัน · ได้แล้วช่องนั้นหายจากการสุ่ม · รูปปิดกลับเป็นหิน เริ่มสะสมใหม่</li>
+    <li><b>ครบ 9 ช่อง:</b> หน้าด่านขึ้นป้ายว่าเศษจะไม่ดรอปแล้ว · การลุ้นที่ 2/4/6 ล้านเปลี่ยนเป็น <b style="color:#e2c8ff">หินอีโว</b> แทน (ใช้ปลดขั้น 4 ของสมบัติ เป็นระบบแยกที่ค่อยทำทีหลัง)</li>
+    <li><b>กันโกง:</b> แต้มต้องผ่านเพดานเดิมก่อนถึงจะลุ้นเศษ · รอบที่ติด flagged_runs ไม่ได้เศษ</li>
+  </ul>
+</div>
+
+<script>
+// หน้าพรีวิวระบบ EPISODE — เปิดไฟล์นี้ตรงๆ ในเบราว์เซอร์ได้เลย (ไม่ได้ deploy) · ภาพทั้งหมดวาดด้วย canvas
+const TAU = Math.PI * 2;
+const hex2rgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const rgba = (h, a) => { const [r, g, b] = hex2rgb(h); return `rgba(${r},${g},${b},${a})`; };
+const lg = (c, x0, y0, x1, y1, st) => { const g = c.createLinearGradient(x0, y0, x1, y1); st.forEach(s => g.addColorStop(s[0], s[1])); return g; };
+const rg = (c, x, y, r0, r1, st, x0 = x, y0 = y) => { const g = c.createRadialGradient(x0, y0, r0, x, y, r1); st.forEach(s => g.addColorStop(s[0], s[1])); return g; };
+// รูปทรงสมมาตร: ใส่จุดครึ่งขวา (บนลงล่าง) แล้วสะท้อนเป็นครึ่งซ้าย
+function sym(c, pts) { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); for (let i = pts.length - 1; i >= 0; i--) c.lineTo(-pts[i][0], pts[i][1]); c.closePath(); }
+function path(c, pts) { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); }
+function both(c, fn) { fn(1); c.save(); c.scale(-1, 1); fn(-1); c.restore(); }
+function fillStroke(c, fill, stroke, lw = 2, glowC, blur = 0) {
+  c.fillStyle = fill; c.fill();
+  if (stroke) { c.save(); if (glowC) { c.shadowColor = glowC; c.shadowBlur = blur; } c.strokeStyle = stroke; c.lineWidth = lw; c.stroke(); c.restore(); }
+}
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function aura(c, col, r, a = 0.3) { c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = rg(c, 0, 0, 0, r, [[0, rgba(col, a)], [1, rgba(col, 0)]]); c.fillRect(-r, -r, r * 2, r * 2); c.restore(); }
+function flame(c, x, y, w, len, col, t, ph = 0) {
+  const L = len * (1 + 0.16 * Math.sin(t * 19 + ph) + 0.08 * Math.sin(t * 37 + ph * 3));
+  c.save(); c.globalCompositeOperation = 'lighter';
+  c.fillStyle = lg(c, 0, y, 0, y + L, [[0, '#ffffff'], [0.22, col], [1, rgba(col, 0)]]);
+  c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w * 0.8, y + L * 0.55, x, y + L); c.quadraticCurveTo(x + w * 0.8, y + L * 0.55, x + w, y); c.closePath(); c.fill();
+  c.fillStyle = rg(c, x, y + 4, 0, w * 2.6, [[0, rgba(col, 0.6)], [1, rgba(col, 0)]]); c.fillRect(x - w * 3, y - w * 3, w * 6, w * 6);
+  c.restore();
+}
+function gem(c, x, y, r, col) {
+  c.save(); c.shadowColor = col; c.shadowBlur = r * 3;
+  c.fillStyle = rg(c, x, y, 0, r, [[0, '#ffffff'], [0.35, col], [1, rgba(col, 0.2)]], x - r * 0.3, y - r * 0.3);
+  c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.restore();
+}
+function glass(c, x, y, rx, ry, col) {
+  c.save(); c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU);
+  c.fillStyle = lg(c, x - rx, y - ry, x + rx, y + ry, [[0, '#ffffff'], [0.25, col], [1, '#05030f']]); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1.5; c.stroke();
+  c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(x - rx * 0.35, y - ry * 0.4, rx * 0.25, ry * 0.3, 0, 0, TAU); c.fill(); c.restore();
+}
+const goldMetal = c => lg(c, -32, 0, 32, 0, [[0, '#6a4a14'], [0.3, '#fff3d0'], [0.5, '#f2d48a'], [0.75, '#b8862a'], [1, '#4a3008']]);
+
+// ---------------------------------------------------------------- ยานคอสมิก 5 ลำ (พิกัด ±160)
+const DRAW = {
+  // EP1 ราชันวงแหวน — ลำทองงาช้าง สวมวงแหวนดาวเสาร์ + ดวงจันทร์จิ๋ว 3 ดวง
+  saturn(c, t) {
+    aura(c, '#ffd23f', 175, 0.28);
+    const ring = back => {
+      c.save(); c.rotate(-0.22);
+      const a0 = back ? Math.PI : 0, a1 = back ? TAU : Math.PI;
+      [[14, 8, '#7a5a20'], [6, 7, '#e8c46a'], [-2, 5, '#fff3c8'], [-9, 4, '#c9a24a'], [20, 3, '#ffe08a']].forEach(([o, w, col]) => {
+        c.beginPath(); c.ellipse(0, 0, 146 + o, 36 + o * 0.25, 0, a0, a1); c.lineWidth = w; c.strokeStyle = col; c.stroke();
+      });
+      c.save(); c.globalCompositeOperation = 'lighter'; c.shadowColor = '#ffd23f'; c.shadowBlur = 14;
+      c.beginPath(); c.ellipse(0, 0, 150, 37, 0, a0, a1); c.lineWidth = 1.5; c.strokeStyle = 'rgba(255,255,255,.8)'; c.stroke(); c.restore();
+      for (let k = 0; k < 3; k++) {
+        const a = t * 0.9 + k * TAU / 3, s = Math.sin(a);
+        if ((s < 0) === back) gem(c, Math.cos(a) * 150, s * 37, 5 + (s + 1) * 1.6, '#36f1ff');
+      }
+      c.restore();
+    };
+    both(c, () => flame(c, 16, 96, 9, 62, '#ffd23f', t));
+    ring(true);
+    sym(c, [[0, -28], [40, -6], [118, 34], [130, 58], [86, 56], [42, 70], [0, 60]]);
+    fillStroke(c, lg(c, 0, -30, 0, 70, [[0, '#fff3d0'], [0.45, '#c99a3a'], [1, '#3a2408']]), '#ffe08a', 2, '#ffd23f', 10);
+    both(c, () => { c.strokeStyle = 'rgba(255,240,200,.5)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(30, 6); c.lineTo(112, 44); c.moveTo(34, 24); c.lineTo(96, 52); c.stroke(); });
+    both(c, () => { path(c, [[52, 22], [64, 4], [70, 30]]); fillStroke(c, '#fff3d0', '#ffd23f', 1); gem(c, 106, 46, 4.5, '#36f1ff'); });
+    sym(c, [[0, -132], [9, -108], [17, -62], [25, -12], [30, 40], [24, 92], [10, 106], [0, 100]]);
+    fillStroke(c, goldMetal(c), '#fff3c8', 1.8, '#ffd23f', 12);
+    for (let i = -1; i <= 1; i++) { c.save(); c.translate(i * 11, -84 + Math.abs(i) * 6); path(c, [[0, -18], [5, 0], [-5, 0]]); fillStroke(c, '#fff3d0', '#ffd23f', 1, '#ffd23f', 8); c.restore(); }
+    glass(c, 0, -50, 8, 20, '#36f1ff');
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-12, -20); c.lineTo(-14, 80); c.moveTo(12, -20); c.lineTo(14, 80); c.stroke();
+    gem(c, 0, 30, 13 + Math.sin(t * 3) * 1.2, '#ffd23f');
+    ring(false);
+  },
+
+  // EP2 อัสนีพฤหัส — ปีกลายแถบพายุ ตาพายุม่วงกลางลำ ฟ้าแลบระหว่างปีก
+  jupiter(c, t) {
+    aura(c, '#c18bff', 175, 0.26);
+    flame(c, 0, 96, 10, 70, '#c18bff', t); both(c, () => flame(c, 32, 80, 7, 48, '#c18bff', t, 1.7));
+    const wing = [[0, -42], [30, -22], [92, -4], [146, 28], [152, 52], [112, 54], [72, 64], [42, 84], [0, 78]];
+    c.save(); sym(c, wing); c.clip();
+    const bands = ['#f6dcae', '#d98a3a', '#fff0d6', '#a8582a', '#e8b070', '#f9e4c0', '#c0703a', '#efc890'];
+    for (let i = 0; i < 14; i++) {
+      const y = -46 + i * 10; c.fillStyle = bands[i % bands.length];
+      c.beginPath(); c.moveTo(-160, y);
+      for (let x = -160; x <= 160; x += 10) c.lineTo(x, y + Math.sin(x * 0.05 + i + t * 1.5) * 2.5);
+      c.lineTo(160, y + 12); c.lineTo(-160, y + 12); c.closePath(); c.fill();
+    }
+    c.fillStyle = lg(c, -155, 0, 155, 0, [[0, 'rgba(10,5,30,.75)'], [0.3, 'rgba(10,5,30,0)'], [0.7, 'rgba(10,5,30,0)'], [1, 'rgba(10,5,30,.75)']]); c.fillRect(-160, -60, 320, 160);
+    c.restore();
+    sym(c, wing); c.strokeStyle = '#ffcf8a'; c.lineWidth = 2; c.stroke();
+    both(c, () => { path(c, [[10, -104], [34, -142], [26, -98]]); fillStroke(c, lg(c, 10, -140, 30, -98, [[0, '#ffffff'], [1, '#8f6ad8']]), '#e6d6ff', 1.2, '#c18bff', 10); });
+    sym(c, [[0, -134], [12, -110], [22, -60], [28, 0], [26, 58], [14, 94], [0, 90]]);
+    fillStroke(c, lg(c, -28, 0, 28, 0, [[0, '#1c0d33'], [0.3, '#8f6ad8'], [0.5, '#e6d6ff'], [0.7, '#5a3a9a'], [1, '#1c0d33']]), '#e6d6ff', 1.6, '#c18bff', 12);
+    glass(c, 0, -64, 7, 18, '#ffb84d');
+    // ตาพายุ
+    c.save(); c.translate(0, 12);
+    c.shadowColor = '#c18bff'; c.shadowBlur = 24;
+    c.fillStyle = rg(c, 0, 0, 0, 30, [[0, '#ffffff'], [0.3, '#c18bff'], [1, '#2a1450']]); c.beginPath(); c.ellipse(0, 0, 30, 21, 0, 0, TAU); c.fill();
+    c.shadowBlur = 0; c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1.5;
+    for (let k = 0; k < 4; k++) { c.beginPath(); c.ellipse(0, 0, 24 - k * 5, 16 - k * 3.5, 0, t * 2.4 + k * 1.3, t * 2.4 + k * 1.3 + 2.2); c.stroke(); }
+    c.restore();
+    // ฟ้าแลบ (สุ่มใหม่ทุก 1/12 วิ)
+    const r = rng(Math.floor(t * 12) + 7);
+    const bolt = (x0, y0, x1, y1) => {
+      c.beginPath(); c.moveTo(x0, y0);
+      for (let i = 1; i < 7; i++) { const f = i / 7; c.lineTo(x0 + (x1 - x0) * f + (r() - 0.5) * 18, y0 + (y1 - y0) * f + (r() - 0.5) * 18); }
+      c.lineTo(x1, y1); c.stroke();
+    };
+    c.save(); c.globalCompositeOperation = 'lighter'; c.shadowColor = '#c18bff'; c.shadowBlur = 14; c.strokeStyle = '#efe4ff'; c.lineWidth = 2.2;
+    bolt(148, 40, 30, 12); bolt(-148, 40, -30, 12);
+    if (r() < 0.6) { c.lineWidth = 1.4; bolt(30, -136, 8, -80); bolt(-30, -136, -8, -80); }
+    c.restore();
+  },
+
+  // EP3 ตรีศูลเนปจูน — ปีกกระเบนน้ำลึก ตรีศูลเงินสามง่าม คลื่นเรืองแสงบนปีก
+  neptune(c, t) {
+    aura(c, '#36a8ff', 175, 0.28);
+    both(c, () => flame(c, 14, 98, 9, 64, '#36f1ff', t));
+    const wing = [[0, -34], [40, -24], [90, -2], [134, 26], [158, 54], [122, 50], [88, 56], [58, 72], [28, 86], [0, 80]];
+    sym(c, wing); fillStroke(c, lg(c, 0, -34, 0, 86, [[0, '#1e78c8'], [0.5, '#0a2a5c'], [1, '#03122e']]), '#9ff3ff', 2, '#36f1ff', 12);
+    c.save(); sym(c, wing); c.clip(); c.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 5; k++) {
+      const p = ((t * 0.35 + k / 5) % 1);
+      c.strokeStyle = rgba('#36f1ff', 0.55 * (1 - p)); c.lineWidth = 2;
+      c.beginPath(); c.ellipse(0, 70, 30 + p * 150, 14 + p * 56, 0, Math.PI, TAU); c.stroke();
+    }
+    c.restore();
+    both(c, () => { path(c, [[60, 62], [74, 92], [52, 74]]); fillStroke(c, '#0a2a5c', '#9ff3ff', 1.2); });
+    sym(c, [[0, -100], [12, -82], [18, -30], [22, 30], [16, 88], [0, 102]]);
+    fillStroke(c, lg(c, -22, 0, 22, 0, [[0, '#0a2a5c'], [0.35, '#c8f6ff'], [0.55, '#7fd0f0'], [1, '#062040']]), '#e6fbff', 1.6, '#36f1ff', 10);
+    // ตรีศูล
+    c.save(); c.shadowColor = '#36f1ff'; c.shadowBlur = 16;
+    const silver = lg(c, 0, -170, 0, -80, [[0, '#ffffff'], [0.5, '#bfefff'], [1, '#4aa8d0']]);
+    sym(c, [[0, -170], [7, -146], [4, -100]]); fillStroke(c, silver, '#ffffff', 1);
+    both(c, () => { path(c, [[18, -84], [30, -104], [38, -134], [44, -146], [40, -124], [34, -100], [26, -84]]); fillStroke(c, silver, '#ffffff', 1); path(c, [[38, -134], [48, -128], [41, -124]]); fillStroke(c, silver, null); });
+    c.beginPath(); c.ellipse(0, -84, 28, 7, 0, 0, Math.PI); c.lineWidth = 5; c.strokeStyle = '#bfefff'; c.stroke();
+    c.restore();
+    glass(c, 0, -42, 7, 16, '#36f1ff');
+    gem(c, 0, 28, 13 + Math.sin(t * 2.5), '#36f1ff');
+    c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1.4;
+    c.beginPath(); c.arc(0, 28, 18, t * 3, t * 3 + 1.6); c.stroke(); c.beginPath(); c.arc(0, 28, 18, t * 3 + Math.PI, t * 3 + Math.PI + 1.6); c.stroke(); c.restore();
+  },
+
+  // EP4 ขอบฟ้าเหตุการณ์ — ปีกจันทร์เสี้ยวออบซิเดียน หลุมดำกลางลำ จานพลังงานหมุน
+  horizon(c, t) {
+    aura(c, '#7a4bff', 180, 0.3);
+    const disk = back => {
+      c.save(); c.translate(0, 14); c.rotate(0.16); c.globalCompositeOperation = 'lighter';
+      const a0 = back ? Math.PI : 0, a1 = back ? TAU : Math.PI;
+      for (let i = 0; i < 16; i++) {
+        const rx = 56 + i * 8.5, f = i / 15;
+        const col = f < 0.3 ? '#ffffff' : f < 0.65 ? '#c18bff' : '#4a6bff';
+        c.strokeStyle = rgba(col, 0.7 * (1 - f) + 0.12); c.lineWidth = 4;
+        c.setLineDash([16 + i * 2, 12 + i]); c.lineDashOffset = -t * (90 - i * 3);
+        c.beginPath(); c.ellipse(0, 0, rx, rx * 0.24, 0, a0, a1); c.stroke();
+      }
+      c.restore();
+    };
+    disk(true);
+    both(c, () => flame(c, 14, 94, 8, 60, '#b46bff', t));
+    // ปีกจันทร์เสี้ยว 2 ชั้นต่อข้าง
+    both(c, () => {
+      [[1, 0], [0.72, 1]].forEach(([k, z]) => {
+        c.save(); c.translate(14, 6 + z * 18); c.scale(k, k);
+        c.beginPath(); c.moveTo(6, -40); c.quadraticCurveTo(100, -50, 140, -112); c.quadraticCurveTo(160, 10, 30, 92); c.quadraticCurveTo(104, 4, 6, -40); c.closePath();
+        fillStroke(c, lg(c, 0, -110, 140, 90, [[0, '#3a2a5c'], [0.35, '#07040f'], [0.7, '#140c26'], [1, '#2a1a4a']]), '#c18bff', 2, '#b46bff', 16);
+        c.strokeStyle = 'rgba(226,200,255,.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(40, -30); c.quadraticCurveTo(116, -36, 138, -100); c.stroke();
+        c.restore();
+      });
+      gem(c, 154, -106, 4.5, '#e2c8ff');
+    });
+    sym(c, [[0, -140], [10, -112], [16, -70], [14, -40], [0, -30]]);
+    fillStroke(c, lg(c, -16, 0, 16, 0, [[0, '#07040f'], [0.5, '#5a3a9a'], [1, '#07040f']]), '#e2c8ff', 1.4, '#b46bff', 10);
+    c.save(); c.shadowColor = '#c18bff'; c.shadowBlur = 12; c.fillStyle = '#e2c8ff'; c.beginPath(); c.ellipse(0, -92, 3, 14, 0, 0, TAU); c.fill(); c.restore();
+    // หลุมดำ + วงโฟตอน
+    c.save(); c.translate(0, 14);
+    c.globalCompositeOperation = 'lighter'; c.shadowColor = '#ffffff'; c.shadowBlur = 24;
+    c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 37, 0, TAU); c.stroke();
+    c.strokeStyle = 'rgba(226,200,255,.7)'; c.lineWidth = 6; c.beginPath(); c.ellipse(0, -6, 52, 30, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
+    c.globalCompositeOperation = 'source-over'; c.shadowBlur = 0;
+    c.fillStyle = '#000'; c.beginPath(); c.arc(0, 0, 34, 0, TAU); c.fill();
+    c.restore();
+    disk(false);
+  },
+
+  // EP5 สุริยเทพ — ปีกใบมีด 6 ปีกแบบเทวทูต รัศมีสุริยะหมุน แกนกลางดวงอาทิตย์จิ๋ว
+  helios(c, t) {
+    aura(c, '#ffb800', 185, 0.4);
+    c.save(); c.translate(0, 10); c.globalCompositeOperation = 'lighter';
+    [[18, 165, 0.25, 0.9], [12, 120, -0.4, 0.7]].forEach(([n, len, sp, a]) => {
+      c.save(); c.rotate(t * sp);
+      for (let i = 0; i < n; i++) {
+        const L = len * (i % 2 ? 0.72 : 1);
+        c.save(); c.rotate(i * TAU / n);
+        c.fillStyle = lg(c, 0, 30, 0, L, [[0, rgba('#fff3b0', a)], [0.4, rgba('#ffb800', a * 0.6)], [1, rgba('#ff8a00', 0)]]);
+        c.beginPath(); c.moveTo(-9, 30); c.lineTo(0, L); c.lineTo(9, 30); c.closePath(); c.fill(); c.restore();
+      }
+      c.restore();
+    });
+    c.restore();
+    flame(c, 0, 94, 11, 72, '#ffd23f', t); both(c, () => flame(c, 26, 84, 7, 50, '#ffd23f', t, 2));
+    const blade = [[0, 0], [22, -10], [124, -32], [138, -24], [24, 12]];
+    both(c, () => {
+      [[-0.62, 0.95, 0], [-0.1, 1.1, 1], [0.42, 0.82, 2]].forEach(([ang, s, k]) => {
+        c.save(); c.translate(16, 6 + k * 8); c.rotate(ang + Math.sin(t * 1.6 + k) * 0.03); c.scale(s, s);
+        path(c, blade); fillStroke(c, lg(c, 0, 0, 138, -24, [[0, '#ffffff'], [0.4, '#ffe08a'], [1, '#b07a10']]), '#fff3b0', 1.4, '#ffd23f', 10);
+        c.strokeStyle = 'rgba(120,80,0,.45)'; c.lineWidth = 1; c.beginPath(); c.moveTo(20, 0); c.lineTo(126, -26); c.stroke();
+        c.restore();
+      });
+    });
+    sym(c, [[0, -124], [12, -98], [20, -50], [24, 10], [18, 70], [8, 96], [0, 92]]);
+    fillStroke(c, lg(c, -24, 0, 24, 0, [[0, '#8a5a00'], [0.3, '#ffffff'], [0.55, '#ffe9a8'], [1, '#6a4200']]), '#ffffff', 1.6, '#ffd23f', 14);
+    c.save(); c.shadowColor = '#ffd23f'; c.shadowBlur = 16; c.strokeStyle = '#ffe08a'; c.lineWidth = 3;
+    c.beginPath(); c.ellipse(0, -118, 26, 7, 0, 0, TAU); c.stroke(); c.restore();
+    gem(c, Math.cos(t * 2) * 26, -118 + Math.sin(t * 2) * 7, 3.5, '#ffffff');
+    glass(c, 0, -62, 7, 16, '#ffb800');
+    const p = 1 + Math.sin(t * 4) * 0.06;
+    c.save(); c.shadowColor = '#ffd23f'; c.shadowBlur = 40;
+    c.fillStyle = rg(c, 0, 22, 0, 24 * p, [[0, '#ffffff'], [0.45, '#fff3b0'], [0.8, '#ffb800'], [1, 'rgba(255,140,0,.2)']]);
+    c.beginPath(); c.arc(0, 22, 24 * p, 0, TAU); c.fill(); c.restore();
+  },
+};
+function drawShipTo(cv, id, t, bg) {
+  const c = cv.getContext('2d'), S = cv.width;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, S, cv.height);
+  if (bg) bg(c, S, cv.height);
+  c.save(); c.translate(S / 2, cv.height / 2); c.scale(S / 360, S / 360); DRAW[id](c, t); c.restore();
+}
+
+// ---------------------------------------------------------------- ฉาก/ดาวของแต่ละด่าน
+function stars(c, w, h, seed, n = 90) {
+  const r = rng(seed);
+  for (let i = 0; i < n; i++) { const a = 0.3 + r() * 0.7; c.fillStyle = `rgba(255,255,255,${a})`; const s = r() < 0.1 ? 2 : 1; c.fillRect(r() * w, r() * h, s, s); }
+}
+function sphere(c, x, y, R, bands, light = 0.78) {
+  c.save(); c.beginPath(); c.arc(x, y, R, 0, TAU); c.clip();
+  const n = bands.length * 2;
+  for (let i = 0; i < n; i++) { c.fillStyle = bands[i % bands.length]; c.fillRect(x - R, y - R + i * 2 * R / n, 2 * R, 2 * R / n + 1); }
+  c.fillStyle = rg(c, x, y, R * 0.1, R * 1.05, [[0, 'rgba(0,0,0,0)'], [0.6, 'rgba(0,0,0,.25)'], [1, `rgba(0,0,0,${light})`]], x - R * 0.4, y - R * 0.45); c.fillRect(x - R, y - R, 2 * R, 2 * R);
+  c.restore();
+}
+const PLANET = {
+  saturn(c, w, h, t) {
+    const x = w / 2, y = h / 2, R = Math.min(w, h) * 0.26;
+    const ring = back => { c.save(); c.translate(x, y); c.rotate(-0.35); const a0 = back ? Math.PI : 0, a1 = back ? TAU : Math.PI;
+      [[1.9, R * 0.16, '#c9a24a'], [1.65, R * 0.1, '#f2e2b8'], [2.15, R * 0.08, '#8a6a30']].forEach(([k, lw, col]) => { c.beginPath(); c.ellipse(0, 0, R * k, R * k * 0.3, 0, a0, a1); c.lineWidth = lw; c.strokeStyle = col; c.stroke(); });
+      c.restore(); };
+    ring(true); sphere(c, x, y, R, ['#e8d2a0', '#d1b070', '#f2e2b8', '#b8945a']); ring(false);
+  },
+  jupiter(c, w, h, t) {
+    const x = w / 2, y = h / 2, R = Math.min(w, h) * 0.34;
+    sphere(c, x, y, R, ['#f6dcae', '#d98a3a', '#fff0d6', '#a8582a', '#e8b070']);
+    c.save(); c.beginPath(); c.arc(x, y, R, 0, TAU); c.clip();
+    c.fillStyle = rg(c, x + R * 0.3, y + R * 0.3, 0, R * 0.22, [[0, '#ffd8a0'], [0.5, '#c8643a'], [1, 'rgba(160,80,40,0)']]); c.beginPath(); c.ellipse(x + R * 0.3, y + R * 0.3, R * 0.28, R * 0.15, 0, 0, TAU); c.fill();
+    c.restore();
+  },
+  neptune(c, w, h, t) {
+    const x = w / 2, y = h / 2, R = Math.min(w, h) * 0.32;
+    c.fillStyle = rg(c, x, y, R * 0.8, R * 1.5, [[0, 'rgba(54,168,255,.35)'], [1, 'rgba(54,168,255,0)']]); c.fillRect(0, 0, w, h);
+    sphere(c, x, y, R, ['#2a6ad8', '#1e4fb0', '#3f86f0', '#163c90']);
+    const r = rng(33);
+    for (let i = 0; i < 7; i++) { const a = r() * TAU, d = R * (1.15 + r() * 0.35), s = 3 + r() * 5; c.save(); c.translate(x + Math.cos(a) * d, y + Math.sin(a) * d); c.rotate(r() * 3);
+      c.shadowColor = '#36f1ff'; c.shadowBlur = 8; c.fillStyle = '#bff6ff'; path(c, [[0, -s * 1.6], [s * 0.6, 0], [0, s * 1.6], [-s * 0.6, 0]]); c.fill(); c.restore(); }
+  },
+  blackhole(c, w, h, t) {
+    const x = w / 2, y = h / 2, R = Math.min(w, h) * 0.17;
+    c.save(); c.translate(x, y); c.rotate(0.2); c.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 14; i++) { const f = i / 13, rx = R * (1.2 + f * 1.6); c.strokeStyle = rgba(f < 0.3 ? '#ffffff' : f < 0.7 ? '#c18bff' : '#4a6bff', 0.6 * (1 - f) + 0.05); c.lineWidth = 3; c.beginPath(); c.ellipse(0, 0, rx, rx * 0.28, 0, 0, TAU); c.stroke(); }
+    c.restore();
+    c.save(); c.shadowColor = '#fff'; c.shadowBlur = 18; c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, R * 1.05, 0, TAU); c.stroke(); c.restore();
+    c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill();
+  },
+  sun(c, w, h, t) {
+    const x = w / 2, y = h / 2, R = Math.min(w, h) * 0.3;
+    c.save(); c.globalCompositeOperation = 'lighter';
+    c.fillStyle = rg(c, x, y, R * 0.8, R * 1.9, [[0, 'rgba(255,184,0,.6)'], [1, 'rgba(255,120,0,0)']]); c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 24; i++) { const a = i * TAU / 24 + t * 0.1, L = R * (1.25 + (i % 3) * 0.15); c.fillStyle = rgba('#ffd23f', 0.35);
+      c.beginPath(); c.moveTo(x + Math.cos(a - 0.06) * R, y + Math.sin(a - 0.06) * R); c.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); c.lineTo(x + Math.cos(a + 0.06) * R, y + Math.sin(a + 0.06) * R); c.fill(); }
+    c.restore();
+    c.fillStyle = rg(c, x, y, 0, R, [[0, '#ffffff'], [0.4, '#fff3b0'], [0.8, '#ffb800'], [1, '#ff7a00']]); c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill();
+  },
+};
+
+// ---------------------------------------------------------------- ข้อมูลด่าน / ยาน
+const ICON_NAME = { crystal: 'คริสตัล', ticket: 'ตั๋ว', key: 'กุญแจดาว', gold: 'หีบทอง', evo: 'หินอีโว' };
+const EPS = [
+  { n: 1, name: 'วงแหวนดาวเสาร์', en: 'SATURN RINGS', color: '#ffd23f', planet: 'saturn', stone: [104, 88, 64], cost: 3, hp: '×1', pts: '×1', bullet: 'ปกติ', ship: 'saturn',
+    white: [['crystal', 300], ['crystal', 300], ['crystal', 500], ['ticket', 1], ['ticket', 1], ['key', 1]], gold: [['gold', 1], ['ticket', 5]] },
+  { n: 2, name: 'พายุยักษ์พฤหัส', en: 'JUPITER STORM', color: '#ff9a3c', planet: 'jupiter', stone: [104, 72, 52], cost: 5, hp: '×1.3', pts: '×1.25', bullet: '+10%', ship: 'jupiter',
+    white: [['crystal', 500], ['crystal', 500], ['crystal', 800], ['ticket', 2], ['key', 1], ['key', 1]], gold: [['gold', 1], ['ticket', 10]] },
+  { n: 3, name: 'ทะเลคริสตัลเนปจูน', en: 'NEPTUNE ABYSS', color: '#36a8ff', planet: 'neptune', stone: [56, 74, 100], cost: 7, hp: '×1.6', pts: '×1.5', bullet: '+20%', ship: 'neptune',
+    white: [['crystal', 800], ['crystal', 800], ['crystal', 1200], ['ticket', 2], ['ticket', 3], ['key', 2]], gold: [['gold', 2], ['ticket', 10]] },
+  { n: 4, name: 'ขอบหลุมดำ', en: 'BLACK HOLE RIM', color: '#b46bff', planet: 'blackhole', stone: [70, 58, 96], cost: 9, hp: '×2', pts: '×1.8', bullet: '+30%', ship: 'horizon',
+    white: [['crystal', 1200], ['crystal', 1200], ['crystal', 1500], ['ticket', 3], ['ticket', 3], ['key', 2]], gold: [['gold', 2], ['ticket', 15]] },
+  { n: 5, name: 'ใจกลางดวงอาทิตย์', en: 'SOLAR CORE', color: '#ffb800', planet: 'sun', stone: [110, 76, 44], cost: 10, hp: '×2.5', pts: '×2.2', bullet: '+40%', ship: 'helios',
+    white: [['crystal', 1500], ['crystal', 1500], ['crystal', 2000], ['ticket', 3], ['ticket', 5], ['key', 3]], gold: [['gold', 3], ['ticket', 20]] },
+];
+const SHIPS = {
+  saturn:  { name: 'ราชันวงแหวน', en: 'SATURN SOVEREIGN', shot: '#ffd23f', lives: 4, speed: 1.05, fire: '+15%',
+    look: 'ลำทองงาช้าง สวมวงแหวนดาวเสาร์ 5 ชั้น มีดวงจันทร์คริสตัล 3 ดวงโคจรรอบ มงกุฎ 3 แฉกเหนือห้องนักบิน',
+    skills: [['วงแหวนพิทักษ์', 'ดวงจันทร์ 3 ดวงโคจรรอบยาน ปัดกระสุนศัตรูทิ้ง ดวงละ 1 นัด เกิดใหม่ทุก 4 วิ'],
+             ['จักรวงแหวน', 'ทุก 20 วิ ขว้างวงแหวนทองเป็นจักรยักษ์ บินทะลุขึ้นทั้งจอ ทำลายมอนที่ผ่าน · บอสเสียเลือด 3%'],
+             ['ราชันย์', 'เริ่มเกมชีวิต 4 · คริสตัลที่เก็บได้ +15%']] },
+  jupiter: { name: 'อัสนีพฤหัส', en: 'JOVIAN TEMPEST', shot: '#c18bff', lives: 3, speed: 1.1, fire: '+25%',
+    look: 'ปีกกว้างลายแถบพายุพฤหัสที่ไหลเป็นคลื่น ดวงตาพายุสีม่วงหมุนกลางลำ สายฟ้าแลบระหว่างปลายปีกตลอดเวลา',
+    skills: [['ประจุพายุ', 'ยิงโดนครบ 30 นัด → ฟ้าผ่าโซ่ไล่ช็อตศัตรู 6 ตัวต่อกัน'],
+             ['ตาพายุ', 'ทุก 25 วิ เปิดตาพายุ 4 วิ ดูดกระสุนศัตรูรอบตัวมาหมุนเป็นพายุ บดมอนที่เข้าใกล้'],
+             ['ลมกรด', 'ยิงเร็ว +25% · เคลื่อนที่เร็ว 1.1']] },
+  neptune: { name: 'ตรีศูลเนปจูน', en: 'NEPTUNE TRIDENT', shot: '#36f1ff', lives: 3, speed: 1.15, fire: '+10%',
+    look: 'ปีกกระเบนน้ำลึก ลอนคลื่นเรืองแสงไหลบนปีก ตรีศูลเงินสามง่ามที่หัว แกนกลางเป็นลูกแก้วน้ำวน',
+    skills: [['ตรีศูล', 'กระสุนเป็นลำแสง 3 ง่าม ทะลุศัตรูได้ 1 ตัว'],
+             ['คลื่นยักษ์', 'ทุก 18 วิ คลื่นกวาดจากล่างขึ้นบน ล้างกระสุนทั้งจอ แช่แข็งมอน 2 วิ'],
+             ['ผลึกน้ำแข็ง', 'มอนที่แตกระหว่างแช่แข็งดรอปคริสตัล ×2 · เคลื่อนที่เร็วที่สุด 1.15']] },
+  horizon: { name: 'ขอบฟ้าเหตุการณ์', en: 'EVENT HORIZON', shot: '#b46bff', lives: 3, speed: 1.05, fire: '+10%',
+    look: 'ปีกจันทร์เสี้ยวหินออบซิเดียนขอบม่วง หลุมดำจริงกลางลำล้อมด้วยวงโฟตอน จานพลังงานหมุนรอบตัว',
+    skills: [['สนามโน้มถ่วง', 'กระสุนศัตรูที่เข้าใกล้ยานช้าลง 40%'],
+             ['กลืนกิน', 'กระสุนที่เฉียดยานถูกหลุมดำกลืน เติมหลอดภาวะเอกฐาน'],
+             ['ภาวะเอกฐาน', 'หลอดเต็ม → ปล่อยหลุมดำยักษ์กลางจอ 5 วิ ดูดมอนทั้งจอ บอสเสียเลือดต่อเนื่องรวม 8%']] },
+  helios:  { name: 'สุริยเทพ', en: 'HELIOS', shot: '#fff3b0', lives: 4, speed: 1.1, fire: '+25%',
+    look: 'ปีกใบมีดทอง 6 ปีกแบบเทวทูต รัศมีสุริยะ 2 ชั้นหมุนสวนกันด้านหลัง วงมงกุฎลอยเหนือหัว แกนกลางเป็นดวงอาทิตย์จิ๋ว',
+    skills: [['ลำแสงสุริยะ', 'ฆ่ามอน/เก็บไอเท็มชาร์จหลอด เต็ม → ยิงลำแสงกว้างครึ่งจอ 3 วิ ล้างกระสุนในแนว'],
+             ['ดาวเกิดใหม่', 'ตายครั้งแรกในเกม → ระเบิดเป็นดวงอาทิตย์ ล้างจอ บอส −10% ฟื้นทันทีพร้อมอาวุธเต็ม'],
+             ['เปลวสุริยะ', 'กระสุนติดไฟ เผาศัตรูต่อเนื่อง · เริ่มเกมชีวิต 4']] },
+};
+
+// ---------------------------------------------------------------- ไอคอนรางวัล (วาดครั้งเดียว เก็บเป็น dataURL)
+const ICON = {};
+function makeIcons() {
+  const mk = fn => { const cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d'); c.translate(48, 48); fn(c); return cv.toDataURL(); };
+  ICON.crystal = mk(c => { c.shadowColor = '#36f1ff'; c.shadowBlur = 14; path(c, [[0, -36], [24, -8], [0, 36], [-24, -8]]); c.fillStyle = lg(c, -24, -36, 24, 36, [[0, '#ffffff'], [0.4, '#36f1ff'], [1, '#0a4a7a']]); c.fill();
+    c.shadowBlur = 0; c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 2; c.beginPath(); c.moveTo(-24, -8); c.lineTo(24, -8); c.moveTo(0, -36); c.lineTo(-8, -8); c.lineTo(0, 36); c.lineTo(8, -8); c.closePath(); c.stroke(); });
+  ICON.ticket = mk(c => { c.rotate(-0.25); c.shadowColor = '#ffd23f'; c.shadowBlur = 10; c.fillStyle = lg(c, 0, -20, 0, 20, [[0, '#fff3b0'], [1, '#e0a800']]);
+    c.beginPath(); c.moveTo(-36, -20); c.lineTo(36, -20); c.lineTo(36, -6); c.arc(36, 0, 6, -Math.PI / 2, Math.PI / 2, true); c.lineTo(36, 20); c.lineTo(-36, 20); c.lineTo(-36, 6); c.arc(-36, 0, 6, Math.PI / 2, -Math.PI / 2, true); c.closePath(); c.fill();
+    c.shadowBlur = 0; c.fillStyle = '#7a4a00'; c.font = '700 26px Chakra Petch, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('★', 0, 1); });
+  ICON.key = mk(c => { c.rotate(-0.7); c.shadowColor = '#36f1ff'; c.shadowBlur = 10; c.fillStyle = '#ffd23f';
+    const st = []; for (let i = 0; i < 10; i++) { const r = i % 2 ? 7 : 16, a = i * Math.PI / 5 - Math.PI / 2; st.push([Math.cos(a) * r, -18 + Math.sin(a) * r]); } path(c, st); c.fill();
+    c.fillRect(-4, -4, 8, 40); c.fillRect(4, 22, 12, 6); c.fillRect(4, 31, 9, 5); });
+  ICON.gold = mk(c => { c.shadowColor = '#ffd23f'; c.shadowBlur = 16; c.fillStyle = lg(c, 0, -30, 0, 30, [[0, '#fff3b0'], [0.5, '#ffd23f'], [1, '#8a5a00']]);
+    c.beginPath(); c.moveTo(-34, -6); c.quadraticCurveTo(0, -38, 34, -6); c.lineTo(34, 28); c.lineTo(-34, 28); c.closePath(); c.fill();
+    c.shadowBlur = 0; c.strokeStyle = '#5a3a00'; c.lineWidth = 3; c.beginPath(); c.moveTo(-34, -4); c.lineTo(34, -4); c.stroke(); c.fillStyle = '#ff3b3b'; c.fillRect(-5, -10, 10, 14); });
+  ICON.evo = mk(c => { c.shadowColor = '#c18bff'; c.shadowBlur = 16; const pts = []; for (let i = 0; i < 6; i++) { const a = i * TAU / 6 - Math.PI / 2; pts.push([Math.cos(a) * 32, Math.sin(a) * 32]); }
+    path(c, pts); c.fillStyle = lg(c, -30, -30, 30, 30, [[0, '#ffffff'], [0.4, '#c18bff'], [1, '#3a1a6a']]); c.fill(); c.shadowBlur = 0; c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 2;
+    c.beginPath(); for (const p of pts) { c.moveTo(0, 0); c.lineTo(p[0], p[1]); } c.stroke(); });
+  for (const id in SHIPS) { const cv = document.createElement('canvas'); cv.width = cv.height = 160; drawShipTo(cv, id, 0.6); ICON['ship_' + id] = cv.toDataURL(); }
+}
+
+// ---------------------------------------------------------------- จิ๊กซอว์หิน (Voronoi + ผ่อนคลายให้ชิ้นใกล้เคียงกัน)
+const PZ = 320;
+const noise = (() => {
+  const h = (x, y) => { let v = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) | 0; v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967296; };
+  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), u = x - xi, v = y - yi, s = q => q * q * (3 - 2 * q);
+    const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1), U = s(u), V = s(v); return a + (b - a) * U + (c - a) * V + (a - b - c + d) * U * V; };
+  const out = new Float32Array(PZ * PZ);
+  for (let y = 0; y < PZ; y++) for (let x = 0; x < PZ; x++) out[y * PZ + x] = vn(x / 40, y / 40) * 0.5 + vn(x / 14, y / 14) * 0.3 + vn(x / 4, y / 4) * 0.2;
+  return out;
+})();
+const PUZ = {};   // ep.n → { own, edge, ship, mask, bg }
+function buildPuzzle(ep) {
+  const n = ep.cost, r = rng(ep.n * 97 + 5);
+  let seeds = Array.from({ length: n }, () => [40 + r() * 240, 40 + r() * 240]);
+  for (let it = 0; it < 12; it++) {          // Lloyd: ขยับจุดไปกลางพื้นที่ของตัวเอง
+    const sx = new Float64Array(n), sy = new Float64Array(n), cnt = new Float64Array(n);
+    for (let y = 2; y < PZ; y += 4) for (let x = 2; x < PZ; x += 4) {
+      let bi = 0, bd = 1e9; for (let i = 0; i < n; i++) { const d = (x - seeds[i][0]) ** 2 + (y - seeds[i][1]) ** 2; if (d < bd) { bd = d; bi = i; } }
+      sx[bi] += x; sy[bi] += y; cnt[bi]++;
+    }
+    seeds = seeds.map((s, i) => cnt[i] ? [sx[i] / cnt[i], sy[i] / cnt[i]] : s);
+  }
+  // ลำดับเปิดชิ้น: จากล่างขึ้นบน (ห้องเครื่อง → หัวยาน)
+  seeds.sort((a, b) => b[1] - a[1]);
+  const own = new Uint8Array(PZ * PZ), edge = new Float32Array(PZ * PZ);
+  for (let y = 0; y < PZ; y++) for (let x = 0; x < PZ; x++) {
+    let b1 = 0, d1 = 1e9, b2 = 0, d2 = 1e9;
+    for (let i = 0; i < n; i++) { const d = (x - seeds[i][0]) ** 2 + (y - seeds[i][1]) ** 2; if (d < d1) { d2 = d1; b2 = b1; d1 = d; b1 = i; } else if (d < d2) { d2 = d; b2 = i; } }
+    const k = y * PZ + x; own[k] = b1;
+    edge[k] = n > 1 ? (d2 - d1) / (2 * Math.hypot(seeds[b1][0] - seeds[b2][0], seeds[b1][1] - seeds[b2][1])) : 99;
+  }
+  // ภาพยานบนพื้นหลังของด่าน + หน้ากาก (alpha ของยานล้วน)
+  const bgFn = (c, w, h) => { c.fillStyle = rg(c, w / 2, h / 2, 0, w * 0.75, [[0, rgba(ep.color, 0.14)], [1, '#05030f']]); c.fillRect(0, 0, w, h); stars(c, w, h, ep.n * 11, 70); };
+  const a = document.createElement('canvas'); a.width = a.height = PZ; drawShipTo(a, ep.ship, 0.6, bgFn);
+  const m = document.createElement('canvas'); m.width = m.height = PZ; drawShipTo(m, ep.ship, 0.6);
+  PUZ[ep.n] = { own, edge, ship: a.getContext('2d').getImageData(0, 0, PZ, PZ).data, mask: m.getContext('2d').getImageData(0, 0, PZ, PZ).data };
+}
+// open = จำนวนชิ้นที่เปิด (เปิดตามลำดับ 0..open-1) · anim = { piece, k: 0..1 } ชิ้นที่กำลังเปิด
+function renderPuzzle(cv, ep, open, anim, done) {
+  const P = PUZ[ep.n], c = cv.getContext('2d'), img = c.createImageData(PZ, PZ), d = img.data;
+  const [tr, tg, tb] = ep.stone, [gr, gg, gb] = hex2rgb('#ffd98a');
+  for (let k = 0; k < PZ * PZ; k++) {
+    const pc = P.own[k], e = P.edge[k], j = k * 4;
+    let rev = done || pc < open ? 1 : 0, flash = 0;
+    if (anim && pc === anim.piece) { rev = anim.k; flash = Math.sin(Math.PI * anim.k) * 0.7; }
+    // หิน: ลายหยาบ + ขอบลาดเอียง + เงายานสลักลึก
+    const nz = noise[k], bev = Math.min(1, e / 10), sil = Math.max(0, Math.min(1, (P.mask[j + 3] / 255 - 0.45) / 0.4));   // ตัดแสงฟุ้งออก เหลือแต่ตัวยาน
+    let sh = (0.35 + 0.65 * bev) * (0.5 + 0.85 * nz) * (1 - 0.4 * sil) * (0.88 + 0.16 * ((pc * 37) % 5) / 5);
+    let r = tr * sh, g = tg * sh, b = tb * sh;
+    if (sil > 0 && sil < 0.55) { r += 34; g += 30; b += 24; }     // ขอบเงายานรับแสง
+    r = r + (P.ship[j] - r) * rev; g = g + (P.ship[j + 1] - g) * rev; b = b + (P.ship[j + 2] - b) * rev;
+    if (e < 2.4) { const s = (1 - e / 2.4) * (rev ? 0.4 : 0.95); r += (gr - r) * s; g += (gg - g) * s; b += (gb - b) * s; }
+    else if (e < 4.5 && !rev) { r *= 0.55; g *= 0.55; b *= 0.55; }
+    if (flash) { r += (255 - r) * flash; g += (255 - g) * flash; b += (255 - b) * flash; }
+    d[j] = r; d[j + 1] = g; d[j + 2] = b; d[j + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  if (open >= ep.cost && !done) {   // รูปครบ: กรอบทองกะพริบ
+    c.save(); c.strokeStyle = '#ffd23f'; c.lineWidth = 6; c.shadowColor = '#ffd23f'; c.shadowBlur = 20; c.strokeRect(3, 3, PZ - 6, PZ - 6); c.restore();
+  }
+  if (done) {
+    c.fillStyle = 'rgba(5,3,15,.45)'; c.fillRect(0, 0, PZ, PZ);
+    c.save(); c.translate(PZ / 2, PZ / 2); c.rotate(-0.18); c.strokeStyle = '#7dff6a'; c.lineWidth = 5; c.strokeRect(-110, -30, 220, 60);
+    c.fillStyle = '#7dff6a'; c.font = '700 30px Chakra Petch, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('COMPLETE', 0, 2); c.restore();
+  }
+}
+
+// ---------------------------------------------------------------- สถานะจำลอง
+const state = EPS.map((ep, i) => ({ shards: [2, 1, 0, 0, 0][i], got: new Set(i === 0 ? [1, 5] : i === 1 ? [0] : []), evo: 0 }));
+const LOCKED = [false, false, false, true, true];
+// ลำดับช่องบนตาราง: ขาว ขาว ขาว / ทอง แดง ทอง / ขาว ขาว ขาว
+function boardOf(ep) {
+  const w = ep.white, g = ep.gold;
+  return [['white', ...w[0]], ['white', ...w[1]], ['white', ...w[2]], ['gold', ...g[0]], ['red', 'ship', ep.ship], ['gold', ...g[1]], ['white', ...w[3]], ['white', ...w[4]], ['white', ...w[5]]];
+}
+let cur = 0, busy = false, anim = null;
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('en-US');
+
+function renderList() {
+  const box = $('epList'); box.innerHTML = '';
+  EPS.forEach((ep, i) => {
+    const st = state[i], card = document.createElement('div');
+    card.className = 'ep-card' + (i === cur ? ' sel' : ''); card.style.setProperty('--ep', ep.color);
+    const cv = document.createElement('canvas'); cv.width = cv.height = 208;
+    const c = cv.getContext('2d'); stars(c, 208, 208, ep.n * 3, 40); PLANET[ep.planet](c, 208, 208, 0);
+    const own = st.got.has(4);
+    card.innerHTML = `<div class="ep-info"><span class="ep-tag">EP${ep.n}</span><div class="ep-name">${ep.name}</div><div class="ep-en">${ep.en}</div>
+      <div class="ep-bar"><i style="width:${st.got.size / 9 * 100}%"></i></div>
+      <div class="ep-meta"><span>เปิดแล้ว ${st.got.size}/9</span><span>สุ่มละ ${ep.cost} เศษ</span></div></div>
+      <div class="ep-ship ${own ? '' : 'unknown'}" title="ยานคอสมิกของด่าน"><i style="background-image:url(${ICON['ship_' + ep.ship]})"></i></div>`;
+    card.prepend(cv);
+    if (LOCKED[i]) { const l = document.createElement('div'); l.className = 'ep-lock'; l.innerHTML = `<span class="k">🔒</span>ชนะบอสตัวแรกของ EP${ep.n - 1} เพื่อปลดล็อก<br><span style="font-size:10px">(พรีวิว: แตะดูได้)</span>`; card.append(l); }
+    card.onclick = () => { if (busy) return; cur = i; anim = null; renderList(); renderStage(); };
+    box.append(card);
+  });
+}
+function renderStage() {
+  const ep = EPS[cur], st = state[cur], done = st.got.size >= 9;
+  $('stagePhone').style.setProperty('--ep', ep.color);
+  const hc = $('heroCv').getContext('2d'); hc.clearRect(0, 0, 720, 256);
+  hc.fillStyle = lg(hc, 0, 0, 0, 256, [[0, rgba(ep.color, 0.25)], [1, '#070518']]); hc.fillRect(0, 0, 720, 256); stars(hc, 720, 256, ep.n * 5, 120);
+  hc.save(); hc.translate(400, -30); PLANET[ep.planet](hc, 380, 380, 0); hc.restore();
+  hc.fillStyle = lg(hc, 0, 0, 720, 0, [[0, 'rgba(7,5,24,.85)'], [0.6, 'rgba(7,5,24,0)']]); hc.fillRect(0, 0, 720, 256);
+  $('stTitle').textContent = `EP${ep.n} ${ep.name}`;
+  $('stSub').textContent = `${ep.en} · ศัตรูเลือด ${ep.hp} · แต้ม ${ep.pts}`;
+  $('stShardChip').textContent = done ? `💠 หินอีโว ${st.evo}` : `🧩 ${st.shards}`;
+  const open = Math.min(st.shards, ep.cost);
+  renderPuzzle($('pzCv'), ep, open, anim, done);
+  $('pzCount').innerHTML = done ? 'ครบทั้งตารางแล้ว' : `เศษ <b>${st.shards}</b> / ${ep.cost}`;
+  $('dropLine').innerHTML = done
+    ? 'จิ๊กซอว์ด่านนี้ <b style="color:#e2c8ff">ไม่ดรอปแล้ว</b> · ลุ้นได้หินอีโวแทน'
+    : `ในเกมเดียว แตะ <b>2 ล้าน · 4 ล้าน · 6 ล้าน…</b> ลุ้น 40% ได้ 1 เศษ`;
+  $('addBtn').textContent = done ? '+1 หินอีโว (จำลอง)' : '+1 เศษ (จำลอง)';
+  $('drawBtn').textContent = `สุ่ม! (ใช้ ${ep.cost} เศษ)`;
+  $('drawBtn').disabled = busy || done || st.shards < ep.cost;
+  $('addBtn').disabled = busy;
+  $('playBtn').textContent = `เริ่มเล่น EP${ep.n}`;
+  // ตาราง
+  const left = 9 - st.got.size, b = $('board'); b.innerHTML = '';
+  boardOf(ep).forEach(([tier, type, val], i) => {
+    const s = document.createElement('div'); s.className = `slot ${tier}` + (st.got.has(i) ? ' got' : ''); s.dataset.i = i;
+    if (type === 'ship') s.innerHTML = `<img src="${ICON['ship_' + val]}"><span class="q">${SHIPS[val].name}</span>`;
+    else s.innerHTML = `<img src="${ICON[type]}"><span class="q">${ICON_NAME[type]} ×${fmt(val)}</span>`;
+    if (!st.got.has(i)) s.innerHTML += `<span class="pct">${(100 / left).toFixed(1)}%</span>`;
+    b.append(s);
+  });
+  $('boardCount').textContent = `เหลือ ${left} ช่อง`;
+  const sEl = $('status');
+  if (done) { sEl.className = 'status done'; sEl.innerHTML = `<b>เปิดครบ 9 ช่องแล้ว!</b> เศษจิ๊กซอว์ EP${ep.n} จะไม่ดรอปอีก<br>ทำแต้มถึง 2/4/6 ล้าน จะลุ้นได้ <b>หินอีโว</b> แทน (ใช้ปลดขั้น 4 ของสมบัติ)`; }
+  else { sEl.className = 'status ok'; sEl.innerHTML = `เศษจิ๊กซอว์ยังดรอปอยู่ · เหลือ ${left} ช่อง${st.got.has(4) ? '' : ' · <b style="color:#ff6b6b">ยานคอสมิกยังอยู่ในตาราง</b>'}<br><span style="color:var(--dim)">เปิดครบ 9 ช่องแล้ว เศษจะหยุดดรอป และได้หินอีโวแทน</span>`; }
+}
+function toast(msg) { const t = $('toast'); t.innerHTML = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 1800); }
+
+function addShard() {
+  const ep = EPS[cur], st = state[cur];
+  if (st.got.size >= 9) { st.evo++; renderStage(); toast('ได้ <b style="color:#e2c8ff">หินอีโว ×1</b>'); return; }
+  st.shards++;
+  if (st.shards <= ep.cost) {          // เปิดชิ้นใหม่บนรูป
+    const piece = st.shards - 1, t0 = performance.now(); busy = true;
+    const step = now => { const k = Math.min(1, (now - t0) / 550); anim = { piece, k }; renderStage(); if (k < 1) requestAnimationFrame(step); else { anim = null; busy = false; renderStage(); if (st.shards === ep.cost) toast('รูปยานครบแล้ว! กดสุ่มได้ 1 ครั้ง'); } };
+    requestAnimationFrame(step);
+  } else { renderStage(); toast(`เก็บเศษสำรองไว้ใช้รูปถัดไป (+${st.shards - ep.cost})`); }
+}
+function draw() {
+  const ep = EPS[cur], st = state[cur];
+  if (busy || st.shards < ep.cost || st.got.size >= 9) return;
+  busy = true; renderStage();
+  const left = [...Array(9).keys()].filter(i => !st.got.has(i)), pick = left[Math.floor(Math.random() * left.length)];
+  // ไฟวิ่งวนช่องที่เหลือ ช้าลงเรื่อยๆ แล้วหยุดที่ช่องที่สุ่มได้
+  const L = left.length, p = left.indexOf(pick), total = 14 + Math.floor(Math.random() * L), seq = [];
+  for (let s = total; s >= 0; s--) seq.push(left[((p - s) % L + L) % L]);
+  let i = 0;
+  const tick = () => {
+    document.querySelectorAll('.slot').forEach(el => el.classList.toggle('hl', +el.dataset.i === seq[i]));
+    if (i < seq.length - 1) { i++; setTimeout(tick, 45 + i * i * 1.6); return; }
+    setTimeout(() => {
+      st.got.add(pick); st.shards -= ep.cost; busy = false; renderStage(); renderList();
+      const [tier, type, val] = boardOf(ep)[pick];
+      if (type === 'ship') showReveal(val); else toast(`ได้ <b style="color:${tier === 'gold' ? '#ffd23f' : '#fff'}">${ICON_NAME[type]} ×${fmt(val)}</b>`);
+    }, 450);
+  };
+  tick();
+}
+let revId = null;
+function showReveal(id) { revId = id; $('revName').textContent = SHIPS[id].name; $('reveal').classList.add('on'); }
+$('reveal').onclick = () => { $('reveal').classList.remove('on'); revId = null; };
+$('addBtn').onclick = addShard; $('drawBtn').onclick = draw;
+$('resetBtn').onclick = () => { if (busy) return; state[cur] = { shards: 0, got: new Set(), evo: 0 }; renderStage(); renderList(); };
+$('fillBtn').onclick = () => { if (busy) return; const st = state[cur]; st.got = new Set([0, 1, 2, 3, 5, 6, 7, 8].slice(0, 7)); st.shards = EPS[cur].cost; renderStage(); renderList(); };
+$('playBtn').onclick = () => toast('(พรีวิว) เข้าเกมด่านนี้');
+
+// ---------------------------------------------------------------- แถบจิ๊กซอว์ 5 ด่าน + แกลเลอรี + ตาราง
+function renderStrip() {
+  const box = $('strip');
+  EPS.forEach(ep => {
+    const f = document.createElement('figure'), cv = document.createElement('canvas'); cv.width = cv.height = PZ;
+    renderPuzzle(cv, ep, Math.ceil(ep.cost / 2), null, false);
+    f.append(cv); f.insertAdjacentHTML('beforeend', `<figcaption><b>EP${ep.n}</b> · ${ep.cost} ชิ้น · เปิด ${Math.ceil(ep.cost / 2)}/${ep.cost}</figcaption>`);
+    box.append(f);
+  });
+}
+const galCvs = [];
+function renderGallery() {
+  const box = $('gallery');
+  EPS.forEach(ep => {
+    const s = SHIPS[ep.ship], card = document.createElement('div'); card.className = 'ship-card'; card.style.setProperty('--ep', ep.color);
+    const cv = document.createElement('canvas'); cv.width = cv.height = 640; galCvs.push([cv, ep]);
+    card.append(cv);
+    card.insertAdjacentHTML('beforeend', `<div class="ship-body">
+      <div class="badges"><span class="badge cos">COSMIC</span><span class="badge ep">EP${ep.n} ${ep.name}</span><span class="badge no">สุ่มจากตั๋วไม่ได้</span></div>
+      <div class="ship-name">${s.name}</div><div class="ship-en">${s.en}</div>
+      <div class="look">${s.look}</div>
+      <div class="stats"><div class="stat"><div>ชีวิต</div><b>${s.lives}</b></div><div class="stat"><div>ความเร็ว</div><b>${s.speed}</b></div>
+        <div class="stat"><div>ยิงเร็ว</div><b>${s.fire}</b></div><div class="stat"><div>กระสุน</div><i style="color:${s.shot};background:${s.shot}"></i></div></div>
+      <div class="skills">${s.skills.map(([a, b]) => `<div class="skill"><b>${a}</b>${b}</div>`).join('')}</div></div>`);
+    box.append(card);
+  });
+}
+const shipBg = ep => (c, w, h) => {
+  c.fillStyle = rg(c, w / 2, h / 2, 0, w * 0.7, [[0, rgba(ep.color, 0.22)], [1, '#070518']]); c.fillRect(0, 0, w, h); stars(c, w, h, ep.n * 13, 140);
+};
+function renderTables() {
+  const rows = EPS.map(ep => {
+    const w = ep.white.map(([t, v]) => `${ICON_NAME[t]} ${fmt(v)}`).join(', '), g = ep.gold.map(([t, v]) => `${ICON_NAME[t]} ×${v}`).join(', ');
+    return `<tr><td><span class="dot" style="background:${ep.color}"></span>EP${ep.n} ${ep.name}</td><td><b>${ep.cost}</b></td><td>${ep.cost}</td><td>${ep.cost * 9}</td>
+      <td>${ep.hp}</td><td>${ep.bullet}</td><td>${ep.pts}</td><td style="text-align:left;white-space:normal;min-width:260px;font-size:12px">ขาว: ${w}<br><span style="color:var(--gold)">ทอง: ${g}</span><br><span style="color:var(--red)">แดง: ${SHIPS[ep.ship].name}</span></td></tr>`;
+  }).join('');
+  $('epTable').innerHTML = `<tr><th>ด่าน</th><th>เศษ/สุ่ม</th><th>ชิ้นรูป</th><th>เศษทั้งตาราง</th><th>เลือดศัตรู</th><th>กระสุน</th><th>แต้ม/ตัว</th><th style="text-align:left">ของในตาราง 9 ช่อง</th></tr>${rows}`;
+  const est = () => {
+    const s = +$('scoreIn').value, rolls = Math.floor(s / 2), per = rolls * 0.4;
+    $('scoreOut').textContent = `${s} ล้าน → ลุ้น ${rolls} ครั้ง ≈ ${per.toFixed(1)} เศษ/เกม`;
+    $('estTable').innerHTML = `<tr><th>ด่าน</th><th>เศษถึงยานแดง (เฉลี่ย)</th><th>เกม (เฉลี่ย)</th><th>เกม (แย่สุด = ครบตาราง)</th></tr>` + EPS.map(ep => {
+      const avg = ep.cost * 5, all = ep.cost * 9;
+      const g = x => per ? `~${Math.ceil(x / per)} เกม` : 'ไม่ถึง 2 ล้าน';
+      return `<tr><td><span class="dot" style="background:${ep.color}"></span>EP${ep.n}</td><td>${avg}</td><td>${g(avg)}</td><td>${g(all)}</td></tr>`;
+    }).join('');
+  };
+  $('scoreIn').oninput = est; est();
+}
+
+// ---------------------------------------------------------------- เริ่ม
+document.fonts.ready.then(() => {
+  makeIcons();
+  EPS.forEach(buildPuzzle);
+  renderList(); renderStage(); renderStrip(); renderGallery(); renderTables();
+  const loop = now => {
+    const t = now / 1000;
+    for (const [cv, ep] of galCvs) { const r = cv.getBoundingClientRect(); if (r.bottom > 0 && r.top < innerHeight) drawShipTo(cv, ep.ship, t, shipBg(ep)); }
+    if (revId) drawShipTo($('revCv'), revId, t);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>
