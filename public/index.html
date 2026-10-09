@@ -546,6 +546,10 @@ const MOD_SHORT = { spread: 'กระจาย', laser: 'เลเซอร์'
 const LASER_SPREAD_DMG = 0.6;     // เลเซอร์พัด: แรงต่อลำ
 const MISSILE_COMBO_DMG = 0.75;   // จรวดตอนรวมกับอาวุธอื่น: แรงต่อลูก
 const FULL_COMBO_ALPHA = 0.8;     // มีครบ 3 แบบ: กระสุนเราจางลงนิด ให้เห็นกระสุนศัตรู
+// เลเวลตัน (Lv10): เลเซอร์กลายเป็นลำแสงชาร์จใหญ่ (แบบ C ใน design/maxlv-preview.html) · จรวดเป็นม่วงนีออนมีหางรุ้ง (แบบ 3)
+const BEAM_VOLLEY_DMG = 2.45;     // ลำแสง: ดาเมจต่อชุดยิง × ตัวคูณโอเวอร์ชาร์จ (วัดแล้วใกล้เลเซอร์ลำเล็ก Lv10 เดิม ~55/วิ ใส่เป้าเดียว)
+const BEAM_SPREAD_MUL = 0.6;      // มีกระจายด้วย (มีเลเซอร์พัดข้างเสริม): ลำแสงเบาลง
+const MAX_MISSILE_COLOR = 0xc18bff;
 const WEAPONS = {
   spread: { name: 'กระสุนกระจาย', color: '#6fe3ff', delay: 140 },
   laser:  { name: 'เลเซอร์ทะลุ',  color: '#ff7a9a', delay: 120 },
@@ -1927,6 +1931,12 @@ function makeTextures(scene) {
   bolt('laser', 8, 44, LASER_COLOR);
   bolt('bulletG', 8, 16, 0x7dff6a);
   bolt('droneShot', 4, 12, 0x9ff3ff);
+  draw('missileMax', 12, 26, g => {   // จรวดเลเวลเต็ม: ภาพสีขาวไว้ย้อมเป็นม่วงนีออน
+    const pts = P([[6, 1], [11, 10], [8, 22], [4, 22], [1, 10]]);
+    g.fillStyle(0xffffff, 0.35); g.fillPoints(pts, true);
+    g.lineStyle(2, 0xffffff, 1); g.strokePoints(pts, true, true);
+    g.fillStyle(0xffffff, 1); g.fillTriangle(4, 22, 8, 22, 6, 26);
+  });
   draw('missile', 10, 24, g => {
     g.lineStyle(2, 0x7dff6a, 1);
     g.strokePoints(P([[5, 1], [9, 9], [7, 20], [3, 20], [1, 9]]), true, true);
@@ -2339,6 +2349,17 @@ class Game extends Phaser.Scene {
     this.flame.startFollow(this.player, 0, 30);
     this.skillBar = this.add.graphics().setDepth(10);
     this.buildTierFx();
+    // ลำแสงเลเซอร์เลเวลตัน + หางจรวดเลเวลเต็ม
+    Object.assign(this, { beamAt: -1e9, beamRingAt: 0, beamHW: 30, trailFlip: false });
+    this.beamGfx = this.add.graphics().setDepth(3).setBlendMode('ADD');
+    this.beamSparks = this.add.particles(0, 0, 'spark', {
+      speed: { min: 60, max: 200 }, lifespan: 300, scale: { start: 1, end: 0 },
+      tint: [0xffffff, 0x36f1ff, LASER_COLOR], blendMode: 'ADD', emitting: false,
+    }).setDepth(5);
+    this.missileTrail = this.add.particles(0, 0, 'spark', {
+      lifespan: 300, scale: { start: 0.8, end: 0 }, alpha: { start: 0.9, end: 0 },
+      tint: [LASER_COLOR, 0x36f1ff, 0xffffff], blendMode: 'ADD', emitting: false,
+    }).setDepth(3);
 
     this.sparks = this.add.particles(0, 0, 'spark', {
       speed: { min: 60, max: 280 }, lifespan: { min: 280, max: 650 },
@@ -2629,7 +2650,10 @@ class Game extends Phaser.Scene {
     b.setScale(s.scale || 1);
     b.setAlpha(this.mods.length >= MOD_ORDER.length ? FULL_COMBO_ALPHA : 1);
     b.setBlendMode(this.evolved ? 'ADD' : 'NORMAL');
+    b.maxed = !!s.maxed;
+    if (s.maxed) b.setBlendMode('ADD');
     if (this.fever) b.setTint(feverShotColor(this.time.now * 0.4 + i * 50));
+    else if (s.maxed) b.setTint(MAX_MISSILE_COLOR);   // จรวดเลเวลเต็ม: ม่วงนีออน
     else if (this.evolved) b.setTint(s.wing ? this.evo.alt : this.evo.shot || this.evo.color);
     else if (s.hot) b.setTint(0xffe3a0);   // โอเวอร์ชาร์จ: สีทองร้อน
     else if (this.fx && this.fx.rank >= 4) b.setTint(PLASMA_COLOR);   // มิธิค: กระสุนพลาสมา (ม่วงขาว ไม่ใช้แดงเพราะชนกับกระสุนศัตรู)
@@ -2647,7 +2671,13 @@ class Game extends Phaser.Scene {
     const shots = [];
     const bk = this.evolved ? 'bullet2' : 'bullet', bs = this.evolved ? 0.7 : 1;   // ร่าง 2: กระสุนหัวเพชร
     const spread = this.has('spread'), laser = this.has('laser'), homing = this.has('homing');
-    if (spread) {
+    const beam = laser && L >= MAX_POWER;   // เลเวลตัน: เลเซอร์เป็นลำแสงใหญ่
+    if (beam) {
+      this.beamAt = this.time.now;
+      this.beamTick(BEAM_VOLLEY_DMG * mul * (spread ? BEAM_SPREAD_MUL : 1));
+      // มีกระจายด้วย: เลเซอร์พัดเฉียงข้างละลำ
+      if (spread) for (const side of [-1, 1]) shots.push({ key: 'laser', x: px + side * 30, y: py - 26, vx: side * 200, vy: -1080, dmg: mul * LASER_SPREAD_DMG, pierce: true, scale, hot });
+    } else if (spread) {
       // แนวกลางยิงตรงเสมอ ระดับ 4-5 ได้กระสุนกางพัดเพิ่มสองข้าง · มีเลเซอร์ด้วย = เลเซอร์ยิงเป็นพัด (ทะลุ แรงลำละ 60%)
       const key = laser ? 'laser' : bk, sc = laser ? scale : scale * bs, dmg = laser ? mul * LASER_SPREAD_DMG : mul, vy = laser ? -1100 : -760;
       const straight = [[0], [-9, 9], [-16, 0, 16], [-16, 0, 16], [-24, -8, 8, 24]][P - 1];
@@ -2672,7 +2702,7 @@ class Game extends Phaser.Scene {
       for (let i = 0; i < n; i++) {
         const side = (i + this.missileTick) % 2 === 0 ? -1 : 1;
         const ang = -Math.PI / 2 + side * (0.5 + Math.floor(i / 2) * 0.35);
-        shots.push({ key: 'missile', x: px + side * 20, y: py - 6, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: 2 * mul * (combo ? MISSILE_COMBO_DMG : 1), homing: true, scale, hot });
+        shots.push({ key: L >= MAX_POWER ? 'missileMax' : 'missile', x: px + side * 20, y: py - 6, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: 2 * mul * (combo ? MISSILE_COMBO_DMG : 1), homing: true, maxed: L >= MAX_POWER, scale: L >= MAX_POWER ? scale * 1.25 : scale, hot });
       }
     }
     if (this.evolved && this.shotCount % 4 === 0) {
@@ -2680,6 +2710,44 @@ class Game extends Phaser.Scene {
     }
     shots.forEach((s, i) => this.spawnBullet(s, i));
     if (this.shotCount++ % (this.fever ? 3 : 2) === 0) sfx.shoot(this.has('laser') ? 'laser' : this.has('spread') ? 'spread' : 'homing', L);
+  }
+
+  // ลำแสง: ศัตรูทุกตัวในแนวลำแสง (เหนือยาน) โดนดาเมจทุกชุดยิง ผ่าน hitEnemy เหมือนเลเซอร์ทะลุ (นับคอมโบ/จุดอ่อน/สมบัติครบ)
+  beamTick(dmg) {
+    const bx = this.player.x, hw = this.beamHW;
+    for (const e of this.enemies.getChildren().slice()) {
+      if (!e.active || !e.visible || e.y > this.player.y - 20) continue;
+      const ehw = e.body ? e.body.halfWidth : 16;
+      if (Math.abs(e.x - bx) > hw + ehw) continue;
+      const w = e.getData('boss') && e.getData('def').weak[0];
+      const fake = { active: true, pierce: true, hitSet: new Set(), dmg, disableBody() {},
+        x: w ? Phaser.Math.Clamp(e.x + w.x, bx - hw, bx + hw) : bx, y: e.y + (w ? w.y : 0) };
+      this.hitEnemy(fake, e);
+      if (Math.random() < 0.3) this.beamSparks.explode(2, e.x, e.y);
+    }
+  }
+
+  // วาดลำแสงชาร์จ: ลำใหญ่เต้นกว้างแคบ + วงแหวนพลังวิ่งขึ้นเป็นจังหวะ (ยิงอยู่ = ชุดยิงล่าสุดไม่เกิน 220ms)
+  updateBeam(time, pv) {
+    const g = this.beamGfx;
+    g.clear();
+    if (!pv || this.over || time - this.beamAt > 220) return;
+    const bx = this.player.x, bot = this.player.y - 34;
+    const bw = 58 + Math.max(0, Math.sin(time / 260)) * 18;
+    this.beamHW = bw / 2;
+    const outer = this.fever ? feverShotColor(time * 0.3) : 0x7d6bff;
+    g.fillStyle(outer, 0.18).fillRect(bx - bw * 0.8, 0, bw * 1.6, bot);
+    g.fillStyle(LASER_COLOR, 0.35).fillRect(bx - bw / 2, 0, bw, bot);
+    g.fillStyle(0xe8e0ff, 0.55).fillRect(bx - bw * 0.18, 0, bw * 0.36, bot);
+    g.fillStyle(0xffffff, 1).fillRect(bx - 2.5, 0, 5, bot);
+    g.lineStyle(2, 0xbff6ff, 0.9);
+    g.lineBetween(bx - bw / 2, 0, bx - bw / 2, bot);
+    g.lineBetween(bx + bw / 2, 0, bx + bw / 2, bot);
+    if (time - this.beamRingAt > 260) {
+      this.beamRingAt = time;
+      const r = this.add.image(bx, bot, 'ring').setBlendMode('ADD').setTint(0xbff6ff).setDepth(3).setDisplaySize(bw * 1.15, bw * 0.34);
+      this.tweens.add({ targets: r, y: 0, alpha: 0, duration: 650, onUpdate: () => { r.x = this.player.x; }, onComplete: () => r.destroy() });
+    }
   }
 
   has(mod) { return this.mods.includes(mod); }
@@ -3357,6 +3425,10 @@ class Game extends Phaser.Scene {
     }
     const t = e.getData('type');
     if (t === 'boss' || t === 'tank' || t === 'cargo' || t === 'pillarS' || t === 'pillarH') this.popDmg(e, b.x, b.y, dmg, crit);
+    if (b.maxed) {   // จรวดเลเวลเต็ม: ระเบิดเป็นวงม่วง
+      const r = this.add.image(b.x, b.y, 'ring').setTint(MAX_MISSILE_COLOR).setBlendMode('ADD').setDepth(5).setScale(0.2);
+      this.tweens.add({ targets: r, scale: 0.9, alpha: 0, duration: 280, onComplete: () => r.destroy() });
+    }
     this.damage(e, dmg);
   }
 
@@ -4506,6 +4578,7 @@ class Game extends Phaser.Scene {
     // จรวดนำวิถี
     for (const o of this.bullets.getChildren()) {
       if (!o.active || !o.homing) continue;
+      if (o.maxed && (this.trailFlip = !this.trailFlip)) this.missileTrail.emitParticleAt(o.x, o.y, 1);   // หางรุ้ง (ทุก 2 เฟรม)
       if (time - o.born > 2600) { o.disableBody(true, true); continue; }
       if (!o.target || !o.target.active || !o.target.visible) o.target = this.nearestEnemy(o.x, o.y);
       if (o.target) {
@@ -4599,6 +4672,7 @@ class Game extends Phaser.Scene {
     }
 
     this.updateTierFx(time, dt, pv);
+    this.updateBeam(time, pv);
 
     // เกราะ
     this.bubble.setVisible(!!this.shield && pv);
