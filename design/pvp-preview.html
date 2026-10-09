@@ -73,7 +73,8 @@
           <li><b>สิ่งกีดขวางเร็วกว่าปกติ:</b> กำแพงตกเร็ว ×1.45 และมาถี่ทุก 3.6 วิ (โหมดปกติรอบแรก ~5–6 วิ)</li>
           <li><b>สนามเท่าเทียม:</b> ยานทุกลำปรับเป็นเลเวลเดียวกัน ใช้สกิลได้ · ปิดสมบัติชุบชีวิต (ขนนก/ซูเปอร์โนวา)</li>
           <li>ไม่มีคนออนไลน์ภายใน 15 วิ → สู้กับ <b>เงา</b> (บันทึกการเล่นจริงของผู้เล่นอื่น) จะได้มีคู่ทุกครั้ง</li>
-          <li>ชนะ <b style="color:var(--gold)">+25 🏆</b> · แพ้ −15 🏆 · ชนะติดกันได้โบนัส · ตารางอันดับ PvP รายสัปดาห์</li>
+          <li>รางวัลตอนนี้เป็น<b>ถ้วยอย่างเดียว</b>: ชนะ <b style="color:var(--gold)">+25 🏆</b> · แพ้ −15 🏆 · ชนะติดกันได้โบนัสถ้วย · ตารางอันดับ PvP รายสัปดาห์</li>
+          <li><b>ร้านค้า PvP</b> มีปุ่มในหน้า Matching แต่ล็อกไว้ ขึ้น <b style="color:var(--gold)">COMING SOON</b> (ของในร้านค่อยกำหนดทีหลัง)</li>
         </ul>
       </div>
     </div>
@@ -372,7 +373,8 @@ function go(s) {
   if (s === 'result' && !match.me) { match.start(); match.me.score = 48200; match.opp.score = 41700; match.me.stats = { sent: 5, perfect: 7, fast: 3, cancel: 1, kills: 61 }; match.opp.stats = { sent: 4, perfect: 5, fast: 2, cancel: 0, kills: 54 }; match.opp.lives = 0; match.opp.dead = true; }
   document.querySelectorAll('#jump button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
 }
-const BTN = { lobby: { x: 50, y: 520, w: 260, h: 64 }, again: { x: 40, y: 560, w: 136, h: 54 }, back: { x: 184, y: 560, w: 136, h: 54 }, cancel: { x: 110, y: 590, w: 140, h: 42 } };
+let shopMsgAt = -9;
+const BTN = { lobby: { x: 50, y: 506, w: 260, h: 64 }, shop: { x: 50, y: 584, w: 260, h: 48 }, again: { x: 40, y: 560, w: 136, h: 54 }, back: { x: 184, y: 560, w: 136, h: 54 }, cancel: { x: 110, y: 590, w: 140, h: 42 } };
 function button(b, label, sub, col = '#ffd23f', t = 0, primary = true) {
   c.save();
   if (primary) { c.shadowColor = col; c.shadowBlur = 18 + Math.sin(t * 4) * 8; }
@@ -406,7 +408,22 @@ function drawLobby(t) {
   // สถิติ
   [['ชนะ', '38'], ['แพ้', '21'], ['ชนะติด', '4🔥']].forEach(([a, b], i) => { const x = 70 + i * 110; txt(b, x, 446, 20, '#fff'); txt(a, x, 468, 11, '#8b93b8', 'center', 500); });
   button(BTN.lobby, 'หาคู่ต่อสู้', 'ไม่เจอใน 15 วิ → สู้กับเงาของผู้เล่นจริง', '#ffd23f', t);
-  txt('ตารางอันดับ PvP สัปดาห์นี้ · อันดับคุณ #4', W / 2, 620, 12, '#8b93b8', 'center', 500);
+  // ร้านค้า PvP (ล็อก · COMING SOON)
+  const b = BTN.shop;
+  rrect(b.x, b.y, b.w, b.h, 14); c.fillStyle = 'rgba(255,255,255,.05)'; c.fill(); c.setLineDash([6, 5]); c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1.5; c.stroke(); c.setLineDash([]);
+  txt('🔒', b.x + 26, b.y + b.h / 2, 18, '#fff');
+  txt('ร้านค้า PvP', b.x + 48, b.y + b.h / 2 - 7, 15, 'rgba(255,255,255,.55)', 'left');
+  txt('แลกของด้วยถ้วยรางวัล', b.x + 48, b.y + b.h / 2 + 11, 10, 'rgba(201,211,240,.5)', 'left', 500);
+  c.save(); c.translate(b.x + b.w - 52, b.y + b.h / 2); c.rotate(-0.08);
+  rrect(-44, -12, 88, 24, 6); c.fillStyle = '#ffd23f'; c.shadowColor = '#ffd23f'; c.shadowBlur = 10 + Math.sin(t * 3) * 5; c.fill(); c.restore();
+  c.save(); c.translate(b.x + b.w - 52, b.y + b.h / 2); c.rotate(-0.08); txt('COMING SOON', 0, 1, 11, '#1a1000'); c.restore();
+  txt('ตารางอันดับ PvP สัปดาห์นี้ · อันดับคุณ #4', W / 2, 656, 12, '#8b93b8', 'center', 500);
+  const mk = now() - shopMsgAt;
+  if (mk < 1.8) {
+    const a = Math.min(1, mk / 0.15, (1.8 - mk) / 0.3);
+    c.save(); c.globalAlpha = a; rrect(40, 300, W - 80, 84, 16); c.fillStyle = 'rgba(10,8,30,.96)'; c.fill(); c.strokeStyle = '#ffd23f'; c.lineWidth = 1.5; c.stroke(); c.restore();
+    c.save(); c.globalAlpha = a; txt('🔒 ร้านค้า PvP', W / 2, 326, 16, '#fff'); txt('เปิดเร็วๆ นี้ · สะสมถ้วยไว้ก่อน!', W / 2, 352, 13, '#ffd23f', 'center', 500); c.restore();
+  }
 }
 function drawSearch(t) {
   const e = now() - st0;
@@ -495,7 +512,7 @@ function drawResult(t) {
   rows.forEach(([a, b, d], i) => { const y = 364 + i * 28; txt(a, 40, y, 12, '#8b93b8', 'left', 500); txt(String(b), W / 2 + 5, y, 15, '#fff'); txt(String(d), W / 2 + 95, y, 15, '#fff'); });
   button(BTN.again, 'แข่งอีกครั้ง', '', '#ffd23f', t);
   button(BTN.back, 'กลับ', '', '#fff', t, false);
-  txt(win ? 'รางวัล: คริสตัล +120' : 'รางวัลแพ้: คริสตัล +30', W / 2, 636, 12, '#c9d3f0', 'center', 500);
+  txt(win ? 'รางวัล: ถ้วย +25 (ร้านค้า PvP เร็วๆ นี้)' : 'แพ้เสียถ้วย −15 · สู้ใหม่ได้เลย', W / 2, 636, 12, '#c9d3f0', 'center', 500);
 }
 
 // ================================================================ ลูปหลัก + คลิก
@@ -514,6 +531,7 @@ const inside = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y +
 cv.addEventListener('click', ev => {
   const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * W / r.width, y = (ev.clientY - r.top) * H / r.height;
   if (state === 'lobby' && inside(BTN.lobby, x, y)) go('search');
+  else if (state === 'lobby' && inside(BTN.shop, x, y)) shopMsgAt = now();
   else if (state === 'search' && inside(BTN.cancel, x, y)) go('lobby');
   else if (state === 'result') { if (inside(BTN.again, x, y)) go('search'); else if (inside(BTN.back, x, y)) go('lobby'); }
 });
