@@ -1922,7 +1922,12 @@ const App = {
     catch (e) { this.spinning = false; UI.toast(errText(e)); this.renderHangar(); return; }
     const id = res.ship, isNew = res.isNew, refund = res.refund;
 
-    $('spinResult').hidden = true;
+    // ระหว่างไฟวิ่งโชว์คำบอกว่าแตะเพื่อข้ามได้ (showSpinResult เขียนทับตอนจบ)
+    const hint = $('spinResult');
+    hint.textContent = '';
+    hint.style.removeProperty('--tier');
+    hint.append(Object.assign(document.createElement('span'), { textContent: 'แตะที่ว่างเพื่อข้าม' }));
+    hint.hidden = false;
     $('ticketCount').textContent = `ตั๋วสุ่ม ${fmt(Save.data.tickets)} ใบ`;
     const ids = Object.keys(SHIPS), n = ids.length;
     const slots = [...$('wheel').querySelectorAll('.slot')];
@@ -1930,7 +1935,18 @@ const App = {
     let cur = this.litIdx || 0;
     const target = ids.indexOf(id);
     const steps = n * 3 + ((target - cur + n) % n || n);
-    let i = 0;
+    let i = 0, timer = 0;
+    // จบแอนิเมชัน: ไฟหยุดที่ผล (เรียกจากรอบสุดท้าย หรือจากการแตะข้าม)
+    const finish = () => {
+      clearTimeout(timer);
+      this.skipSpin = null;
+      slots.forEach(el => el.classList.remove('lit'));
+      this.litIdx = cur = target;
+      slots[cur].classList.add('win');
+      this.spinning = false;
+      this.showSpinResult(id, isNew, refund);
+    };
+    this.skipSpin = finish;
     const step = () => {
       slots[cur].classList.remove('lit');
       cur = (cur + 1) % n;
@@ -1942,14 +1958,10 @@ const App = {
         let delay = 35 + Math.pow(t, 3) * 420;   // ไฟวิ่งเร็วแล้วค่อยๆ ช้าลง
         // รอบสุดท้าย: ชะลอค้างที่ช่องระดับสูงให้ลุ้นว่าจะหยุดตรงนี้ไหม
         if (steps - i < n * 1.2 && TIER_ORDER.indexOf(SHIPS[ids[cur]].tier) >= 2) delay += 260;
-        setTimeout(step, delay);
+        timer = setTimeout(step, delay);
         return;
       }
-      this.litIdx = cur;
-      slots[cur].classList.remove('lit');
-      slots[cur].classList.add('win');
-      this.spinning = false;
-      this.showSpinResult(id, isNew, refund);
+      finish();
     };
     step();
   },
@@ -2044,6 +2056,28 @@ const App = {
   },
 
   wire() {
+    // ระหว่างไฟวิ่งสุ่มยาน: แตะ/คลิกตรงไหนก็ได้ หรือกด Enter/Space/Esc = ข้ามไปผลเลย
+    // แตะนั้นถูกกินไว้ ไม่ไปกดปุ่มอื่นต่อ (เช่น ปุ่มปิด)
+    document.addEventListener('pointerdown', e => {
+      if (!this.skipSpin) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.swallowClick = true;
+      setTimeout(() => { this.swallowClick = false; }, 600);
+      this.skipSpin();
+    }, true);
+    document.addEventListener('click', e => {
+      if (!this.swallowClick) return;
+      this.swallowClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+    document.addEventListener('keydown', e => {
+      if (!this.skipSpin || !['Enter', ' ', 'Escape'].includes(e.key)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.skipSpin();
+    }, true);
     $('btnStart').onclick = () => this.start();
     $('btnHangar').onclick = () => this.openHangar();
     $('btnTreasure').onclick = () => this.openTreasure();
