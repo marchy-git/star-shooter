@@ -666,7 +666,7 @@ const MECH_NAMES = { spawner: 'ปักเสาฐานทัพ', healer: '�
 // จังหวะยิงของบอส: ยิงครบ BOSS_VOLLEY ท่าแล้วพัก BOSS_REST_MS ให้ยิงสวน · ท่าหนา (สีในนี้) เรืองแสงเตือนก่อนยิง
 const BOSS_VOLLEY = 3, BOSS_REST_MS = 1500;
 const HEAVY_ATTACKS = { ring: 0xff4fd8, spiral: 0xc18bff, rain: 0x36f1ff, double: 0xff8a3c, burst: 0xffd23f, wall: 0x7dff6a };
-// ท่าไม้ตายของบอส (อยู่ในกองกลไกเดียวกัน): มีนับถอยหลัง/สัญญาณเตือนชัดเจน และมีทางรอดเสมอ
+// ท่าไม้ตายของบอส: มีนับถอยหลัง/สัญญาณเตือนชัดเจน และมีทางรอดเสมอ
 // ระหว่างท่า บอสหยุดยิง กลไกอื่นพัก กระสุนบนจอถูกล้าง → เหลือโจทย์ให้หลบอย่างเดียว
 // update(sp, e, dt, g) เรียกด้วย this = ฉากเกม · e = เวลาที่ผ่านไป (ms) · คืน true เมื่อจบท่า
 const SET_PIECES = {
@@ -1007,7 +1007,7 @@ const SET_PIECES = {
     },
   },
 };
-for (const [k, v] of Object.entries(SET_PIECES)) { MECH_EVERY[k] = 14000; MECH_NAMES[k] = v.name; }
+// ท่าไม้ตายมีกองของตัวเอง: บอสทุกตัวใช้ตอนขึ้น PHASE 2 และ PHASE 3 (สุ่มไม่ซ้ำจนครบ 10 ท่า)
 
 
 const ITEMS = {
@@ -3326,7 +3326,7 @@ class Game extends Phaser.Scene {
       runReq: Save.loggedIn ? api('/api/run', {}).then(r => r.runId).catch(() => null) : null,
       skKills: 0, skCoins: 0, skGrazes: 0, nextStormAt: Infinity,
       overdriveUntil: 0, dashUntil: 0, phaseUntil: 0, superMagnetUntil: 0, shieldRegenAt: 0, novaAt: 0, lastGhost: 0,
-      iceUntil: 0, bossCD: 0, mechCD: 0, bossMechs: [], mechTurn: 0, mechBag: [], volley: 0, lastHeavy: false,
+      iceUntil: 0, bossCD: 0, mechCD: 0, bossMechs: [], mechTurn: 0, mechBag: [], ultBag: [], volley: 0, lastHeavy: false,
       bossShieldUntil: 0, shieldAng: 0, shieldGapW: 1, shieldSpin: 0, bossVulnUntil: 0, orbitOn: false, orbitAng: 0,
       gravUntil: 0, gravWarnUntil: 0, gravPull: 0, bombLabels: [], setPiece: null,
       loop: 1, wave: 0, kills: 0, lastPattern: null,
@@ -4641,6 +4641,14 @@ class Game extends Phaser.Scene {
     else if (SET_PIECES[m]) this.startSetPiece(m, phase);
   }
 
+  // ท่าไม้ตายตอนขึ้นเฟส: ถ้ายังมีท่าอื่นค้างอยู่ ต่อคิวไว้ใช้หลังจบท่านั้น
+  bossUltimate(b, p) {
+    if (this.boss !== b || !b.active || this.over) return;
+    if (this.setPiece) { this.ultQueued = p; return; }
+    if (!this.ultBag.length) this.ultBag = Phaser.Utils.Array.Shuffle(Object.keys(SET_PIECES));
+    this.startSetPiece(this.ultBag.pop(), p);
+  }
+
   // ----- ท่าไม้ตาย: บอสหยุดยิง กลไกอื่นพัก ล้างกระสุน เหลือโจทย์ให้หลบอย่างเดียว -----
   startSetPiece(kind, phase) {
     if (this.setPiece || !this.boss) return;
@@ -4673,6 +4681,11 @@ class Game extends Phaser.Scene {
     this.spBig.setVisible(false);
     this.spSmall.setVisible(false);
     this.bossCD = Math.max(this.bossCD, 900);   // หายใจก่อนบอสกลับมายิง
+    if (this.ultQueued) {   // มีท่าไม้ตายต่อคิว: เว้น 2.5 วิแล้วใช้
+      const b = this.boss, p = this.ultQueued;
+      this.ultQueued = 0;
+      this.time.delayedCall(2500, () => this.bossUltimate(b, p));
+    }
   }
 
   // ดาวเทียมโคจร: ยิงแตกครบ → บอสรับดาเมจ x2 นาน 5 วิ
@@ -5047,6 +5060,8 @@ class Game extends Phaser.Scene {
 
   bossPhaseUp(b, p) {
     b.setData('phase', p);
+    // ขึ้นเฟสใหม่: ใช้ท่าไม้ตายแบบสุ่ม (กองแยก ไม่ซ้ำจนครบ)
+    this.time.delayedCall(1500, () => this.bossUltimate(b, p));
     // เอฟเฟกต์อยู่ที่ตัวบอส: ไม่ใช้แฟลชแดงทั้งจอ + สั่นแรง เพราะเหมือนตอนเราโดนตี
     this.hitStop(80);
     this.cameras.main.shake(160, 0.004);
@@ -5280,7 +5295,7 @@ class Game extends Phaser.Scene {
         if (pe.active && pe.getData('pillar')) { this.explode(pe.x, pe.y, 1, 'cargo'); pe.destroy(); }
       }
       this.iceUntil = 0;
-      Object.assign(this, { bossShieldUntil: 0, bossVulnUntil: 0, orbitOn: false, gravUntil: 0, gravWarnUntil: 0 });
+      Object.assign(this, { bossShieldUntil: 0, bossVulnUntil: 0, orbitOn: false, gravUntil: 0, gravWarnUntil: 0, ultQueued: 0 });
       this.tweens.add({ targets: this.bossShade, fillAlpha: 0, duration: 1200 });
       this.ebullets.getChildren().forEach(b => { if (b.active) b.disableBody(true, true); });
       this.hitStop(260);
