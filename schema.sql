@@ -62,3 +62,14 @@ CREATE TABLE IF NOT EXISTS player_gear (
   id   TEXT PRIMARY KEY,
   gear TEXT NOT NULL DEFAULT ''
 );
+
+-- คะแนนที่เกินเพดานตรวจโกง (ไม่ขึ้นตาราง) เก็บไว้ให้ผู้ดูแลดูแล้วเพิ่มให้เองถ้าเป็นของจริง
+CREATE TABLE IF NOT EXISTS flagged_runs (
+  user_id TEXT    NOT NULL,
+  name    TEXT,
+  score   INTEGER NOT NULL,
+  loop    INTEGER NOT NULL,
+  sec     INTEGER NOT NULL,
+  ship    TEXT,
+  at      INTEGER NOT NULL
+);

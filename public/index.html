@@ -5792,6 +5792,11 @@ class Game extends Phaser.Scene {
           .filter(Boolean).join(' · ')).join('\n'), 13, '#ffd23f', { align: 'center', lineSpacing: 2 }).setOrigin(0.5, 0).setDepth(21);
         sfx.fanfare();
       }
+      if (res.flagged) {   // คะแนนเกินเพดานตรวจ: ได้รางวัลแล้ว แต่ยังไม่ขึ้นตาราง
+        rankLine.setText('คะแนนนี้รอผู้ดูแลตรวจสอบ').setColor('#ffd23f');
+        rankSub.setText('สูงเกินเพดานที่ระบบตั้งไว้ · รางวัลได้รับแล้ว');
+        return;
+      }
       const runRank = Board.standing(this.score).rank;
       info.rank = res.best > this.score ? runRank : res.rank;
       info.total = res.total;
@@ -5811,8 +5816,15 @@ class Game extends Phaser.Scene {
       if (!this.sys.isActive()) return;
       const msg = String(err && err.message);
       rewardT.setText('บันทึกรางวัลรอบนี้ไม่สำเร็จ');
-      rankLine.setText(msg === 'too_fast' ? 'ส่งคะแนนถี่เกินไป' : msg === 'unauthorized' ? 'การล็อกอินหมดอายุ' : 'ส่งคะแนนไม่สำเร็จ');
-      rankSub.setText(msg === 'too_fast' ? 'รอสักครู่แล้วเล่นใหม่ได้เลย' : msg === 'unauthorized' ? 'ล็อกอินใหม่ที่หน้าแรก' : 'ตรวจอินเทอร์เน็ตแล้วลองเล่นใหม่');
+      const why = {
+        too_fast: ['ส่งคะแนนถี่เกินไป', 'รอสักครู่แล้วเล่นใหม่ได้เลย'],
+        unauthorized: ['การล็อกอินหมดอายุ', 'ล็อกอินใหม่ที่หน้าแรก'],
+        no_run: ['รอบนี้ถูกแทนที่แล้ว', 'มีการเริ่มเกมใหม่จากแท็บหรือเครื่องอื่น ใช้บัญชีเดียวกันเล่นทีละที่'],
+        run_expired: ['รอบนี้นานเกิน 6 ชั่วโมง', 'เริ่มเกมใหม่ได้เลย'],
+        implausible: ['ข้อมูลรอบนี้ผิดปกติ', 'แจ้งผู้ดูแลได้'],
+      }[msg] || ['ส่งคะแนนไม่สำเร็จ', 'ตรวจอินเทอร์เน็ตแล้วลองเล่นใหม่'];
+      rankLine.setText(why[0]);
+      rankSub.setText(why[1]);
     });
   }
 

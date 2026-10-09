@@ -31,6 +31,7 @@ const COINS_PER_SEC = 6;            // เพดานคริสตัลท�
 const TICKETS_PER_LOOP = 5;         // ตั๋วหล่นได้สูงสุด 4 wave + บอส 1
 const TICKET_MIN_SEC = 8;           // ตั๋วใบหนึ่งได้เร็วสุดทุกกี่วินาที (เคลียร์ wave เร็วสุด)
 const SCORE_PER_SEC = 20_000;       // เพดานคะแนนต่อวินาที (เผื่อ FEVER/ON AIR ไว้สูงมาก)
+const SCORE_PER_LOOP = 3_000_000, SCORE_LOOP_BASE = 1_000_000;   // เพดานคะแนนตามรอบ (FRENZY + FEVER/ON AIR x12 ทำได้ ~1.3 ล้าน/รอบ)
 const PBKDF2_ITER = 20_000;         // ไม่สูงมาก เพื่อไม่ให้เกินเวลา CPU ของแผนฟรี
 
 const CORS = {
@@ -520,20 +521,22 @@ async function submit(env, request) {
   if (ms > MAX_RUN_MS) return json({ error: 'run_expired' }, 400);
   const sec = ms / 1000;
 
-  // รอบที่ไปถึงต้องสัมพันธ์กับเวลาที่เล่นจริง และคะแนนต้องสัมพันธ์กับรอบ
+  // รอบที่ไปถึงต้องสัมพันธ์กับเวลาที่เล่นจริง (เกิน = โกงแน่นอน ไม่ให้อะไรเลย)
   if (loop > 1 + Math.floor(sec / LOOP_MIN_SEC)) return json({ error: 'implausible' }, 400);
-  if (score > 600_000 * loop + 400_000 || score > 50_000 + sec * SCORE_PER_SEC) return json({ error: 'implausible' }, 400);
+  // คะแนนเกินเพดาน: ไม่ขึ้นตาราง แต่ยังได้คริสตัล/ตั๋วที่เก็บ (จำกัดตามเวลาอยู่แล้ว) และบันทึกไว้ให้ผู้ดูแลตรวจ
+  const scoreCap = Math.min(SCORE_PER_LOOP * loop + SCORE_LOOP_BASE, 50_000 + sec * SCORE_PER_SEC);
+  const flagged = score > scoreCap;
 
   // รางวัล: ของที่เก็บได้ถูกจำกัดเพดาน, โบนัสจากคะแนน 1 คริสตัลต่อ 1,000 แต้ม
   const d0 = dataOf(u);
   const bag = d0.equip.includes('bag') ? BAG_BONUS[d0.treasures.bag] || 0 : 0;
   const coins = Math.floor(Math.min(int(body.coins, 0, 1_000_000) ?? 0, Math.floor(sec * COINS_PER_SEC)) * (1 + bag));
   const tickets = Math.min(int(body.tickets, 0, 10_000) ?? 0, loop * TICKETS_PER_LOOP, 1 + Math.floor(sec / TICKET_MIN_SEC));
-  const scoreBonus = Math.floor(score / 1000);
+  const scoreBonus = flagged ? 0 : Math.floor(score / 1000);   // คะแนนที่ถูกตั้งธง ไม่ได้โบนัสจากแต้ม (ผู้ดูแลเพิ่มให้ทีหลังถ้าเป็นของจริง)
   const d = dataOf(u);
   d.coins += coins + scoreBonus;
   d.tickets += tickets;
-  if (score > d.best) d.best = score;
+  if (score > d.best && !flagged) d.best = score;
   // ถึงรอบใหม่ครั้งแรก: กุญแจ / หีบทอง
   const milestones = [];
   for (const [at, r] of Object.entries(MILESTONES)) {
@@ -547,6 +550,15 @@ async function submit(env, request) {
   await writeData(env, u.id, d);
 
   const prev = await env.DB.prepare(`SELECT best FROM players WHERE id = ?1`).bind(u.id).first();
+  if (flagged) {
+    await env.DB.prepare(`INSERT INTO flagged_runs (user_id, name, score, loop, sec, ship, at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`)
+      .bind(u.id, u.nickname, score, loop, Math.round(sec), ship, now).run();
+    const best = prev ? prev.best : 0;
+    const above = await env.DB.prepare(`SELECT COUNT(*) AS n FROM players WHERE best > ?1`).bind(best).first();
+    const total = await env.DB.prepare(`SELECT COUNT(*) AS n FROM players WHERE best > 0`).first();
+    return json({ pid: u.id, flagged: true, best, newBest: false, rank: (above?.n ?? 0) + 1, total: total?.n ?? 1,
+      reward: { coins, tickets, scoreBonus, milestones }, data: d });
+  }
   // สมบัติที่ใส่ตอนทำคะแนนสูงสุด (โชว์ในตารางอันดับ)
   if (!prev || score > prev.best) {
     await env.DB.prepare(`INSERT INTO player_gear (id, gear) VALUES (?1, ?2) ON CONFLICT(id) DO UPDATE SET gear = excluded.gear`)
