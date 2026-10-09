@@ -111,6 +111,7 @@
   #menu { top: calc(var(--u) * 540); }
   .group { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 10); }
   .meta .link { margin-left: calc(var(--u) * 8); }
+  #menuApp .link { margin: 0 calc(var(--u) * 8); }
   #overBar { top: calc(var(--u) * 470); }
 
   .modal {
@@ -415,6 +416,9 @@
       <div class="meta">
         <span id="menuName"></span><button id="btnLogout" class="link" type="button" hidden>ออกจากระบบ</button><br>
         <span id="menuCoins"></span><button id="btnMute" class="link" type="button"></button>
+      </div>
+      <div class="meta" id="menuApp">
+        <button id="btnFull" class="link" type="button" hidden>เล่นเต็มจอ</button><button id="btnInstall" class="link" type="button" hidden>ติดตั้งเป็นแอป</button>
       </div>
       <div class="meta" id="menuInfo"></div>
     </div>
@@ -1405,6 +1409,26 @@ const UI = {
   },
 };
 
+// เต็มจอ / ติดตั้งเป็นแอป: เปิดจากไอคอนบนหน้าจอ = เต็มจอเสมอ (manifest display: fullscreen) ไม่มีแถบเบราว์เซอร์ให้กดพลาด
+const AppMode = {
+  installEvt: null,   // beforeinstallprompt ของ Chrome (มีเมื่อเบราว์เซอร์พร้อมให้ติดตั้ง)
+  get standalone() { return matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone === true; },
+  get canFull() { const el = document.documentElement; return !!(el.requestFullscreen || el.webkitRequestFullscreen); },
+  get isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+  get touch() { return matchMedia('(pointer: coarse)').matches; },
+  get ios() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); },
+  async enterFull() {
+    const el = document.documentElement;
+    try {
+      await (el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : el.webkitRequestFullscreen());
+      try { await screen.orientation.lock('portrait'); } catch (e) {}
+    } catch (e) {}
+  },
+  exitFull() { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} },
+};
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); AppMode.installEvt = e; });
+window.addEventListener('appinstalled', () => { AppMode.installEvt = null; UI.toast('ติดตั้งแล้ว! เปิดเกมจากไอคอนบนหน้าจอได้เลย', 4000); App.refreshMenu(); });
+
 const App = {
   game: null, card: null, pendingStart: false,
   scene(key) { return this.game.scene.getScene(key); },
@@ -1436,6 +1460,9 @@ const App = {
     $('menuName').textContent = u ? `นักบิน: ${u.nickname}` : 'สมัครฟรี ใช้แค่ username กับ password';
     $('menuCoins').textContent = u ? `คริสตัล ${fmt(d.coins)} · ตั๋วสุ่ม ${fmt(d.tickets)} ·` : '';
     $('btnMute').textContent = sfx.muted ? 'เสียง: ปิด' : 'เสียง: เปิด';
+    $('btnFull').hidden = AppMode.standalone || !AppMode.canFull;
+    $('btnFull').textContent = AppMode.isFull ? 'ออกจากเต็มจอ' : 'เล่นเต็มจอ';
+    $('btnInstall').hidden = AppMode.standalone;
     const chests = u ? d.keys + d.gold : 0;   // มีกุญแจ/หีบทองรอเปิด
     $('btnTreasure').textContent = chests ? `สมบัติ (${chests})` : 'สมบัติ';
     const info = $('menuInfo');
@@ -1447,6 +1474,20 @@ const App = {
     } else {
       info.textContent = 'ออฟไลน์ · เล่นได้ปกติ แต่สมัคร/ล็อกอินและตารางอันดับใช้ไม่ได้';
     }
+  },
+
+  // ติดตั้งเป็นแอป: Chrome เด้งหน้าติดตั้งให้ ถ้าเบราว์เซอร์ไม่รองรับ บอกวิธีกดเองแทน
+  async install() {
+    const evt = AppMode.installEvt;
+    if (evt) {
+      evt.prompt();
+      try { await evt.userChoice; } catch (e) {}
+      AppMode.installEvt = null;
+      return;
+    }
+    UI.toast(AppMode.ios
+      ? 'Safari: กดปุ่มแชร์ (สี่เหลี่ยมลูกศรขึ้น) แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"'
+      : 'กดเมนู ⋮ มุมขวาบนของเบราว์เซอร์ แล้วเลือก "ติดตั้งแอป" หรือ "เพิ่มลงหน้าจอหลัก"', 6000);
   },
 
   // ----- สมัคร / ล็อกอิน -----
@@ -2078,7 +2119,15 @@ const App = {
       e.stopImmediatePropagation();
       this.skipSpin();
     }, true);
-    $('btnStart').onclick = () => this.start();
+    $('btnStart').onclick = () => {
+      // มือถือ: กดเริ่มเกมแล้วเข้าเต็มจอเลย กันนิ้วไปโดนแถบเบราว์เซอร์ระหว่างเล่น
+      if (AppMode.touch && !AppMode.standalone && AppMode.canFull && !AppMode.isFull) AppMode.enterFull();
+      this.start();
+    };
+    $('btnFull').onclick = () => (AppMode.isFull ? AppMode.exitFull() : AppMode.enterFull());
+    $('btnInstall').onclick = () => this.install();
+    document.addEventListener('fullscreenchange', () => this.refreshMenu());
+    document.addEventListener('webkitfullscreenchange', () => this.refreshMenu());
     $('btnHangar').onclick = () => this.openHangar();
     $('btnTreasure').onclick = () => this.openTreasure();
     $('btnBoard').onclick = () => this.openBoard();
