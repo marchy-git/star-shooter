@@ -1923,10 +1923,14 @@ function makeTextures(scene) {
     g.fillStyle(0x7dff6a, 0.35); g.fillPoints(P([[5, 1], [9, 9], [7, 20], [3, 20], [1, 9]]), true);
     g.fillStyle(0xfff35a); g.fillTriangle(3, 20, 7, 20, 5, 24);
   });
-  draw('ebullet', 14, 14, g => {
-    g.lineStyle(5, 0xff9d3c, 0.3); g.strokeCircle(7, 7, 4.5);
-    g.lineStyle(2.5, 0xff9d3c, 1); g.strokeCircle(7, 7, 4.5);
-    g.fillStyle(0xffffff, 0.95); g.fillCircle(7, 7, 1.8);
+  // กระสุนศัตรู: หัวลูกศรแดงขอบดำ ชี้ไปทางที่วิ่ง (ภาพหัวลง) หางจางอยู่ด้านหลัง
+  // หัวอยู่กลางภาพพอดี เพราะ hitbox (วงกลมใน enemyShoot) ไม่หมุนตามภาพ
+  draw('ebullet', 22, 44, g => {
+    for (let i = 0; i < 7; i++) { g.fillStyle(0xff4f6a, 0.06 + i * 0.05); g.fillEllipse(11, 3 + i * 2.6, 5 + i * 0.9, 7); }
+    g.fillStyle(0x000000, 0.85); g.fillPoints(P([[11, 35], [20, 22], [11, 10], [2, 22]]), true);
+    g.fillStyle(0xff3b4f, 1); g.fillPoints(P([[11, 33], [18, 22], [11, 12], [4, 22]]), true);
+    g.fillStyle(0xffc2cc, 1); g.fillPoints(P([[11, 28], [14, 22], [11, 16], [8, 22]]), true);
+    g.fillStyle(0xffffff, 1); g.fillCircle(11, 22, 2.4);
   });
 
   // ----- ไอเท็ม: ชิปสี่เหลี่ยมมุมมน + ไอคอน -----
@@ -3045,6 +3049,8 @@ class Game extends Phaser.Scene {
     b.enableBody(true, x, y, true, true);
     b.setDepth(3);
     b.grazed = false;
+    b.rotation = angle - Math.PI / 2;      // หัวลูกศรชี้ไปทางที่วิ่ง
+    b.body.setCircle(7, 4, 15);            // hitbox วงกลม r7 ที่หัว (ใกล้เคียงของเดิม 14x14)
     this.physics.velocityFromRotation(angle, speed, b.body.velocity);
   }
 
