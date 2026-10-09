@@ -209,12 +209,13 @@
   .board .gap { text-align: center; color: var(--muted); background: none; display: block; padding: 0; }
 
   /* โรงเก็บยาน */
-  .ships { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 10); }
+  .ships { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); }
   .ship {
+    position: relative;
     border: 1px solid var(--line);
     border-radius: calc(var(--u) * 12);
-    padding: calc(var(--u) * 10);
-    display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 6);
+    padding: calc(var(--u) * 8) calc(var(--u) * 6);
+    display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 4);
     text-align: center;
     min-width: 0;
   }
@@ -312,10 +313,10 @@
   .tr-chests canvas { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
   .spin-result canvas { width: calc(var(--u) * 110); height: calc(var(--u) * 110); animation: trPop .5s ease-out; }
   @keyframes trPop { from { transform: scale(.3) rotate(-20deg); opacity: 0; } to { transform: none; opacity: 1; } }
-  .tr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 8); }
-  .tr { --tier: #9fb0d4; border: 1px solid var(--line); border-radius: calc(var(--u) * 10); padding: calc(var(--u) * 7); display: flex; flex-direction: column; gap: calc(var(--u) * 3); background: rgba(255, 255, 255, .03); color: var(--ink); min-width: 0; }
-  .tr .top { display: flex; align-items: center; gap: calc(var(--u) * 5); }
-  .tr .top canvas { width: calc(var(--u) * 50); height: calc(var(--u) * 50); flex: none; }
+  .tr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); }
+  .tr { position: relative; --tier: #9fb0d4; border: 1px solid var(--line); border-radius: calc(var(--u) * 10); padding: calc(var(--u) * 7); display: flex; flex-direction: column; gap: calc(var(--u) * 3); background: rgba(255, 255, 255, .03); color: var(--ink); min-width: 0; }
+  .tr .top { display: flex; flex-direction: column; align-items: center; text-align: center; gap: calc(var(--u) * 3); }
+  .tr .top canvas { width: calc(var(--u) * 54); height: calc(var(--u) * 54); flex: none; }
   .tr .tn { font-weight: 700; font-size: calc(var(--u) * 13); display: block; }
   .tr .tg { color: var(--tier); font-size: calc(var(--u) * 10); font-weight: 700; display: block; }
   .tr .tl { color: var(--gold); font-size: calc(var(--u) * 10); font-weight: 700; display: block; }
@@ -400,9 +401,27 @@
     .reveal *, .ship::before, .ship::after, .ship img, .slot img { animation: none !important; }
     .reveal .rcard { transform: none; }
   }
-  .ship b { font-size: calc(var(--u) * 16); }
+  .ship b { font-size: calc(var(--u) * 15); }
   .ship span { font-size: calc(var(--u) * 12); color: var(--muted); line-height: 1.4; }
-  .ship .btn { font-size: calc(var(--u) * 14); padding: calc(var(--u) * 6) calc(var(--u) * 12); width: 100%; }
+  .ship .btn { font-size: calc(var(--u) * 12); padding: calc(var(--u) * 6) calc(var(--u) * 4); width: 100%; }
+  /* ปุ่ม ⓘ มุมการ์ด + กล่องรายละเอียด (ชี้เมาส์ / แตะค้าง / แตะ ⓘ) */
+  .info { position: absolute; top: calc(var(--u) * 4); right: calc(var(--u) * 4); width: calc(var(--u) * 22); height: calc(var(--u) * 22); border-radius: 50%;
+    border: 1px solid var(--tier, var(--line)); background: rgba(5, 8, 22, .8); color: var(--tier, var(--ink)); font: 700 calc(var(--u) * 13) / 1 var(--font);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; z-index: 2; }
+  .grid-hint { font-size: calc(var(--u) * 11); color: var(--muted); font-weight: 500; letter-spacing: 0; margin-left: calc(var(--u) * 6); }
+  #tip { position: absolute; z-index: 60; width: calc(var(--u) * 300); pointer-events: none !important; background: rgba(8, 6, 26, .97);
+    border: 2px solid var(--tier, var(--line)); border-radius: calc(var(--u) * 14); padding: calc(var(--u) * 12) calc(var(--u) * 14);
+    box-shadow: 0 0 calc(var(--u) * 24) rgba(0, 0, 0, .7), 0 0 calc(var(--u) * 14) color-mix(in srgb, var(--tier, #000) 40%, transparent);
+    display: flex; flex-direction: column; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 13); line-height: 1.45; color: var(--ink); }
+  #tip .th { display: flex; align-items: baseline; gap: calc(var(--u) * 8); }
+  #tip .th b { font-size: calc(var(--u) * 18); }
+  #tip .th i { font-style: normal; color: var(--tier); font-weight: 700; font-size: calc(var(--u) * 12); }
+  #tip .st { color: var(--gold); font-weight: 700; font-size: calc(var(--u) * 12); }
+  #tip .row2 { display: grid; grid-template-columns: auto 1fr; gap: calc(var(--u) * 2) calc(var(--u) * 8); color: var(--muted); }
+  #tip .row2 b { color: var(--tier); white-space: nowrap; }
+  #tip .row2 .cur { color: var(--ink); }
+  #tip .row2 .dim { opacity: .55; }
+  #tip .ft { color: var(--muted); font-size: calc(var(--u) * 11.5); border-top: 1px solid var(--line); padding-top: calc(var(--u) * 6); }
   .ups { display: flex; flex-direction: column; gap: calc(var(--u) * 8); }
   .up {
     display: grid; grid-template-columns: 1fr auto; gap: calc(var(--u) * 4) calc(var(--u) * 10);
@@ -545,7 +564,7 @@
           </div>
         </div>
         <p id="hangarGuest" hidden>ล็อกอินก่อน เพื่อสุ่มยาน เก็บตั๋ว และอัปเลเวลยาน</p>
-        <h3>ยานของฉัน</h3>
+        <h3>ยานของฉัน <span class="grid-hint">ชี้เมาส์ / แตะค้าง / แตะ ⓘ ดูรายละเอียด</span></h3>
         <div id="shipGrid" class="ships"></div>
       </div>
       <div id="reveal" class="reveal" hidden></div>
@@ -560,7 +579,7 @@
         <div id="trChests" class="tr-chests"></div>
         <p id="trOdds" class="tr-note"></p>
         <div id="chestResult" class="spin-result" hidden></div>
-        <h3>สมบัติทั้งหมด</h3>
+        <h3>สมบัติทั้งหมด <span class="grid-hint">ชี้เมาส์ / แตะค้าง / แตะ ⓘ ดูรายละเอียด</span></h3>
         <div id="trGrid" class="tr-grid"></div>
         <p class="tr-note">วิธีได้: หีบดาว (คริสตัล) · กุญแจดาวจากการล้มบอส · ถึงรอบ 3 / 5 / 8 ครั้งแรก ได้กุญแจและหีบทอง · อัปขั้นด้วยคริสตัล · ได้ชิ้นที่มีแล้วได้คริสตัลคืนเล็กน้อย</p>
       </div>
@@ -627,6 +646,7 @@
       <div class="bar"><i id="pvpInvBar"></i></div>
     </div>
     <div id="pvpHud" hidden></div>
+    <div id="tip" role="tooltip" hidden></div>
     <div id="countdown" aria-live="assertive" hidden></div>
     <div id="toast" role="status" hidden></div>
     <div id="notice" role="status" aria-live="polite" hidden><span></span></div>
@@ -1885,6 +1905,7 @@ const UI = {
   game: null,
   init(game) {
     this.game = game;
+    Tip.init();
     const sync = () => {
       const cv = game.canvas;
       if (!cv) return;
@@ -1903,7 +1924,7 @@ const UI = {
 
     document.addEventListener('click', e => {
       const c = e.target.closest('[data-close]');
-      if (c) c.closest('.modal').hidden = true;
+      if (c) { c.closest('.modal').hidden = true; Tip.hide(); }
     });
   },
   modalOpen() { return [...document.querySelectorAll('.modal')].some(m => !m.hidden); },
@@ -1914,6 +1935,64 @@ const UI = {
     clearTimeout(this._t);
     this._t = setTimeout(() => { t.hidden = true; }, ms);
   },
+};
+
+// กล่องรายละเอียด: คอม = ชี้เมาส์ · มือถือ = แตะค้าง 0.4 วิ · ทุกเครื่อง = แตะปุ่ม ⓘ ที่มุมการ์ด
+const Tip = {
+  owner: null, timer: null,
+  get canHover() { return matchMedia('(hover: hover) and (pointer: fine)').matches; },
+  init() {
+    document.addEventListener('pointerdown', e => { if (this.owner && !this.owner.contains(e.target)) this.hide(); }, true);
+    document.addEventListener('scroll', () => { if (this.owner) this.show(this.owner, this.build); }, true);   // เลื่อนจอ = กล่องเลื่อนตามการ์ด
+  },
+  bind(card, build) {
+    const info = document.createElement('button');
+    info.type = 'button'; info.className = 'info'; info.textContent = 'i'; info.title = 'รายละเอียด';
+    info.onclick = e => { e.stopPropagation(); this.owner === card ? this.hide() : this.show(card, build); };
+    card.append(info);
+    card.addEventListener('mouseenter', () => { if (this.canHover) this.show(card, build); });
+    card.addEventListener('mouseleave', () => { if (this.canHover) this.hide(); });
+    card.addEventListener('contextmenu', e => e.preventDefault());
+    card.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' || e.target.closest('button')) return;   // ปุ่มในการ์ดกดได้ตามปกติ
+      const x0 = e.clientX, y0 = e.clientY;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => { this.show(card, build); if (navigator.vibrate) navigator.vibrate(12); }, 400);
+      const types = ['pointermove', 'pointerup', 'pointercancel'];
+      const stop = ev => {
+        if (ev.type === 'pointermove' && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 10) return;
+        clearTimeout(this.timer);
+        types.forEach(t => card.removeEventListener(t, stop));
+      };
+      types.forEach(t => card.addEventListener(t, stop));
+    });
+  },
+  show(card, build) {
+    const el = $('tip');
+    el.textContent = '';
+    el.append(...build());
+    el.style.setProperty('--tier', getComputedStyle(card).getPropertyValue('--tier'));
+    el.hidden = false;
+    this.owner = card;
+    this.build = build;
+    const ui = $('ui').getBoundingClientRect(), r = card.getBoundingClientRect(), u = ui.width / W;
+    const tw = el.offsetWidth, th = el.offsetHeight, pad = 8 * u;
+    const left = Phaser.Math.Clamp(r.left + r.width / 2 - ui.left - tw / 2, pad, ui.width - tw - pad);
+    let top = r.top - ui.top - th - pad;                       // ปกติขึ้นเหนือการ์ด
+    if (top < pad) top = r.bottom - ui.top + pad;              // ที่ไม่พอ → ใต้การ์ด
+    if (top + th > ui.height - pad) top = Math.max(pad, ui.height - th - pad);
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  },
+  hide() { clearTimeout(this.timer); this.owner = null; const el = $('tip'); if (el) el.hidden = true; },
+};
+// ส่วนประกอบในกล่อง
+const tipEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+const tipHead = (name, tierName) => { const h = tipEl('div', 'th'); h.append(tipEl('b', '', name), tipEl('i', '', tierName)); return h; };
+const tipRows = rows => {   // [[label, text, cls]]
+  const g = tipEl('div', 'row2');
+  for (const [a, b, cls] of rows) { g.append(tipEl('b', cls || '', a), tipEl('span', cls || '', b)); }
+  return g;
 };
 
 // เต็มจอ / ติดตั้งเป็นแอป: เปิดจากไอคอนบนหน้าจอ = เต็มจอเสมอ (manifest display: fullscreen) ไม่มีแถบเบราว์เซอร์ให้กดพลาด
@@ -2233,6 +2312,7 @@ const App = {
       + ` · อีก ${TR_PITY_EPIC - d.tpity.e} หีบการันตีเอพิก · อีก ${TR_PITY_LEGEND - d.tpity.l} หีบการันตีตำนาน`;
 
     // สมบัติทั้งหมด เรียงจากหายากสุด
+    Tip.hide();
     const grid = $('trGrid');
     grid.textContent = '';
     const order = ['mythic', 'legendary', 'epic', 'rare', 'common'];
@@ -2244,8 +2324,8 @@ const App = {
       const head = mk('div', 'top'), names = mk('div');
       names.append(mk('span', 'tn', t.name), mk('span', 'tg', TIERS[t.rarity].name), mk('span', 'tl', lv ? `ขั้น ${lv}/3` + (on ? ' · ใส่อยู่' : '') : 'ยังไม่มี'));
       head.append(TrArt.el(id, shown, !lv), names);
-      el.append(head, mk('span', 'td', t.desc(t.vals[shown - 1], shown)));
-      if (lv && lv < 3) el.append(mk('span', 'tx', `ขั้น ${lv + 1}: ` + t.desc(t.vals[lv], lv + 1)));
+      el.append(head);
+      Tip.bind(el, () => this.trTip(id));
       if (lv) {
         const acts = mk('div', 'acts');
         const eq = mk('button', 'btn' + (on ? '' : ' primary'), on ? 'ถอด' : 'ใส่');
@@ -2255,7 +2335,7 @@ const App = {
         acts.append(eq);
         if (lv < 3) {
           const cost = TR_UP_COST[t.rarity][lv - 1];
-          const up = mk('button', 'btn', `อัป ${fmt(cost)}`);
+          const up = mk('button', 'btn', `อัป ${cost / 1000}k`);
           up.type = 'button';
           up.title = `ใช้คริสตัล ${fmt(cost)} อัปเป็นขั้น ${lv + 1}`;
           up.disabled = busy || d.coins < cost;
@@ -2266,6 +2346,17 @@ const App = {
       }
       grid.append(el);
     }
+  },
+  // รายละเอียดสมบัติ: ผลทุกขั้น (ขั้นที่มีอยู่สว่าง) · ราคาอัป · ได้มาจากไหน
+  trTip(id) {
+    const t = TREASURES[id], d = Save.data, lv = d.treasures[id] || 0, on = d.equip.includes(id), tier = TIERS[t.rarity];
+    const st = lv ? `มีแล้ว ขั้น ${lv}/3` + (on ? ' · ใส่อยู่' : '') : 'ยังไม่มี · ได้จากหีบดาว / หีบทอง';
+    const rows = [1, 2, 3].map(n => [`ขั้น ${n}`, t.desc(t.vals[n - 1], n), n === lv ? 'cur' : lv && n < lv ? 'dim' : '']);
+    const ft = [];
+    if (lv && lv < 3) ft.push(`อัปเป็นขั้น ${lv + 1}: ${fmt(TR_UP_COST[t.rarity][lv - 1])} คริสตัล`);
+    if (lv >= 3) ft.push('ขั้นสูงสุดแล้ว');
+    ft.push(`ได้ชิ้นซ้ำจากหีบ → คริสตัลคืน ${fmt(TR_DUPE[t.rarity])} · โอกาสจากหีบดาว ${TR_ODDS[t.rarity]}%`);
+    return [tipHead(t.name, tier.name), tipEl('div', 'st', st), tipRows(rows), tipEl('div', 'ft', ft.join(' · '))];
   },
   // ใส่/ถอด: ห้ามซ้ำ, ช่องเต็มถอดชิ้นที่ใส่ก่อนออก
   async toggleEquip(id) {
@@ -2376,6 +2467,7 @@ const App = {
       : '';
     if (rebuildWheel && !this.spinning) this.buildWheel();
 
+    Tip.hide();
     const grid = $('shipGrid');
     grid.textContent = '';
     for (const [id, s] of Object.entries(SHIPS)) {
@@ -2390,8 +2482,6 @@ const App = {
       const b = document.createElement('b'); b.textContent = s.name;
       const tier = document.createElement('span'); tier.className = 'tier'; tier.textContent = t.name;
       const lvEl = document.createElement('span'); lvEl.className = 'lv'; lvEl.textContent = owned ? `Lv ${lv}/${MAX_LV}` : 'ยังไม่มี';
-      const sp = document.createElement('span'); sp.textContent = `${s.desc(s.skill(EVO[id] && d.evo[id] ? EVO_LV : Math.max(1, lv)))} · ชีวิต ${s.lives}`;
-      const perk = document.createElement('span'); perk.className = 'perk'; perk.textContent = 'Lv5 เริ่มพร้อมเกราะ + ขอบเรืองแสง · Lv10 เริ่มพลังยิง 2 + ตื่นพลัง (เอฟเฟกต์ขึ้น 1 ระดับ)';
       if (lv >= 10) { const aw = document.createElement('span'); aw.className = 'awake'; aw.textContent = 'ตื่นพลัง'; tier.append(' ', aw); }
       const use = document.createElement('button');
       use.type = 'button';
@@ -2408,14 +2498,16 @@ const App = {
         use.textContent = 'สุ่มเพื่อปลดล็อก';
         use.disabled = true;
       }
-      el.append(img, b, tier, lvEl, sp, perk, use);
+      el.append(img, b, tier, lvEl, use);
+      Tip.bind(el, () => this.shipTip(id));
       if (EVO[id]) el.append(this.evoBlock(id, s, lv, owned));
       if (owned && lv < MAX_LV) {
         const cost = lvCost(id, lv);
         const upBtn = document.createElement('button');
         upBtn.type = 'button';
         upBtn.className = 'btn primary';
-        upBtn.textContent = `อัปเลเวล ${fmt(cost)}`;
+        upBtn.textContent = `อัป ${fmt(cost)}`;
+        upBtn.title = `อัปเป็น Lv${lv + 1} ใช้คริสตัล ${fmt(cost)}`;
         upBtn.disabled = !logged;
         upBtn.onclick = async () => {
           if (d.coins < cost) return UI.toast(`คริสตัลไม่พอ ขาดอีก ${fmt(cost - d.coins)}`);
@@ -2430,12 +2522,28 @@ const App = {
       grid.append(el);
     }
   },
+  // รายละเอียดยาน: ค่าพื้นฐาน · สกิลเลเวลปัจจุบัน/ถัดไป/Lv10 · ร่าง 2 · ของแถมตามเลเวล
+  shipTip(id) {
+    const s = SHIPS[id], d = Save.data, lv = d.chars[id] || 0, evo = !!(EVO[id] && d.evo[id]), tier = TIERS[s.tier];
+    const shown = evo ? EVO_LV : Math.max(1, lv);
+    const fire = s.fire < 1 ? `เร็วขึ้น ${Math.round((1 / s.fire - 1) * 100)}%` : 'ปกติ';
+    const st = !lv ? 'ยังไม่มี · ได้จากตั๋วสุ่ม' : evo ? `ร่าง 2 · สกิลเท่า Lv${EVO_LV}` : `Lv ${lv}/${MAX_LV}` + (d.ship === id ? ' · กำลังใช้' : '');
+    const rows = [['ค่าพื้นฐาน', `ชีวิต ${s.lives} · ความเร็ว ${s.speed} · ยิง${fire}`]];
+    rows.push([evo ? `ร่าง 2` : lv ? `Lv${lv} ตอนนี้` : 'Lv1', s.desc(s.skill(shown)), 'cur']);
+    if (!evo && lv && lv < MAX_LV) rows.push([`Lv${lv + 1}`, s.desc(s.skill(lv + 1))]);
+    if (!evo && lv < MAX_LV - 1) rows.push([`Lv${MAX_LV}`, s.desc(s.skill(MAX_LV)), 'dim']);
+    if (EVO[id] && !evo) rows.push(['ร่าง 2', `Lv10 + เศษยาน ${SHARD_NEED} → สกิลเท่า Lv${EVO_LV} · ${EVO[id].look}`, 'dim']);
+    const ft = ['Lv5 เริ่มพร้อมเกราะ + ขอบเรืองแสง · Lv10 เริ่มพลังยิง 2 + ตื่นพลัง'];
+    if (lv && lv < MAX_LV) ft.unshift(`อัปเป็น Lv${lv + 1}: ${fmt(lvCost(id, lv))} คริสตัล`);
+    if (EVO[id]) ft.push(`เศษยาน ${d.shards[id] || 0}/${SHARD_NEED} (ได้จากการล้มบอส 2%)`);
+    return [tipHead(s.name, tier.name), tipEl('div', 'st', st), tipRows(rows), tipEl('div', 'ft', ft.join(' · '))];
+  },
   // เศษยาน / แปลงร่าง ในการ์ดร้านยาน
   evoBlock(id, s, lv, owned) {
     const d = Save.data, n = d.shards[id] || 0, evo = !!d.evo[id];
     const box = document.createElement('div'); box.className = 'evo';
     const info = document.createElement('span'); info.className = 'shards';
-    info.textContent = evo ? `ร่าง 2 · สกิลเท่า Lv${EVO_LV} · เศษ ${n}` : `เศษยาน ${n}/${SHARD_NEED}` + (lv >= MAX_LV ? '' : ' · ต้อง Lv10');
+    info.textContent = evo ? `ร่าง 2 · เศษ ${n}` : `เศษ ${n}/${SHARD_NEED}`;
     box.append(info);
     const btn = (label, cls, fn) => {
       const el = document.createElement('button'); el.type = 'button'; el.className = cls; el.textContent = label;
@@ -2449,9 +2557,9 @@ const App = {
         catch (e) { UI.toast(errText(e)); this.renderHangar(); }
       });
     }
-    btn(evo ? 'ดูร่าง 2' : 'ดูตัวอย่างร่าง 2', 'link', async () => this.showEvolve(id, true));
+    btn(evo ? 'ดูร่าง 2' : 'ตัวอย่างร่าง 2', 'link', async () => this.showEvolve(id, true));
     if (n > 0 && Save.loggedIn) {
-      btn(`ขายเศษ 1 ชิ้น +${fmt(SHARD_PRICE[s.tier])}`, 'link', async () => {
+      btn(`ขายเศษ +${fmt(SHARD_PRICE[s.tier])}`, 'link', async () => {
         try { const r = await Save.act('/api/shard/sell', { ship: id, n: 1 }); UI.toast(`ขายเศษ ${s.name} ได้คริสตัล +${fmt(r.coins)}`); sfx.power(); }
         catch (e) { UI.toast(errText(e)); }
         this.renderHangar();
